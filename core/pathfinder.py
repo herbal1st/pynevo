@@ -1,16 +1,17 @@
 """
-Breadth-First Search (BFS) pathfinding and distance matrix calculator.
+Discrete topological BFS grid pathfinder and shortest-path tracer.
 """
 
 from collections import deque
 from typing import List, Tuple, Optional
 
 from core.map_data import MapData
+from utils.math_utils import CARDINAL_MOVES
 
 
 class BFSPathfinder:
     """
-    Calculates exact topological step-distance matrices for grid maps.
+    Computes step-distance matrices and traces shortest tile paths.
     """
 
     def __init__(self, map_data: MapData) -> None:
@@ -22,35 +23,35 @@ class BFSPathfinder:
 
     def compute_distance_matrix(self) -> Optional[List[List[int]]]:
         """
-        Runs BFS backward from the exit tile to compute all distances.
+        Runs BFS backward from the exit tile to compute step distances.
         """
         width: int = self.map_data.width
         height: int = self.map_data.height
         unreachable_val: int = 9999
         dist_grid: List[List[int]] = [
-            [unreachable_val for _ in range(width)] for _ in range(height)
+            [unreachable_val for _ in range(width)]
+            for _ in range(height)
         ]
 
         exit_x, exit_y = self.map_data.exit_pos
         dist_grid[exit_y][exit_x] = 0
 
         queue: deque[Tuple[int, int]] = deque([(exit_x, exit_y)])
-        cardinal_moves: List[Tuple[int, int]] = [
-            (0, -1), (0, 1), (-1, 0), (1, 0)
-        ]
 
         while queue:
             cx, cy = queue.popleft()
             current_dist: int = dist_grid[cy][cx]
 
-            for dx, dy in cardinal_moves:
+            for dx, dy in CARDINAL_MOVES:
                 nx: int = cx + dx
                 ny: int = cy + dy
 
-                if self.map_data.is_walkable(nx, ny):
-                    if dist_grid[ny][nx] == unreachable_val:
-                        dist_grid[ny][nx] = current_dist + 1
-                        queue.append((nx, ny))
+                if not self.map_data.is_walkable(nx, ny):
+                    continue
+
+                if dist_grid[ny][nx] == unreachable_val:
+                    dist_grid[ny][nx] = current_dist + 1
+                    queue.append((nx, ny))
 
         start_x, start_y = self.map_data.start_pos
         if dist_grid[start_y][start_x] == unreachable_val:
@@ -74,9 +75,45 @@ class BFSPathfinder:
 
         return self.distance_matrix[tile_y][tile_x]
 
+    def compute_shortest_path_tiles(self) -> List[Tuple[int, int]]:
+        """
+        Traces step-by-step tile coordinates from start_pos to exit_pos.
+        """
+        if not self.distance_matrix:
+            return []
+
+        sx, sy = self.map_data.start_pos
+        ex, ey = self.map_data.exit_pos
+        curr_x, curr_y = sx, sy
+        curr_dist: int = self.get_step_distance(curr_x, curr_y)
+
+        if curr_dist >= 9999:
+            return []
+
+        path: List[Tuple[int, int]] = [(sx, sy)]
+
+        while (curr_x, curr_y) != (ex, ey) and curr_dist > 0:
+            next_pos: Optional[Tuple[int, int]] = None
+
+            for dx, dy in CARDINAL_MOVES:
+                tx: int = curr_x + dx
+                ty: int = curr_y + dy
+                if self.get_step_distance(tx, ty) == curr_dist - 1:
+                    next_pos = (tx, ty)
+                    break
+
+            if next_pos is None:
+                break
+
+            path.append(next_pos)
+            curr_x, curr_y = next_pos
+            curr_dist -= 1
+
+        return path
+
     def count_shortest_path_turns(self) -> int:
         """
-        Traces shortest path from start to exit and counts 90-degree turns.
+        Traces shortest path from start to exit and counts 90-deg turns.
         """
         if not self.distance_matrix:
             return 0
@@ -91,9 +128,6 @@ class BFSPathfinder:
         if curr_dist >= 9999:
             return 0
 
-        cardinal_moves: List[Tuple[int, int]] = [
-            (0, -1), (0, 1), (-1, 0), (1, 0)
-        ]
         turns: int = 0
         last_dir: Optional[Tuple[int, int]] = None
 
@@ -109,7 +143,7 @@ class BFSPathfinder:
                     next_dir = last_dir
 
             if next_pos is None:
-                for dx, dy in cardinal_moves:
+                for dx, dy in CARDINAL_MOVES:
                     tx, ty = curr_x + dx, curr_y + dy
                     if self.get_step_distance(tx, ty) == curr_dist - 1:
                         next_pos = (tx, ty)

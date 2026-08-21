@@ -23,6 +23,11 @@ class PlayerState:
         self.has_reached_exit: bool = False
         self.health: float = 1.0
         self.is_alive: bool = True
+        self.last_speed_ratio: float = 0.0
+        self.last_collided: bool = False
+        self.last_idle: bool = False
+        self.last_healing: bool = False
+        self.last_rot_ratio: float = 0.0
 
     @property
     def tile_coords(self) -> Tuple[int, int]:
@@ -44,3 +49,8 @@ class PlayerState:
         self.has_reached_exit = False
         self.health = 1.0
         self.is_alive = True
+        self.last_speed_ratio = 0.0
+        self.last_collided = False
+        self.last_idle = False
+        self.last_healing = False
+        self.last_rot_ratio = 0.0

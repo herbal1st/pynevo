@@ -4,7 +4,6 @@ Continuous min-max fitness evaluation module for candidate ranking.
 
 from typing import List
 
-import config
 from entities.player_state import PlayerState
 
 
@@ -17,25 +16,42 @@ class FitnessEvaluator:
     def calculate_raw_score(
         state: PlayerState,
         initial_bfs_dist: int,
-        max_steps: int = config.MAX_SIMULATION_STEPS,
-        move_speed: float = config.MOVE_SPEED,
-        dist_ratio: float = config.DIST_TO_TIME_BONUS_RATIO,
-        lost_hp_impact: float = config.LOST_HP_SCORE_IMPACT_RATIO
+        max_steps: int = 1000,
+        move_speed: float = 0.15,
+        dist_ratio: float = 0.6,
+        lost_hp_impact: float = 0.1
     ) -> float:
         """
-        Computes progress score plus time bonus weighted by health factor.
+        Computes path progress plus time bonus weighted by health.
         """
-        step_frames: float = 1.0 / max(1e-6, move_speed)
-        dist_reduced: float = float(initial_bfs_dist - state.best_step_dist)
-        bfs_progress_frames: float = max(0.0, dist_reduced * step_frames)
-        weighted_bfs_score: float = bfs_progress_frames * dist_ratio
+        clamped_r: float = max(0.0, min(1.0, dist_ratio))
+        w_dist: float = 1000.0 * clamped_r
+        w_time: float = 1000.0 * (1.0 - clamped_r)
+
+        total_path_len: float = float(initial_bfs_dist)
+
+        dist_reduced: float = max(
+            0.0, float(initial_bfs_dist - state.best_step_dist)
+        )
+        prog_ratio: float = max(
+            0.0, min(1.0, dist_reduced / max(1e-6, total_path_len))
+        )
+        score_dist: float = w_dist * prog_ratio
 
         if state.has_reached_exit:
-            time_bonus: float = float(max_steps - state.frames_survived)
+            min_frames: float = total_path_len / max(1e-6, move_speed)
+            max_saved: float = max(1.0, float(max_steps) - min_frames)
+            actual_saved: float = max(
+                0.0, float(max_steps - state.frames_survived)
+            )
+            time_ratio: float = max(
+                0.0, min(1.0, actual_saved / max_saved)
+            )
+            score_time: float = w_time * time_ratio
         else:
-            time_bonus = 0.0
+            score_time = 0.0
 
-        raw_total: float = weighted_bfs_score + time_bonus
+        raw_total: float = score_dist + score_time
 
         clamped_hp: float = max(0.0, min(1.0, state.health))
         hp_factor: float = (1.0 - lost_hp_impact) + (
@@ -47,28 +63,16 @@ class FitnessEvaluator:
     @staticmethod
     def calculate_theoretical_max_score(
         initial_bfs_dist: int,
-        max_steps: int = config.MAX_SIMULATION_STEPS,
-        move_speed: float = config.MOVE_SPEED,
-        dist_ratio: float = config.DIST_TO_TIME_BONUS_RATIO,
+        max_steps: int = 1000,
+        move_speed: float = 0.15,
+        dist_ratio: float = 0.6,
         num_turns: int = 0,
         corner_savings_per_turn: float = 0.586
     ) -> float:
         """
-        Returns theoretical max raw score accounting for corner turn savings.
+        Returns theoretical max score (normalized peak 1000.0).
         """
-        step_frames: float = 1.0 / max(1e-6, move_speed)
-        turn_savings_tiles: float = float(num_turns) * corner_savings_per_turn
-        eff_bfs_dist: float = max(
-            0.0, float(initial_bfs_dist) - turn_savings_tiles
-        )
-
-        min_travel_frames: float = eff_bfs_dist * step_frames
-        max_bfs_score: float = min_travel_frames * dist_ratio
-        max_time_bonus: float = max(
-            0.0, float(max_steps) - min_travel_frames
-        )
-
-        return max_bfs_score + max_time_bonus
+        return 1000.0
 
     @staticmethod
     def calculate_scaled_score(
@@ -76,7 +80,7 @@ class FitnessEvaluator:
         theoretical_max: float
     ) -> float:
         """
-        Normalizes raw score to [0.0, 1000.0] range based on theoretical max.
+        Normalizes raw score to [0.0, 1000.0] range.
         """
         if theoretical_max < 1e-6:
             return 0.0

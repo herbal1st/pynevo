@@ -7,7 +7,6 @@ from typing import List, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-import config
 from core.map_data import MapData
 
 
@@ -18,9 +17,9 @@ class VisionArcSampler:
 
     def __init__(
         self,
-        num_rays: int = config.VISION_RAYS,
-        arc_angle_deg: float = config.VISION_ARC_ANGLE,
-        max_dist: float = config.VISION_MAX_DIST
+        num_rays: int = 13,
+        arc_angle_deg: float = 240.0,
+        max_dist: float = 6.0
     ) -> None:
         """
         Initializes relative ray angles across the visual arc.
@@ -68,22 +67,50 @@ class VisionArcSampler:
         map_data: MapData
     ) -> Tuple[float, float]:
         """
-        Marches a single ray forward up to max_dist tiles.
+        DDA grid-line intersection marching to exact wall tile boundary.
         """
         dir_x: float = math.cos(angle_rad)
         dir_y: float = math.sin(angle_rad)
-        step_size: float = 0.1
-        num_steps: int = int(self.max_dist / step_size)
 
-        wall_proximity: float = 0.0
+        if abs(dir_x) < 1e-9:
+            dir_x = 1e-9
+        if abs(dir_y) < 1e-9:
+            dir_y = 1e-9
 
-        for step in range(1, num_steps + 1):
-            curr_dist: float = step * step_size
-            curr_x: int = int(math.floor(ox + (dir_x * curr_dist)))
-            curr_y: int = int(math.floor(oy + (dir_y * curr_dist)))
+        tx: int = int(math.floor(ox))
+        ty: int = int(math.floor(oy))
 
-            if map_data.is_wall(curr_x, curr_y):
-                wall_proximity = 1.0 - (curr_dist / self.max_dist)
-                break
+        delta_tx: float = abs(1.0 / dir_x)
+        delta_ty: float = abs(1.0 / dir_y)
 
-        return max(0.0, wall_proximity), 0.0
+        step_x: int = 1 if dir_x > 0 else -1
+        step_y: int = 1 if dir_y > 0 else -1
+
+        if dir_x > 0:
+            side_tx: float = ((tx + 1.0) - ox) * delta_tx
+        else:
+            side_tx = (ox - float(tx)) * delta_tx
+
+        if dir_y > 0:
+            side_ty: float = ((ty + 1.0) - oy) * delta_ty
+        else:
+            side_ty = (oy - float(ty)) * delta_ty
+
+        dist: float = 0.0
+
+        while dist < self.max_dist:
+            if side_tx < side_ty:
+                dist = side_tx
+                side_tx += delta_tx
+                tx += step_x
+            else:
+                dist = side_ty
+                side_ty += delta_ty
+                ty += step_y
+
+            if map_data.is_wall(tx, ty):
+                hit_dist: float = min(dist, self.max_dist)
+                wall_prox: float = 1.0 - (hit_dist / self.max_dist)
+                return max(0.0, wall_prox), 0.0
+
+        return 0.0, 0.0

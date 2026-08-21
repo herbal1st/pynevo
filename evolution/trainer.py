@@ -2,19 +2,30 @@
 Headless neuroevolution simulation trainer running candidate runs.
 """
 
-from typing import List, Dict, Any, Tuple
+import time
+from typing import List, Optional
 import numpy as np
 
 import config
-from core.map_generator import MapGenerator
+from core.map_generation.generator import MapGenerator
 from core.pathfinder import BFSPathfinder
-from core.kinematics import CandidateKinematics
-from perception.spatial_transformer import SpatialTransformer
+from entities.agent_profile_registry import AgentProfileRegistry
+from entities.training_profile_registry import (
+    TrainingProfileRegistry,
+    ResolvedTrainingProfile
+)
+from entities.map_profile_registry import (
+    MapProfileRegistry,
+    ResolvedMapProfile
+)
+from entities.agent_factory import AgentFactory
 from entities.player_state import PlayerState
-from entities.player_express import PlayerExpress
 from evolution.fitness import FitnessEvaluator
 from evolution.population import PopulationManager
 from evolution.recorder import FrameRecorder
+from bridges.candidate_step_pipeline import CandidateStepPipeline
+from bridges.cli_presenter import CLIPresenter
+from neural.brain_persistence import BrainPersistence
 
 
 class HeadlessTrainer:
@@ -24,44 +35,99 @@ class HeadlessTrainer:
 
     def __init__(
         self,
-        pop_size: int = config.POPULATION_SIZE,
-        max_steps: int = config.MAX_SIMULATION_STEPS
+        active_profile_name: str = config.ACTIVE_AGENT_PROFILE,
+        active_training_name: str = config.ACTIVE_TRAINING_PROFILE,
+        active_map_name: str = config.ACTIVE_MAP_PROFILE
     ) -> None:
         """
-        Initializes trainer components and simulation bounds.
+        Initializes trainer with factory, persistence loader, & pipelines.
         """
-        grid_capacity: int = config.GRID_ROWS * config.GRID_COLS
-        clamped_pop: int = min(pop_size, grid_capacity)
+        self.active_profile_name: str = active_profile_name
+        self.registry: AgentProfileRegistry = AgentProfileRegistry()
+        self.factory: AgentFactory = AgentFactory(
+            self.registry, active_profile_name
+        )
 
-        self.pop_size: int = clamped_pop
-        self.max_steps: int = max_steps
-        self.map_generator: MapGenerator = MapGenerator()
-        self.transformer: SpatialTransformer = SpatialTransformer()
-        self.kinematics: CandidateKinematics = CandidateKinematics()
-        self.population: PopulationManager = PopulationManager(clamped_pop)
+        self.training_registry: TrainingProfileRegistry = (
+            TrainingProfileRegistry()
+        )
+        self.training_profile: ResolvedTrainingProfile = (
+            self.training_registry.get_profile(active_training_name)
+        )
+
+        self.map_registry: MapProfileRegistry = MapProfileRegistry()
+        self.map_profile: ResolvedMapProfile = (
+            self.map_registry.get_profile(active_map_name)
+        )
+
+        self.pop_size: int = self.training_profile.population_size
+        self.max_steps: int = self.training_profile.max_simulation_steps
+        self.map_generator: MapGenerator = MapGenerator(
+            map_profile=self.map_profile
+        )
+        self.transformer = self.factory.create_transformer()
+        self.kinematics = self.factory.create_kinematics()
+        self.population: PopulationManager = PopulationManager(
+            factory=self.factory,
+            pop_size=self.pop_size,
+            mutation_rate=self.training_profile.mutation_rate,
+            mutation_scale=self.training_profile.mutation_scale,
+            elitism_ratio=self.training_profile.elitism_ratio
+        )
         self.recorder: FrameRecorder = FrameRecorder()
+        self.persistence: BrainPersistence = BrainPersistence()
+
+        seed_net = self.factory.create_network()
+        if self.persistence.load_brain(
+            active_profile_name, seed_net, self.factory.profile,
+            context="training"
+        ):
+            self.population.seed_population_from_brain(seed_net)
+
+        self.step_pipeline: CandidateStepPipeline = CandidateStepPipeline(
+            self.transformer, self.kinematics
+        )
+        self.cli_presenter: CLIPresenter = CLIPresenter(
+            self.pop_size, self.max_steps
+        )
 
     def run_training_session(
         self,
-        num_generations: int = config.LEARNING_GENERATIONS
+        num_generations: Optional[int] = None
     ) -> FrameRecorder:
         """
         Runs headless candidate simulations over multiple generations.
         """
-        print("\n=== NEUROEVOLUTION SIMULATION RUN ===")
-        print(
-            f"Population: {self.pop_size} | Max Steps: {self.max_steps} | "
-            f"Profile: {config.KINEMATICS_PROFILE} | Target Score: 1000\n"
+        gens_count: int = (
+            num_generations if num_generations is not None
+            else self.training_profile.learning_generations
         )
-        header_str: str = (
-            f"{'GEN':>7s} | {'TOP':>7s} | {'AVG':>7s} | {'WAY':>7s} | "
-            f"{'FIRST':>7s} | {'FRAME':>7s} | {'EXITS':>7s}"
-        )
-        print(header_str)
-        print("-" * len(header_str))
 
-        for gen_idx in range(num_generations):
-            map_data = self.map_generator.generate_solvable_map()
+        param_cnt: int = self.population.networks[0].param_count
+        self.recorder.allocate_session_buffers(
+            self.max_steps, self.pop_size, gens_count, param_cnt
+        )
+
+        self.cli_presenter.print_start_banner(
+            profile_name=self.active_profile_name
+        )
+        for w_str in AgentProfileRegistry.get_clamped_warning_strings():
+            print(w_str)
+
+        min_diff_ratio: float = (
+            self.training_profile.min_path_difficulty_ratio
+        )
+        max_diff_ratio: float = (
+            self.training_profile.max_path_difficulty_ratio
+        )
+
+        for gen_idx in range(gens_count):
+            gen_start_time: float = time.perf_counter()
+
+            map_data = self.map_generator.generate_solvable_map(
+                min_difficulty_ratio=min_diff_ratio,
+                max_difficulty_ratio=max_diff_ratio
+            )
             pathfinder = BFSPathfinder(map_data)
             pathfinder.compute_distance_matrix()
 
@@ -73,7 +139,11 @@ class HeadlessTrainer:
 
             theoretical_max: float = (
                 FitnessEvaluator.calculate_theoretical_max_score(
-                    initial_bfs_dist, self.max_steps, num_turns=num_turns
+                    initial_bfs_dist,
+                    self.max_steps,
+                    move_speed=self.factory.profile.move_speed,
+                    dist_ratio=self.training_profile.dist_to_time_bonus_ratio,
+                    num_turns=num_turns
                 )
             )
 
@@ -82,17 +152,16 @@ class HeadlessTrainer:
                 for _ in range(self.pop_size)
             ]
 
-            for state in candidate_states:
+            for c_idx, state in enumerate(candidate_states):
+                self.transformer.reset_candidate_history(c_idx)
                 state.heading = self.transformer.generate_random_heading(
                     map_data, map_data.start_pos
                 )
                 state.best_step_dist = initial_bfs_dist
 
-            candidate_frames: List[List[Dict[str, Any]]] = [
-                [] for _ in range(self.pop_size)
-            ]
-
+            actual_steps: int = 0
             for step in range(1, self.max_steps + 1):
+                step_idx: int = step - 1
                 active_count: int = 0
 
                 for idx in range(self.pop_size):
@@ -100,114 +169,43 @@ class HeadlessTrainer:
                     net = self.population.networks[idx]
 
                     if state.has_reached_exit or not state.is_alive:
-                        if candidate_frames[idx]:
-                            last_f = candidate_frames[idx][-1].copy()
-                            last_f["step"] = step
-                            candidate_frames[idx].append(last_f)
+                        if (
+                            step_idx > 0 and
+                            self.recorder.telemetry_bundler is not None and
+                            self.recorder.telemetry_bundler._curr_buffer is not None
+                        ):
+                            self.recorder.telemetry_bundler._curr_buffer[
+                                step_idx, idx, :
+                            ] = self.recorder.telemetry_bundler._curr_buffer[
+                                step_idx - 1, idx, :
+                            ]
                         continue
 
                     active_count += 1
-                    features = self.transformer.compile_feature_vector(
-                        state.x,
-                        state.y,
-                        state.heading,
-                        self.kinematics.move_speed,
-                        state.health,
-                        map_data
+                    self.step_pipeline.execute_step(
+                        step_idx,
+                        state,
+                        net,
+                        map_data,
+                        pathfinder,
+                        self.recorder,
+                        candidate_idx=idx
                     )
 
-                    outputs = net.forward(features)[0]
-                    move_eff: float = float(outputs[0])
-                    turn_eff: float = float(outputs[1])
-
-                    state.heading, is_stationary_turn = (
-                        self.kinematics.apply_rotation(
-                            state.heading, turn_eff, move_eff
-                        )
-                    )
-                    nx, ny, hit = self.kinematics.calculate_forward_step(
-                        state.x, state.y, state.heading, move_eff, map_data
-                    )
-
-                    is_idle: bool = (
-                        move_eff < 0.05 or
-                        (
-                            abs(nx - state.x) < 1e-4 and
-                            abs(ny - state.y) < 1e-4
-                        ) or
-                        is_stationary_turn
-                    )
-
-                    state.x = nx
-                    state.y = ny
-                    state.has_collided = hit
-                    state.frames_survived += 1
-
-                    if hit:
-                        state.health = max(
-                            0.0,
-                            state.health - config.HEALTH_COLL_DMG_PER_FRAME
-                        )
-
-                    if is_idle:
-                        state.health = max(
-                            0.0,
-                            state.health - config.HEALTH_IDLE_DMG_PER_FRAME
-                        )
-
-                    if state.health <= 0.0:
-                        state.is_alive = False
-
-                    curr_dist = pathfinder.get_step_distance(
-                        *state.tile_coords
-                    )
-
-                    if curr_dist < state.best_step_dist:
-                        dist_reduced: int = state.best_step_dist - curr_dist
-                        heal_amount: float = (
-                            dist_reduced *
-                            config.HEALTH_COLL_DMG_PER_FRAME *
-                            config.HEALTH_RECOVERY_RATIO
-                        )
-                        state.health = min(1.0, state.health + heal_amount)
-                        state.best_step_dist = curr_dist
-
-                    if state.tile_coords == map_data.exit_pos:
-                        state.has_reached_exit = True
-
-                    face = PlayerExpress.resolve_face(
-                        state.has_reached_exit,
-                        state.has_collided,
-                        state.is_alive
-                    )
-
-                    layer_acts: List[List[float]] = [
-                        features.astype(np.float64).tolist()
-                    ] + [
-                        layer.output.flatten().tolist()
-                        for layer in net.layers
-                    ]
-
-                    candidate_frames[idx].append({
-                        "step": step,
-                        "x": state.x,
-                        "y": state.y,
-                        "heading": state.heading,
-                        "face": face,
-                        "hit_wall": hit,
-                        "health": state.health,
-                        "is_alive": state.is_alive,
-                        "reached_exit": state.has_reached_exit,
-                        "dist": curr_dist,
-                        "activations": layer_acts
-                    })
-
+                actual_steps = step
                 if active_count == 0:
                     break
 
             raw_scores: List[float] = [
                 FitnessEvaluator.calculate_raw_score(
-                    c_state, initial_bfs_dist, self.max_steps
+                    c_state,
+                    initial_bfs_dist,
+                    self.max_steps,
+                    move_speed=self.factory.profile.move_speed,
+                    dist_ratio=self.training_profile.dist_to_time_bonus_ratio,
+                    lost_hp_impact=(
+                        self.training_profile.lost_hp_score_impact_ratio
+                    )
                 )
                 for c_state in candidate_states
             ]
@@ -223,45 +221,52 @@ class HeadlessTrainer:
                 raw_scores
             )
 
-            self.recorder.record_generation(
+            self.recorder.finalize_generation(
                 gen_idx,
                 map_data,
-                candidate_frames,
                 scaled_scores,
-                norm_scores
+                norm_scores,
+                actual_steps,
+                pop_networks=self.population.networks
             )
 
-            top_int: int = int(round(max(scaled_scores)))
-            avg_scaled: float = (
-                sum(scaled_scores) / float(len(scaled_scores))
-            )
             winner_idx: int = int(np.argmax(norm_scores))
-
-            solvers: List[Tuple[int, int]] = [
-                (c_idx, c_state.frames_survived)
-                for c_idx, c_state in enumerate(candidate_states)
-                if c_state.has_reached_exit
-            ]
-            solve_count: int = len(solvers)
-            exits_str: str = f"{solve_count}/{self.pop_size}"
-
-            if solve_count > 0:
-                fastest_step: int = min(step_cnt for _, step_cnt in solvers)
-                frame_str: str = str(fastest_step)
-            else:
-                frame_str = "-"
-
-            winner_str: str = f"# {winner_idx}"
-
-            row_str: str = (
-                f"{gen_idx + 1:>7d} | {top_int:>7d} | {avg_scaled:>7.1f} | "
-                f"{initial_bfs_dist:>7d} | {winner_str:>7s} | "
-                f"{frame_str:>7s} | {exits_str:>7s}"
+            winner_state = candidate_states[winner_idx]
+            dist_reduced = max(
+                0.0, float(initial_bfs_dist - winner_state.best_step_dist)
             )
-            print(row_str)
+            done_pct = int(
+                round((dist_reduced / max(1e-6, initial_bfs_dist)) * 100)
+            )
+            if winner_state.has_reached_exit:
+                done_pct = 100
+
+            elapsed_sec: float = time.perf_counter() - gen_start_time
+
+            self.cli_presenter.print_generation_row(
+                gen_idx,
+                scaled_scores,
+                initial_bfs_dist,
+                norm_scores,
+                candidate_states,
+                elapsed_sec,
+                done_pct
+            )
+
+            if gen_idx == gens_count - 1:
+                winner_net = self.population.networks[winner_idx]
+                self.persistence.save_brain(
+                    self.active_profile_name,
+                    winner_net,
+                    self.factory.profile,
+                    context="training"
+                )
 
             self.population.evolve_next_generation(norm_scores)
 
-        print("-" * len(header_str))
-        print("Training complete! Booting interactive visualizer GUI...\n")
+        self.cli_presenter.print_finish_footer()
+        for w_str in AgentProfileRegistry.get_clamped_warning_strings():
+            print(w_str)
+
+        self.recorder.save_temporary_disk_archive()
         return self.recorder

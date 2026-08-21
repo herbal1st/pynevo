@@ -2,13 +2,13 @@
 Genetic algorithm population manager executing reproduction and mutation.
 """
 
-import random
-from typing import List, Tuple
-import numpy as np
-from numpy.typing import NDArray
+from typing import List, Tuple, Optional
 
-import config
+from entities.agent_factory import AgentFactory
 from neural.network import NeuralNetwork
+from evolution.operators.selection import TournamentSelection
+from evolution.operators.crossover import UniformCrossover
+from evolution.operators.mutation import GaussianMutation
 
 
 class PopulationManager:
@@ -18,21 +18,47 @@ class PopulationManager:
 
     def __init__(
         self,
-        pop_size: int = config.POPULATION_SIZE,
-        mutation_rate: float = config.MUTATION_RATE,
-        mutation_scale: float = config.MUTATION_SCALE,
-        elitism_ratio: float = config.ELITISM_RATIO
+        factory: Optional[AgentFactory] = None,
+        pop_size: int = 25,
+        mutation_rate: float = 0.25,
+        mutation_scale: float = 0.125,
+        elitism_ratio: float = 0.15
     ) -> None:
         """
-        Initializes population parameters and candidate networks.
+        Initializes population parameters and candidate network pool.
         """
         self.pop_size: int = pop_size
         self.mutation_rate: float = mutation_rate
         self.mutation_scale: float = mutation_scale
         self.elitism_ratio: float = elitism_ratio
-        self.networks: List[NeuralNetwork] = [
-            NeuralNetwork() for _ in range(pop_size)
-        ]
+        self.factory: Optional[AgentFactory] = factory
+
+        if factory is not None:
+            self.networks: List[NeuralNetwork] = [
+                factory.create_network() for _ in range(pop_size)
+            ]
+        else:
+            self.networks = [NeuralNetwork() for _ in range(pop_size)]
+
+    def seed_population_from_brain(
+        self,
+        seed_network: NeuralNetwork
+    ) -> None:
+        """
+        Seeds population using cloned seed weights with exploration noise.
+        """
+        if not self.networks:
+            return
+
+        self.networks[0].copy_weights_from(seed_network)
+
+        for idx in range(1, self.pop_size):
+            self.networks[idx].copy_weights_from(seed_network)
+            GaussianMutation.apply_mutation(
+                self.networks[idx],
+                mutation_rate=1.0,
+                mutation_scale=self.mutation_scale
+            )
 
     def evolve_next_generation(
         self,
@@ -53,81 +79,42 @@ class PopulationManager:
 
         new_networks: List[NeuralNetwork] = []
 
-        # Elitism: Copy elite weights directly without mutation
         for idx in elite_indices:
-            elite_net = NeuralNetwork()
-            self._copy_weights(self.networks[idx], elite_net)
+            elite_net = (
+                self.factory.create_network() if self.factory is not None
+                else NeuralNetwork()
+            )
+            elite_net.copy_weights_from(self.networks[idx])
             new_networks.append(elite_net)
 
-        # Breed offspring to fill remaining population
         while len(new_networks) < self.pop_size:
-            parent_a = self._tournament_select(fitness_scores)
-            parent_b = self._tournament_select(fitness_scores)
+            parent_a = TournamentSelection.select(
+                self.networks, fitness_scores
+            )
+            parent_b = TournamentSelection.select(
+                self.networks, fitness_scores
+            )
 
-            child_net = NeuralNetwork()
-            self._crossover_and_mutate(parent_a, parent_b, child_net)
+            child_net = (
+                self.factory.create_network() if self.factory is not None
+                else NeuralNetwork()
+            )
+
+            if parent_a is parent_b:
+                child_net.copy_weights_from(parent_a)
+                GaussianMutation.apply_mutation(
+                    child_net,
+                    mutation_rate=1.0,
+                    mutation_scale=self.mutation_scale
+                )
+            else:
+                UniformCrossover.apply_crossover(
+                    parent_a, parent_b, child_net
+                )
+                GaussianMutation.apply_mutation(
+                    child_net, self.mutation_rate, self.mutation_scale
+                )
+
             new_networks.append(child_net)
 
         self.networks = new_networks
-
-    def _tournament_select(
-        self,
-        scores: List[float],
-        k: int = 3
-    ) -> NeuralNetwork:
-        """
-        Selects top network candidate from k random tournament entries.
-        """
-        chosen_indices: List[int] = random.sample(
-            range(self.pop_size), min(k, self.pop_size)
-        )
-        best_idx: int = max(chosen_indices, key=lambda idx: scores[idx])
-        return self.networks[best_idx]
-
-    def _copy_weights(
-        self,
-        src_net: NeuralNetwork,
-        dest_net: NeuralNetwork
-    ) -> None:
-        """
-        Copies weight and bias matrices from source to destination.
-        """
-        for i in range(len(src_net.layers)):
-            dest_net.layers[i].weights = src_net.layers[i].weights.copy()
-            dest_net.layers[i].biases = src_net.layers[i].biases.copy()
-
-    def _crossover_and_mutate(
-        self,
-        parent_a: NeuralNetwork,
-        parent_b: NeuralNetwork,
-        child_net: NeuralNetwork
-    ) -> None:
-        """
-        Applies uniform crossover and Gaussian mutation to child weights.
-        """
-        for i in range(len(parent_a.layers)):
-            wa = parent_a.layers[i].weights
-            wb = parent_b.layers[i].weights
-            ba = parent_a.layers[i].biases
-            bb = parent_b.layers[i].biases
-
-            mask_w: NDArray[np.bool_] = (
-                np.random.rand(*wa.shape) < 0.5
-            )
-            mask_b: NDArray[np.bool_] = (
-                np.random.rand(*ba.shape) < 0.5
-            )
-
-            cw = np.where(mask_w, wa, wb)
-            cb = np.where(mask_b, ba, bb)
-
-            if random.random() < self.mutation_rate:
-                cw += np.random.normal(
-                    0.0, self.mutation_scale, size=cw.shape
-                )
-                cb += np.random.normal(
-                    0.0, self.mutation_scale, size=cb.shape
-                )
-
-            child_net.layers[i].weights = cw
-            child_net.layers[i].biases = cb

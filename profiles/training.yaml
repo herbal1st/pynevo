@@ -1,0 +1,66 @@
+profiles:
+
+  DEFAULT:
+    min_path_difficulty_ratio: 0.9
+    max_path_difficulty_ratio: 1.0
+    learning_generations: 100
+    population_size: 25
+    max_simulation_steps: 1000
+    elitism_ratio: 0.15
+    mutation_rate: 0.25
+    mutation_scale: 0.125
+    dist_to_time_bonus_ratio: 0.6
+    lost_hp_score_impact_ratio: 0.1
+
+  HALF:
+    min_path_difficulty_ratio: 0.9
+    max_path_difficulty_ratio: 1.0
+    learning_generations: 50
+    population_size: 25
+    max_simulation_steps: 1000
+    elitism_ratio: 0.15
+    mutation_rate: 0.25
+    mutation_scale: 0.125
+    dist_to_time_bonus_ratio: 0.6
+    lost_hp_score_impact_ratio: 0.1
+
+  SHORT:
+    min_path_difficulty_ratio: 0.6
+    max_path_difficulty_ratio: 0.8
+    learning_generations: 5
+    population_size: 25
+    max_simulation_steps: 1000
+    elitism_ratio: 0.15
+    mutation_rate: 0.25
+    mutation_scale: 0.125
+    dist_to_time_bonus_ratio: 0.6
+    lost_hp_score_impact_ratio: 0.1
+
+  TEST:
+    min_path_difficulty_ratio: 0.4
+    max_path_difficulty_ratio: 0.6
+    learning_generations: 5
+    population_size: 9
+    max_simulation_steps: 500
+    elitism_ratio: 0.15
+    mutation_rate: 0.25
+    mutation_scale: 0.125
+    dist_to_time_bonus_ratio: 0.6
+    lost_hp_score_impact_ratio: 0.1
+
+
+# ============================================================================
+# TRAINING PROFILE CONFIGURATION LEGEND
+# ============================================================================
+#
+# min_path_difficulty_ratio:  Min BFS shortest-path distance ratio [0-1].
+# max_path_difficulty_ratio:  Max BFS shortest-path distance ratio [0-1].
+# learning_generations:       Generations count simulated during pre-training.
+# population_size:            AI candidates evaluated per generation.
+# max_simulation_steps:       Maximum step ticks allowed per candidate run.
+# elitism_ratio:              Top-scoring candidates ratio copied unchanged.
+# mutation_rate:              Offspring mutation probability [0.0 - 1.0].
+# mutation_scale:             Noise scale factor added during mutation.
+# dist_to_time_bonus_ratio:   Weight balancing progress vs time saved [0-1].
+# lost_hp_score_impact_ratio: Health loss score penalty factor [0.0 - 1.0].
+# ============================================================================

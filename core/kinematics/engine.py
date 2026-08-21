@@ -1,98 +1,38 @@
 """
-Candidate movement physics and position LERP interpolation.
+Candidate continuous movement physics and Circle-to-AABB wall collisions.
 """
 
 import math
-from typing import Tuple
+from typing import Tuple, Optional
 
 import config
 from core.map_data import MapData
-
-
-class KinematicsProfile:
-    """
-    Abstract base steering profile defining rotation dynamics.
-    """
-
-    def calculate_rotation(
-        self,
-        heading_rad: float,
-        turn_effort: float,
-        move_effort: float,
-        rad_per_frame: float
-    ) -> Tuple[float, bool]:
-        """
-        Calculates updated heading and returns stationary turning state.
-        """
-        raise NotImplementedError
-
-
-class CarProfile(KinematicsProfile):
-    """
-    Car dynamics: rotation velocity is scaled directly by forward effort.
-    """
-
-    def calculate_rotation(
-        self,
-        heading_rad: float,
-        turn_effort: float,
-        move_effort: float,
-        rad_per_frame: float
-    ) -> Tuple[float, bool]:
-        """
-        Applies rotation scaled by forward movement effort.
-        """
-        clamped_turn: float = max(-1.0, min(1.0, turn_effort))
-        clamped_move: float = max(0.0, min(1.0, move_effort))
-        effective_turn: float = clamped_turn * clamped_move
-
-        new_heading: float = heading_rad + (effective_turn * rad_per_frame)
-        return new_heading % (2.0 * math.pi), False
-
-
-class TankProfile(KinematicsProfile):
-    """
-    Tank dynamics: steering works in place; stationary turning drains HP.
-    """
-
-    def calculate_rotation(
-        self,
-        heading_rad: float,
-        turn_effort: float,
-        move_effort: float,
-        rad_per_frame: float
-    ) -> Tuple[float, bool]:
-        """
-        Applies differential in-place rotation independent of move effort.
-        """
-        clamped_turn: float = max(-1.0, min(1.0, turn_effort))
-        clamped_move: float = max(0.0, min(1.0, move_effort))
-
-        new_heading: float = heading_rad + (clamped_turn * rad_per_frame)
-        is_stationary_turn: bool = (
-            abs(clamped_turn) > 0.05 and clamped_move < 0.05
-        )
-        return new_heading % (2.0 * math.pi), is_stationary_turn
+from core.kinematics.profiles import (
+    KinematicsProfile,
+    CarProfile,
+    TankProfile
+)
+from entities.map_profile_registry import MapProfileRegistry
 
 
 class CandidateKinematics:
     """
-    Handles 2D continuous movement physics and Circle-to-AABB collisions.
+    Handles 2D movement physics and Circle-to-AABB penetration resolution.
     """
 
     def __init__(
         self,
-        move_speed: float = config.MOVE_SPEED,
-        turn_speed_dpsec: float = config.TURN_SPEED,
-        radius_ratio: float = config.PLAYER_RADIUS_RATIO,
+        move_speed: float = 0.15,
+        turn_speed_dpsec: float = 1800.0,
+        player_diameter_ratio: float = 0.45,
         fps: int = config.FPS,
-        profile_style: str = config.KINEMATICS_PROFILE
+        profile_style: str = "TANK"
     ) -> None:
         """
-        Initializes physical movement constants and steering profile.
+        Initializes movement constants and binds active steering profile.
         """
         self.move_speed: float = move_speed
-        self.radius: float = 0.5 * radius_ratio
+        self.radius: float = 0.5 * player_diameter_ratio
         self.rad_per_frame: float = (
             math.radians(turn_speed_dpsec) / float(fps)
         )
@@ -125,8 +65,8 @@ class CandidateKinematics:
         """
         Calculates step and resolves Circle-to-AABB penetration pushback.
         """
-        clamped_effort: float = max(0.0, min(1.0, move_effort))
-        if clamped_effort < 1e-4:
+        clamped_effort: float = max(-1.0, min(1.0, move_effort))
+        if abs(clamped_effort) < 1e-4:
             return curr_x, curr_y, False
 
         step_dist: float = clamped_effort * self.move_speed
@@ -142,13 +82,18 @@ class CandidateKinematics:
         self,
         tile_x: float,
         tile_y: float,
-        tile_size: int = config.TILE_SIZE
+        tile_size: Optional[int] = None
     ) -> Tuple[int, int]:
         """
         Converts continuous tile coordinates to screen pixel positions.
         """
-        pixel_x: int = int(round(tile_x * tile_size))
-        pixel_y: int = int(round(tile_y * tile_size))
+        if tile_size is None:
+            tile_size = MapProfileRegistry().get_profile(
+                config.ACTIVE_MAP_PROFILE
+            ).tile_size
+
+        pixel_x: int = int(round(tile_x * float(tile_size)))
+        pixel_y: int = int(round(tile_y * float(tile_size)))
         return pixel_x, pixel_y
 
     def _resolve_circle_aabb(
@@ -163,6 +108,16 @@ class CandidateKinematics:
         """
         r: float = self.radius
         has_collided: bool = False
+
+        min_x: float = r
+        max_x: float = float(map_data.width) - r
+        min_y: float = r
+        max_y: float = float(map_data.height) - r
+
+        if px < min_x or px > max_x or py < min_y or py > max_y:
+            has_collided = True
+            px = max(min_x, min(max_x, px))
+            py = max(min_y, min(max_y, py))
 
         for _ in range(passes):
             min_tx: int = max(0, int(math.floor(px - r)))
@@ -196,12 +151,32 @@ class CandidateKinematics:
 
                         if dist > 1e-6:
                             overlap: float = r - dist
-                            nx: float = dx / dist
-                            ny: float = dy / dist
-                            px += nx * overlap
-                            py += ny * overlap
+                            nx_dir: float = dx / dist
+                            ny_dir: float = dy / dist
+                            px += nx_dir * overlap
+                            py += ny_dir * overlap
                         else:
-                            px += 0.01
-                            py += 0.01
+                            tile_cx: float = float(tx) + 0.5
+                            tile_cy: float = float(ty) + 0.5
+                            push_x: float = (
+                                1.0 if px >= tile_cx else -1.0
+                            )
+                            push_y: float = (
+                                1.0 if py >= tile_cy else -1.0
+                            )
+
+                            if abs(px - tile_cx) < abs(py - tile_cy):
+                                py = (
+                                    float(ty + 1) + r if push_y > 0.0
+                                    else float(ty) - r
+                                )
+                            else:
+                                px = (
+                                    float(tx + 1) + r if push_x > 0.0
+                                    else float(tx) - r
+                                )
+
+        px = max(min_x, min(max_x, px))
+        py = max(min_y, min(max_y, py))
 
         return px, py, has_collided

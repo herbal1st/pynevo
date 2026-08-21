@@ -1,32 +1,57 @@
 """
-Interactive UI transport controls, dual timeline bars, and marker tags.
+Interactive UI transport controls facade, dual timeline bars, and markers.
 """
 
 from typing import Tuple, List, Optional, Dict, Any
 import pygame
 
 import config
+from utils.font_manager import FontManager
+from visualization.timeline.renderer import ScrubberRenderer
 
 
 class TimelineScrubber:
     """
-    Renders Play/Pause/Repeat/Speed buttons, dual timelines, and markers.
+    Facade managing transport controls, dual timeline bars, and markers.
     """
 
     def __init__(
         self,
-        rect: Tuple[int, int, int, int] = config.LAYOUT_SCRUBBER_RECT
+        rect: Tuple[int, int, int, int] = config.LAYOUT_SCRUBBER_RECT,
     ) -> None:
         """
-        Initializes transport buttons, timeline bar rects, and state flags.
+        Initializes bounding rects, playback state, and renderer instance.
         """
         self.x, self.y, self.w, self.h = rect
         self.is_playing: bool = True
-        self.repeat_all: bool = True  # True = REP ALL, False = REP 1
-        self.playback_speed: int = config.DEFAULT_PLAYBACK_SPEED
-        self.speed_options: List[int] = [1, 2, 4, 8, 16]
+        self.repeat_all: bool = True
+        self.is_dragging_frame: bool = False
+        self.is_dragging_gen: bool = False
+        self.playback_speed: float = float(config.DEFAULT_PLAYBACK_SPEED)
 
-        btn_h: int = config.HUD_SCRUBBER_BTN_HEIGHT
+        self.speed_options: List[float] = [
+            0.1,
+            1.0 / 9.0,
+            0.125,
+            1.0 / 7.0,
+            1.0 / 6.0,
+            0.2,
+            0.25,
+            1.0 / 3.0,
+            0.5,
+            1.0,
+            2.0,
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0,
+            9.0,
+            10.0,
+        ]
+
+        btn_h: int = config.HUD_SCRUBBER_BUTTON_HEIGHT
         self.btn_toggle_rect: pygame.Rect = pygame.Rect(
             self.x, self.y, 70, btn_h
         )
@@ -40,6 +65,7 @@ class TimelineScrubber:
         bar_x: int = self.x + 210
         bar_w: int = self.w - 210
         bar_h: int = config.HUD_SCRUBBER_BAR_HEIGHT
+
         self.frame_bar_rect: pygame.Rect = pygame.Rect(
             bar_x, self.y, bar_w, bar_h
         )
@@ -47,9 +73,55 @@ class TimelineScrubber:
             bar_x, self.y + bar_h + 8, bar_w, bar_h
         )
 
-        self.font: pygame.font.Font = pygame.font.SysFont(
-            "monospace", config.HUD_SCRUBBER_BTN_FONT_SIZE, bold=True
+        self.font_manager: FontManager = FontManager()
+        self.renderer: ScrubberRenderer = ScrubberRenderer(
+            self.font_manager
         )
+
+    def get_formatted_speed_text(self) -> str:
+        """
+        Returns human-readable text string for active playback speed.
+        """
+        sp: float = float(self.playback_speed)
+        if sp < 0.95:
+            denom: int = int(round(1.0 / sp))
+            return f"1/{denom}x"
+
+        val_int: int = int(round(sp))
+        return f"{val_int}x"
+
+    def reset_speed(self) -> None:
+        """
+        Resets playback speed multiplier back to default 1.0 speed.
+        """
+        self.playback_speed = float(config.DEFAULT_PLAYBACK_SPEED)
+
+    def _get_current_speed_index(self) -> int:
+        """
+        Returns index of active playback speed in speed options list.
+        """
+        sp: float = self.playback_speed
+        best_idx: int = min(
+            range(len(self.speed_options)),
+            key=lambda i: abs(self.speed_options[i] - sp),
+        )
+        return best_idx
+
+    def step_speed_up(self) -> None:
+        """
+        Steps playback speed to the next available multiplier.
+        """
+        idx: int = self._get_current_speed_index()
+        next_idx: int = (idx + 1) % len(self.speed_options)
+        self.playback_speed = self.speed_options[next_idx]
+
+    def step_speed_down(self) -> None:
+        """
+        Steps playback speed to the previous available multiplier.
+        """
+        idx: int = self._get_current_speed_index()
+        next_idx: int = (idx - 1) % len(self.speed_options)
+        self.playback_speed = self.speed_options[next_idx]
 
     def draw_controls(
         self,
@@ -58,153 +130,33 @@ class TimelineScrubber:
         total_gens: int,
         active_frame: int,
         total_frames: int,
+        selected_cand_idx: int = 0,
         gen_history: Optional[List[Dict[str, Any]]] = None,
-        selected_cand_frames: Optional[List[Dict[str, Any]]] = None
     ) -> None:
         """
-        Renders transport buttons, dual timeline bars, and marker tick tags.
+        Delegates button and track rendering to renderer engine.
         """
-        # Play / Pause toggle button
-        t_color = (
-            config.COLOR_BUTTON_ACTIVE if self.is_playing
-            else config.COLOR_BUTTON
+        self.renderer.draw_buttons(surface, self)
+        self.renderer.draw_tracks(
+            surface,
+            self,
+            active_gen,
+            total_gens,
+            active_frame,
+            total_frames,
+            selected_cand_idx,
+            gen_history,
         )
-        pygame.draw.rect(surface, t_color, self.btn_toggle_rect)
-        pygame.draw.rect(
-            surface, config.COLOR_WALL_BORDER, self.btn_toggle_rect, 1
-        )
-        t_str: str = "PAUSE" if self.is_playing else "PLAY"
-        t_lbl = self.font.render(t_str, True, (255, 255, 255))
-        surface.blit(
-            t_lbl, t_lbl.get_rect(center=self.btn_toggle_rect.center)
-        )
-
-        # Repeat mode button (REP ALL / REP 1)
-        r_color = (
-            config.COLOR_BUTTON_ACTIVE if self.repeat_all
-            else config.COLOR_BUTTON
-        )
-        pygame.draw.rect(surface, r_color, self.btn_repeat_rect)
-        pygame.draw.rect(
-            surface, config.COLOR_WALL_BORDER, self.btn_repeat_rect, 1
-        )
-        r_str: str = "REP ALL" if self.repeat_all else "REP 1"
-        r_lbl = self.font.render(r_str, True, (255, 255, 255))
-        surface.blit(
-            r_lbl, r_lbl.get_rect(center=self.btn_repeat_rect.center)
-        )
-
-        # Speed toggle button
-        pygame.draw.rect(surface, config.COLOR_BUTTON, self.btn_speed_rect)
-        pygame.draw.rect(
-            surface, config.COLOR_WALL_BORDER, self.btn_speed_rect, 1
-        )
-        sp_lbl = self.font.render(
-            f"{self.playback_speed}x", True, (255, 255, 255)
-        )
-        surface.blit(
-            sp_lbl, sp_lbl.get_rect(center=self.btn_speed_rect.center)
-        )
-
-        # Timeline Bars
-        pygame.draw.rect(
-            surface, config.COLOR_TIMELINE_BAR, self.frame_bar_rect
-        )
-        pygame.draw.rect(
-            surface, config.COLOR_TIMELINE_BAR, self.gen_bar_rect
-        )
-
-        # Draw green solve tick marks on generation timeline bar
-        if gen_history:
-            for g_idx, g_data in enumerate(gen_history):
-                c_frames_list = g_data.get("candidate_frames", [])
-                solved_gen: bool = any(
-                    len(cf) > 0 and cf[-1].get("reached_exit", False)
-                    for cf in c_frames_list
-                )
-                if solved_gen:
-                    g_r: float = float(g_idx) / float(
-                        max(1, total_gens - 1)
-                    )
-                    gx: int = int(
-                        self.gen_bar_rect.x + (g_r * self.gen_bar_rect.w)
-                    )
-                    pygame.draw.line(
-                        surface,
-                        config.COLOR_EXIT,
-                        (gx, self.gen_bar_rect.top),
-                        (gx, self.gen_bar_rect.bottom),
-                        2
-                    )
-
-        # Draw green finish tick mark on frame bar for selected candidate
-        if selected_cand_frames:
-            for f_step, f_dict in enumerate(selected_cand_frames):
-                if f_dict.get("reached_exit", False):
-                    f_r: float = float(f_step) / float(
-                        max(1, total_frames - 1)
-                    )
-                    fx: int = int(
-                        self.frame_bar_rect.x + (f_r * self.frame_bar_rect.w)
-                    )
-                    pygame.draw.line(
-                        surface,
-                        config.COLOR_EXIT,
-                        (fx, self.frame_bar_rect.top),
-                        (fx, self.frame_bar_rect.bottom),
-                        2
-                    )
-                    break
-
-        marker_r: int = config.HUD_SCRUBBER_MARKER_RADIUS
-
-        # Frame Timeline Marker
-        f_ratio: float = (
-            float(active_frame) / float(max(1, total_frames - 1))
-        )
-        f_marker_x: int = int(
-            self.frame_bar_rect.x + (f_ratio * self.frame_bar_rect.w)
-        )
-        f_marker_center: Tuple[int, int] = (
-            f_marker_x, self.frame_bar_rect.centery
-        )
-        pygame.draw.circle(
-            surface, config.COLOR_MARKER, f_marker_center, marker_r
-        )
-
-        f_lbl = self.font.render(
-            f"# {active_frame}", True, config.COLOR_MARKER
-        )
-        surface.blit(f_lbl, (f_marker_x - 12, self.frame_bar_rect.y - 14))
-
-        # Generation Timeline Marker
-        g_ratio: float = (
-            float(active_gen) / float(max(1, total_gens - 1))
-        )
-        g_marker_x: int = int(
-            self.gen_bar_rect.x + (g_ratio * self.gen_bar_rect.w)
-        )
-        g_marker_center: Tuple[int, int] = (
-            g_marker_x, self.gen_bar_rect.centery
-        )
-        pygame.draw.circle(
-            surface, config.COLOR_MARKER, g_marker_center, marker_r
-        )
-
-        g_lbl = self.font.render(
-            f"# {active_gen + 1}", True, config.COLOR_MARKER
-        )
-        surface.blit(g_lbl, (g_marker_x - 12, self.gen_bar_rect.y + 18))
 
     def handle_click(
         self,
         click_pos: Tuple[int, int],
         total_gens: int,
         total_frames: int,
-        mouse_button: int = 1
+        mouse_button: int = 1,
     ) -> Tuple[Optional[int], Optional[int]]:
         """
-        Processes transport button clicks and dual timeline bar scrubbing.
+        Processes transport button clicks and initial timeline dragging.
         """
         cx, cy = click_pos
 
@@ -217,27 +169,84 @@ class TimelineScrubber:
             return None, None
 
         if self.btn_speed_rect.collidepoint(cx, cy):
-            curr_idx: int = self.speed_options.index(self.playback_speed)
-            if mouse_button == 3:  # Right Click = Speed Down
-                next_idx: int = (curr_idx - 1) % len(self.speed_options)
-            else:  # Left Click / Default = Speed Up
-                next_idx = (curr_idx + 1) % len(self.speed_options)
-            self.playback_speed = self.speed_options[next_idx]
+            if mouse_button == 3:
+                self.step_speed_down()
+            else:
+                self.step_speed_up()
             return None, None
 
         new_frame: Optional[int] = None
         new_gen: Optional[int] = None
 
         if self.frame_bar_rect.collidepoint(cx, cy):
-            rel_x: float = float(cx - self.frame_bar_rect.x)
-            ratio: float = max(
-                0.0, min(1.0, rel_x / float(self.frame_bar_rect.w))
-            )
-            new_frame = int(round(ratio * (total_frames - 1)))
+            self.is_dragging_frame = True
+            new_frame = self._calculate_frame_index(cx, total_frames)
 
-        if self.gen_bar_rect.collidepoint(cx, cy):
-            rel_x = float(cx - self.gen_bar_rect.x)
-            ratio = max(0.0, min(1.0, rel_x / float(self.gen_bar_rect.w)))
-            new_gen = int(round(ratio * (total_gens - 1)))
+        elif self.gen_bar_rect.collidepoint(cx, cy):
+            self.is_dragging_gen = True
+            new_gen = self._calculate_generation_index(cx, total_gens)
 
         return new_gen, new_frame
+
+    def handle_mouse_move(
+        self,
+        click_pos: Tuple[int, int],
+        total_gens: int,
+        total_frames: int,
+    ) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Updates frame or generation index during mouse drag movement.
+        """
+        cx, _ = click_pos
+        new_frame: Optional[int] = None
+        new_gen: Optional[int] = None
+
+        if self.is_dragging_frame:
+            new_frame = self._calculate_frame_index(cx, total_frames)
+
+        elif self.is_dragging_gen:
+            new_gen = self._calculate_generation_index(cx, total_gens)
+
+        return new_gen, new_frame
+
+    def handle_mouse_up(self) -> None:
+        """
+        Clears timeline scrubber bar dragging flags on mouse release.
+        """
+        self.is_dragging_frame = False
+        self.is_dragging_gen = False
+
+    def _calculate_frame_index(
+        self, click_x: int, total_frames: int
+    ) -> int:
+        """
+        Translates pixel X coordinate to target frame step index.
+        """
+        rel_x: float = float(click_x - self.frame_bar_rect.x)
+        ratio: float = max(
+            0.0, min(1.0, rel_x / float(self.frame_bar_rect.w))
+        )
+        return int(round(ratio * max(0, total_frames - 1)))
+
+    def _calculate_generation_index(
+        self, click_x: int, total_gens: int
+    ) -> int:
+        """
+        Translates pixel X coordinate to mode-aware generation index.
+        """
+        if total_gens <= 1:
+            return 0
+
+        rel_x: float = float(click_x - self.gen_bar_rect.x)
+        is_block_mode: bool = getattr(
+            config, "TIMELINE_BLOCK_GENERATION_BAR", True
+        )
+
+        if is_block_mode:
+            ratio: float = max(
+                0.0, min(0.999999, rel_x / float(self.gen_bar_rect.w))
+            )
+            return int(ratio * float(total_gens))
+
+        ratio = max(0.0, min(1.0, rel_x / float(self.gen_bar_rect.w)))
+        return int(round(ratio * float(total_gens - 1)))

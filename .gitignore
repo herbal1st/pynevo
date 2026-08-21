@@ -1,4 +1,6 @@
 # --- Project Specific Ignores ---
+saved_brains/
+.runtime_cache.npz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
