@@ -2,7 +2,8 @@
 Candidate emotional state face expression engine.
 """
 
-import config
+from typing import Optional
+from entities.agent_profile_registry import ResolvedAgentProfile
 
 
 class PlayerExpress:
@@ -14,15 +15,25 @@ class PlayerExpress:
     def resolve_face(
         has_reached_exit: bool,
         has_collided: bool,
-        is_alive: bool
+        is_alive: bool,
+        profile: Optional[ResolvedAgentProfile] = None
     ) -> str:
         """
         Evaluates active physics flags to select ASCII expression.
         """
+        if profile is not None:
+            if has_reached_exit:
+                return profile.skin.face_exit
+            if not is_alive:
+                return profile.skin.face_dead
+            if has_collided:
+                return profile.skin.face_wall
+            return profile.skin.face_walk
+
         if has_reached_exit:
-            return config.FACE_EXIT
+            return "^_^"
         if not is_alive:
-            return config.FACE_DEAD
+            return "T_T"
         if has_collided:
-            return config.FACE_WALL
-        return config.FACE_WALK
+            return ">_<"
+        return "o_o"

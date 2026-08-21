@@ -1,449 +1,243 @@
- ____           __  __                                          __                 
-/\  _`\        /\ \/\ \                                        /\ \                
-\ \ \L\ \__  __\ \ \ \ \    ___   _ __    __    ___     ___    \_\ \  _ __   ___   
- \ \ ,__/\ \/\ \\ \ \ \ \  / __`\/\`'__\/'__`\/' _ `\ /' _ `\  /'_` \/\`'__\/ __`\ 
-  \ \ \/\ \ \_\ \\ \ \_/ \/\ \L\ \ \ \//\  __//\ \/\ \/\ \/\ \/\ \L\ \ \ \//\ \L\ \
-   \ \_\ \/`____ \\ `\___/\ \____/\ \_\\ \____\ \_\ \_\ \_\ \_\ \___,_\ \_\\ \____/
-    \/_/  `/___/> \`\/__/  \/___/  \/_/ \/____/\/_/\/_/\/_/\/_/\/__,_ /\/_/ \/___/ 
-             /\___/                                                                
-             \/__/ 
+ ____           __  __
+/\  _`\        /\ \/\ \
+\ \ \L\ \__  __\ \ `\\ \     __   __  __    ___
+ \ \ ,__/\ \/\ \\ \ , ` \  /'__`\/\ \/\ \  / __`\
+  \ \ \/\ \ \_\ \\ \ \`\ \/\  __/\ \ \_/ |/\ \L\ \
+   \ \_\ \/`____ \\ \_\ \_\ \____\\ \___/ \ \____/
+    \/_/  `/___/> \\/_/\/_/\/____/ \/__/   \/___/
+             /\___/
+             \/__/
 ===============================================================================
                      CONFIGURATION MANUAL & FIELD GUIDE
 ===============================================================================
 
-[DISPLAY & GRID LAYOUT]
+[DISPLAY & RESOLUTION SETTINGS]
 -------------------------------------------------------------------------------
-SCREEN_WIDTH                  : Target application display window width.
+SCREEN_WIDTH                  : Horizontal pixel width of the window on your
+                                computer desktop screen.
                                 Metric: Pixels (int).
 
-SCREEN_HEIGHT                 : Target application display window height.
+SCREEN_HEIGHT                 : Vertical pixel height of the window on your
+                                computer desktop screen.
                                 Metric: Pixels (int).
 
-FPS                           : Target rendering frame rate and simulation
-                                frame clock speed limit.
-                                Metric: Hertz (int).
+VIRTUAL_WIDTH                 : Internal base canvas width (1280) used for
+                                drawing graphics before scaling to screen.
+                                Metric: Pixels (int).
 
-GRID_ROWS                     : Number of vertical viewports rendered in the
-                                visualizer candidate grid.
+VIRTUAL_HEIGHT                : Internal base canvas height (720) used for
+                                drawing graphics before scaling to screen.
+                                Metric: Pixels (int).
+
+FPS                           : Target frame rate cap controlling animation
+                                smoothness and simulation refresh speed.
+                                Metric: Hertz / Frames per second (int).
+
+USE_RESIZABLE_WINDOW          : Enables dragging desktop window borders while
+                                keeping proper 16:9 display proportions.
+                                Metric: Toggle boolean (bool).
+
+MAX_TEMP_CACHE_SIZE_MB        : Safety memory cap limiting temporary disk
+                                archive files (.npz) created during training.
+                                Metric: Megabytes (int).
+
+
+[MULTI-CANDIDATE VIEWPORT GRID]
+-------------------------------------------------------------------------------
+GRID_ROWS                     : Number of vertical rows in the multi-agent
+                                candidate replay grid (e.g. 3 rows).
                                 Metric: Count (int).
 
-GRID_COLS                     : Number of horizontal viewports rendered in the
-                                visualizer candidate grid.
+GRID_COLS                     : Number of horizontal columns in the multi-
+                                agent candidate replay grid (e.g. 3 columns).
                                 Metric: Count (int).
 
 
-[WORLD & MAP PARAMETERS]
+[VIEWPORT TRANSFORMATION DEFAULTS]
 -------------------------------------------------------------------------------
-MAP_TYPE                      : Selects procedural level generation style
-                                ("BRANCHING WALLS" or "RANDOM").
-                                Metric: Style string (str).
-
-MAP_WIDTH                     : Level grid width in tile units.
-                                Metric: Tiles (int).
-
-MAP_HEIGHT                    : Level grid height in tile units.
-                                Metric: Tiles (int).
-
-TILE_SIZE                     : Pixel size of a square tile in Player-
-                                Centered tracking mode.
-                                Metric: Pixels (int).
-
-WALL_DENSITY                  : Target percentage of inner open area to convert
-                                into wall obstacles during generation.
-                                Metric: Ratio [0.0 - 1.0] (float).
-
-MAX_MAP_GEN_ATTEMPTS          : Maximum retry attempts to generate a 100%
-                                solvable map layout before fallback.
-                                Metric: Attempts (int).
-
-MIN_PATH_DIFFICULTY_RATIO     : Minimum required path difficulty ratio between
-                                start and exit tiles.
-                                Metric: Ratio [0.0 - 1.0] (float).
+PLAYER_CAMERA_ZOOM            : Master camera zoom scale applied when tracking
+                                a candidate in player-centered mode.
+                                Metric: Zoom ratio [0.1 - 5.0] (float).
 
 
-[SENSORY & VISION ARC]
+[ACTIVE PROFILE SELECTORS]
 -------------------------------------------------------------------------------
-VISION_RAYS                   : Number of sensor probe rays cast across the
-                                candidate's vision fan.
-                                Metric: Rays count (int).
+ACTIVE_AGENT_PROFILE          : Agent profile key to load from profiles/
+                                agent.yaml (defines neural & physics rules).
+                                Metric: Profile ID string (str).
 
-VISION_ARC_ANGLE              : Total field-of-view spread angle of the visual
-                                sensor fan.
-                                Metric: Degrees (float).
+ACTIVE_TRAINING_PROFILE       : Training profile key to load from profiles/
+                                training.yaml (defines evolutionary rules).
+                                Metric: Profile ID string (str).
 
-VISION_MAX_DIST               : Maximum reach distance of vision rays measured
-                                in map tiles.
-                                Metric: Tiles (float).
-
-INCLUDE_COMPASS               : Enables two extra directional target compass
-                                channels (TG-L, TG-R). Disabling forces
-                                agents to navigate using wall rays alone.
-                                Metric: Toggle (bool).
+ACTIVE_MAP_PROFILE            : Level map profile key to load from profiles/
+                                map.yaml (defines maze geometry rules).
+                                Metric: Profile ID string (str).
 
 
-[KINEMATICS & PHYSICS]
+[LIVE WINNER MODE DEFAULTS]
 -------------------------------------------------------------------------------
-KINEMATICS_PROFILE            : Selects driving profile ("CAR" for velocity-
-                                scaled turns or "TANK" for in-place turns
-                                with idle health drain).
-                                Metric: Style string (str).
+LIVE_RUNNER_MAX_STEPS         : Maximum step ticks allowed per live maze run.
+                                Runs compute upfront for timeline scrubbing.
+                                Metric: Step count (int).
 
-MOVE_SPEED                    : Maximum forward movement distance per tick.
-                                Metric: Tiles/tick (float).
+LIVE_RUNNER_AUTO_RESET        : Automatically generates a brand new maze
+                                when the live agent solves, dies, or times out.
+                                Metric: Toggle boolean (bool).
 
-TURN_SPEED                    : Maximum steering rotation speed.
-                                Metric: Degrees/sec (float).
 
-PLAYER_RADIUS_RATIO           : Scale factor for circular body collision hitbox
-                                relative to tile size.
-                                Metric: Ratio (float).
-
-PLAYER_CAMERA_ZOOM            : Camera zoom scale factor in Player-Centered
-                                tracking mode.
-                                Metric: Scale factor (float).
-
-HEALTH_COLL_DMG_PER_FRAME     : Health deducted per frame while touching or
-                                colliding with wall tiles.
-                                Metric: Damage ratio (float).
-
-HEALTH_IDLE_DMG_PER_FRAME     : Health deducted per frame when standing still
-                                or spinning in place.
-                                Metric: Damage ratio (float).
-
-HEALTH_RECOVERY_RATIO         : Health restored per unit of distance closed on
-                                setting new best exit records.
-                                Metric: Recovery ratio (float).
-
-[ANTI-SPIN & STAGNATION GUARDS]
+[INTERACTIVE SCRUBBER & TIMELINE NAVIGATION]
 -------------------------------------------------------------------------------
-SPIN_PENALTY_ENABLED          : Enables the cumulative turn-angle spin penalty
-                                 system. When active, candidates whose
-                                 accumulated rotation exceeds
-                                 SPIN_ANGLE_THRESHOLD_DEG incur per-frame
-                                 damage. The counter resets each frame the
-                                 agent's angular delta falls below
-                                 SPIN_RESET_ANGLE_DEG.
-                                 Metric: Toggle (bool).
+DEFAULT_PLAYBACK_SPEED        : Initial playback speed multiplier on boot.
+                                Speed steps linearly from 1/10x to 10x.
+                                Metric: Speed multiplier (float).
 
-SPIN_ANGLE_THRESHOLD_DEG      : Total accumulated absolute rotation in degrees
-                                 a candidate may accrue before spin damage
-                                 begins. The counter resets to zero on any
-                                 frame where the per-step angular delta is
-                                 below SPIN_RESET_ANGLE_DEG.
-                                 Metric: Degrees (float).
-
-SPIN_RESET_ANGLE_DEG          : Per-frame angular delta threshold in degrees.
-                                 If a candidate's turn this frame is below
-                                 this value the spin accumulator resets to
-                                 zero, clearing continuous spin debt for
-                                 agents travelling relatively straight.
-                                 Metric: Degrees (float).
-
-SPIN_DMG_PER_FRAME            : Health deducted per frame once the cumulative
-                                 spin threshold is exceeded.
-                                 Metric: Damage ratio (float).
-
-STAGNATION_ENABLED            : Enables the BFS progress stagnation clock.
-                                 When active, candidates failing to improve
-                                 their best BFS step-distance within the
-                                 stagnation window incur per-frame damage.
-                                 Metric: Toggle (bool).
-
-STAGNATION_TIMEOUT_RATIO      : Fraction of MAX_SIMULATION_STEPS allowed
-                                 without a new record BFS step-distance before
-                                 stagnation drain begins. Scales automatically
-                                 when MAX_SIMULATION_STEPS changes.
-                                 Stagnation limit = int(MAX_SIMULATION_STEPS
-                                 * STAGNATION_TIMEOUT_RATIO).
-                                 Metric: Ratio [0.0 - 1.0] (float).
-
-STAGNATION_DMG_PER_FRAME      : Health deducted per frame once the stagnation
-                                 timeout window is exceeded without a new BFS
-                                 record distance being set.
-                                 Metric: Damage ratio (float).
-
-
-[NEURAL ARCHITECTURE]
--------------------------------------------------------------------------------
-NEURAL_HIDDEN_LAYERS          : Number of dense hidden layers in the MLP
-                                neural network architecture.
-                                Metric: Layers count (int).
-
-NEURAL_NEURONS                : Number of artificial neurons per hidden layer.
-                                Metric: Neurons count (int).
-
-
-[GENETIC ALGORITHM & TRAINING]
--------------------------------------------------------------------------------
-LEARNING_GENERATIONS          : Total evolutionary generations simulated
-                                during pre-training.
-                                Metric: Generations count (int).
-
-POPULATION_SIZE               : Total candidate neural networks evaluated
-                                per generation.
-                                Metric: Candidates count (int).
-
-MAX_SIMULATION_STEPS          : Maximum frame ticks allowed per candidate run.
-                                Metric: Ticks/frames (int).
-
-MAP_REGIME_GENERATIONS        : Maximum generations to train on a single map
-                                layout before rotating maps.
-                                Metric: Generations count (int).
-
-REGIME_MIN_GENERATIONS        : Minimum generations required on a map before
-                                allowing mastery-based early rotation.
-                                Metric: Generations count (int).
-
-REGIME_SOLVE_TARGET           : Minimum successful candidate solvers required
-                                to trigger early map rotation.
-                                Metric: Solvers count (int).
-
-REGIME_TRANSITION_MUTATION_BOOST : Temporary mutation multiplier applied on
-                                transitioning to a new map layout.
-                                Metric: Scale factor (float).
-
-MAP_DIFFICULTY_MIN            : Minimum sampled path difficulty ratio when
-                                generating random training maps.
+TIMELINE_FRAME_JUMP_RATIO     : Step jump size ratio relative to total frames
+                                when pressing Left/Right arrow keys.
                                 Metric: Ratio [0.0 - 1.0] (float).
 
-MAP_DIFFICULTY_MAX            : Maximum sampled path difficulty ratio when
-                                generating random training maps.
-                                Metric: Ratio [0.0 - 1.0] (float).
+TIMELINE_KEY_REPEAT_DELAY_MS  : Delay in milliseconds before a held arrow key
+                                starts repeating continuous steps.
+                                Metric: Milliseconds (int).
 
-MUTATION_RATE                 : Probability of applying Gaussian mutations to
-                                offspring weights.
-                                Metric: Ratio [0.0 - 1.0] (float).
+TIMELINE_KEY_REPEAT_INTERVAL_MS: Interval in milliseconds between consecutive
+                                jumps while holding a navigation key.
+                                Metric: Milliseconds (int).
 
-MUTATION_SCALE                : Standard deviation noise scale applied to
-                                weights during mutation.
-                                Metric: Noise scale (float).
+TIMELINE_UNSELECTED_TICK_ALPHA: Opacity [0 - 255] for exit solve tick marks
+                                belonging to unselected viewport agents.
+                                Metric: Alpha opacity [0 - 255] (int).
 
-ELITISM_RATIO                 : Ratio of top-scoring candidates preserved
-                                unchanged into the next generation.
-                                Metric: Ratio [0.0 - 1.0] (float).
-
-DEFAULT_PLAYBACK_SPEED        : Initial playback speed multiplier on booting
-                                the visualizer GUI.
-                                Metric: Speed multiplier (int).
-
-SCRUBBER_ARROW_JUMP_FRAMES    : Number of frames skipped per Arrow Left /
-                                 Arrow Right key press during GUI replay
-                                 scrubbing.
-                                 Metric: Frames (int).
-
-DIST_TO_TIME_BONUS_RATIO      : Relative weight multiplier comparing distance
-                                progress to time-saved bonus.
-                                Metric: Ratio [0.0 - 1.0] (float).
-
-LOST_HP_SCORE_IMPACT_RATIO    : Weighting factor determining how strongly health
-                                loss penalizes fitness score.
-                                Metric: Ratio [0.0 - 1.0] (float).
-
-
-[PARALLEL SIMULATION]
--------------------------------------------------------------------------------
-SIMULATION_WORKERS            : Number of parallel CPU worker processes for
-                                batch candidate evaluation (0 = auto).
-                                Metric: Workers count (int).
-
-
-[CURRICULUM (ADAPTIVE DIFFICULTY)]
--------------------------------------------------------------------------------
-CURRICULUM_ENABLED            : Activates adaptive difficulty stepping (starts
-                                with easy short paths and scales up).
-                                Metric: Toggle (bool).
-
-CURRICULUM_DIFFICULTY_RATIO   : Base wall density used during curriculum map
-                                generation.
-                                Metric: Ratio [0.0 - 1.0] (float).
-
-CURRICULUM_START_BFS          : Initial target topological path length for early
-                                training stages.
-                                Metric: Tiles (int).
-
-CURRICULUM_BFS_STEP           : Path length increase applied upon mastering
-                                a curriculum difficulty level.
-                                Metric: Tiles (int).
-
-CURRICULUM_BFS_WINDOW         : Acceptable path distance window margin when
-                                generating curriculum maps.
-                                Metric: Tiles (int).
-
-CURRICULUM_MAX_BFS            : Maximum targeted path distance cap for high
-                                difficulty curriculum maps.
-                                Metric: Tiles (int).
-
-CURRICULUM_MAP_ATTEMPTS       : Retry attempts allowed per regime to match
-                                requested curriculum target distance.
-                                Metric: Attempts (int).
-
-CURRICULUM_FAILURES_BEFORE_EASE : Consecutive unsolved regimes required before
-                                easing curriculum target distance back down.
-                                Metric: Regimes count (int).
+TIMELINE_BLOCK_GENERATION_BAR : Renders generation solver density as solid
+                                color-coded blocks instead of thin lines.
+                                Metric: Toggle boolean (bool).
 
 
 [GUI ELEMENT LAYOUT RECTANGLES]
 -------------------------------------------------------------------------------
-LAYOUT_GRID_RECT              : Position and size (x, y, width, height) of
-                                the candidate grid viewport section.
-                                Metric: Rectangle (int, int, int, int).
+LAYOUT_GRID_RECT              : Screen bounding box (X, Y, Width, Height)
+                                allocated for the candidate viewport grid.
+                                Metric: Bounding rect tuple (int x 4).
 
-LAYOUT_PANEL_RECT             : Position and size (x, y, width, height) of
-                                the telemetry overlay panel.
-                                Metric: Rectangle (int, int, int, int).
+LAYOUT_PANEL_RECT             : Screen bounding box (X, Y, Width, Height)
+                                allocated for the top-right telemetry HUD.
+                                Metric: Bounding rect tuple (int x 4).
 
-LAYOUT_GRAPH_RECT             : Position and size (x, y, width, height) of
-                                the neural network activation graph panel.
-                                Metric: Rectangle (int, int, int, int).
+LAYOUT_GRAPH_RECT             : Screen bounding box (X, Y, Width, Height)
+                                allocated for neural heatmaps & help overlay.
+                                Metric: Bounding rect tuple (int x 4).
 
-LAYOUT_SCRUBBER_RECT          : Position and size (x, y, width, height) of
-                                the interactive transport scrubber panel.
-                                Metric: Rectangle (int, int, int, int).
+LAYOUT_SCRUBBER_RECT          : Screen bounding box (X, Y, Width, Height)
+                                allocated for transport scrubber controls.
+                                Metric: Bounding rect tuple (int x 4).
 
 
 [HUD TYPOGRAPHY & ELEMENT SIZING]
 -------------------------------------------------------------------------------
-HUD_PANEL_TITLE_FONT_SIZE     : Font point size for panel header titles.
-                                Metric: Points (int).
+HUD_PANEL_TITLE_FONT_SIZE     : Font point size for the telemetry panel header.
+                                Metric: Font points (int).
 
-HUD_PANEL_BODY_FONT_SIZE      : Font point size for panel telemetry text.
-                                Metric: Points (int).
+HUD_PANEL_BODY_FONT_SIZE      : Font point size for dashboard telemetry text.
+                                Metric: Font points (int).
 
-HUD_SCRUBBER_BTN_HEIGHT       : Pixel height for scrubber UI buttons.
+HUD_HELP_TITLE_FONT_SIZE      : Font point size for help cheat-sheet headers.
+                                Metric: Font points (int).
+
+HUD_HELP_BODY_FONT_SIZE       : Font point size for help cheat-sheet entries.
+                                Metric: Font points (int).
+
+HUD_SCRUBBER_BUTTON_HEIGHT    : Pixel height of transport scrubber buttons.
                                 Metric: Pixels (int).
 
-HUD_SCRUBBER_BTN_FONT_SIZE    : Font point size for scrubber button text.
-                                Metric: Points (int).
+HUD_SCRUBBER_BUTTON_FONT_SIZE : Font point size for transport button labels.
+                                Metric: Font points (int).
 
-HUD_SCRUBBER_BAR_HEIGHT       : Pixel height for timeline track bars.
+HUD_SCRUBBER_MARKER_FONT_SIZE : Font point size for scrubber position tags.
+                                Metric: Font points (int).
+
+HUD_SCRUBBER_BAR_HEIGHT       : Pixel height of timeline progress tracks.
                                 Metric: Pixels (int).
 
-HUD_SCRUBBER_MARKER_RADIUS    : Pixel radius for timeline handle markers.
+HUD_SCRUBBER_MARKER_WIDTH     : Pixel width of scrubber handle markers.
                                 Metric: Pixels (int).
 
-HUD_GRAPH_NODE_RADIUS         : Pixel radius for neural network graph nodes.
+HUD_SCRUBBER_MARKER_HEIGHT    : Pixel height of scrubber handle markers.
                                 Metric: Pixels (int).
 
-HUD_GRAPH_FONT_SIZE           : Font point size for neural graph labels.
-                                Metric: Points (int).
-
-HUD_GRAPH_LABEL_PADDING       : Spacing padding between graph nodes and
-                                text labels.
+HUD_GRAPH_SPACING             : Pixel gap between node heatmap columns.
                                 Metric: Pixels (int).
 
+HUD_GRAPH_TEXT_SCALE          : Readability multiplier applied when fitting
+                                text labels into graph column slots.
+                                Metric: Ratio [1.0 - 2.0] (float).
 
-[VISUAL THEME & COLORS]
+
+[VISUAL THEME & PALETTE COLORS]
 -------------------------------------------------------------------------------
-COLOR_BG                      : Fill color for window background.
-                                Metric: RGB (int, int, int).
+COLOR_BG                      : Background color for canvas and panel frames.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_WALL                    : Fill color for wall tile obstacles.
-                                Metric: RGB (int, int, int).
+COLOR_WALL                    : Fill color for solid maze wall tiles.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_WALL_BORDER             : Outline color for wall tiles and UI panel
-                                borders.
-                                Metric: RGB (int, int, int).
+COLOR_WALL_BORDER             : Border color for wall tiles and viewports.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_FLOOR                   : Fill color for walkable floor tiles.
-                                Metric: RGB (int, int, int).
+COLOR_FLOOR                   : Fill color for open floor maze tiles.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_FLOOR_BORDER            : Outline color for floor grid tile borders.
-                                Metric: RGB (int, int, int).
+COLOR_FLOOR_BORDER            : Border color for walkable grid lines.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_START                   : Color for candidate spawn tile and header
-                                accent text.
-                                Metric: RGB (int, int, int).
+COLOR_START                   : Highlight color for start tile and headers.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_EXIT                    : Color for target exit tile and top score
-                                metrics.
-                                Metric: RGB (int, int, int).
+COLOR_EXIT                    : Highlight color for exit tile and solvers.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_PLAYER                  : Normal body color for candidates.
-                                Metric: RGB (int, int, int).
-
-COLOR_PLAYER_HIGHLIGHT        : Body and frame color for active selected
-                                candidate agent.
-                                Metric: RGB (int, int, int).
-
-COLOR_PLAYER_TEXT             : Text color for candidate facial expressions.
-                                Metric: RGB (int, int, int).
-
-COLOR_VISION_ARC              : Fill color for vision arc fan polygons.
-                                Metric: RGBA (int, int, int, int).
-
-PLAYER_FACE_TEXT_SCALE        : Scale factor for facial expressions relative
-                                to candidate body size.
-                                Metric: Scale factor (float).
-
-PLAYER_HEADING_LINE_LENGTH    : Scale factor for forward heading line length.
-                                Metric: Scale factor (float).
-
-PLAYER_HEADING_LINE_WIDTH     : Pixel width for forward heading indicator line.
-                                Metric: Pixels (int).
-
-COLOR_PLAYER_HEADING_LINE     : Color for forward heading indicator line.
-                                Metric: RGBA (int, int, int, int).
+COLOR_PLAYER_HIGHLIGHT        : Color for selected candidate borders and
+                                active text label callouts.
+                                Metric: RGB color tuple (int, int, int).
 
 
 [HEALTH BAR & STATUS FRAME COLORS]
 -------------------------------------------------------------------------------
-COLOR_HEALTH_FULL             : Health bar color when health is above 50%.
-                                Metric: RGB (int, int, int).
+COLOR_HEALTH_FULL             : Health bar color when stamina > 50%.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_HEALTH_MID              : Health bar color when health is 20% to 50%.
-                                Metric: RGB (int, int, int).
+COLOR_HEALTH_MID              : Health bar color when stamina is 20%-50%.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_HEALTH_LOW              : Health bar color when health is under 20%.
-                                Metric: RGB (int, int, int).
+COLOR_HEALTH_LOW              : Health bar color when stamina < 20%.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_FRAME_SOLVED            : Viewport inset frame color for candidates
-                                that successfully reached the exit tile.
-                                Metric: RGB (int, int, int).
+COLOR_FRAME_SOLVED            : Viewport border color for exit solvers.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_FRAME_DEAD              : Viewport inset frame color for candidates
-                                that expired from health depletion.
-                                Metric: RGB (int, int, int).
+COLOR_FRAME_DEAD              : Viewport border color for dead candidates.
+                                Metric: RGB color tuple (int, int, int).
 
 
 [HUD & ACTIVATION GRAPH COLORS]
 -------------------------------------------------------------------------------
-COLOR_NODE_INACTIVE           : Color for inactive neural network nodes.
-                                Metric: RGB (int, int, int).
+COLOR_NODE_INACTIVE           : Node heatmap color for zero activation.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_NODE_ACTIVE             : Color for fully active neural network nodes.
-                                Metric: RGB (int, int, int).
+COLOR_NODE_ACTIVE             : Node heatmap color for peak activation.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_TIMELINE_BAR            : Background color for timeline track bars.
-                                Metric: RGB (int, int, int).
+COLOR_TIMELINE_BAR            : Fill color for scrubber track backgrounds.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_MARKER                  : Color for interactive timeline handle markers.
-                                Metric: RGB (int, int, int).
+COLOR_MARKER                  : Color for timeline scrubber handle markers.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_BUTTON                  : Default background color for UI buttons.
-                                Metric: RGB (int, int, int).
+COLOR_BUTTON                  : Default background color for transport buttons.
+                                Metric: RGB color tuple (int, int, int).
 
-COLOR_BUTTON_ACTIVE           : Active/pressed color for UI buttons.
-                                Metric: RGB (int, int, int).
-
-
-[CANDIDATE FACIAL EXPRESSIONS]
--------------------------------------------------------------------------------
-FACE_WALK                     : Facial expression string rendered during normal
-                                walking traversal ("o_o").
-                                Metric: Expression string (str).
-
-FACE_WALL                     : Facial expression string rendered during wall
-                                impact collisions (">*<").
-                                Metric: Expression string (str).
-
-FACE_DEAD                     : Facial expression string rendered when health
-                                drops to zero ("T_T").
-                                Metric: Expression string (str).
-
-FACE_EXIT                     : Facial expression string rendered when candidate
-                                reaches the exit ("^*^").
-                                Metric: Expression string (str).
+COLOR_BUTTON_ACTIVE           : Active background color for toggled buttons.
+                                Metric: RGB color tuple (int, int, int).
 
 ===============================================================================
-[!] END OF MANUAL | MAINTAIN ALIGNMENT WITH MASTER SETTINGS FILE
+[!] END OF MANUAL | MAINTAIN ALIGNMENT WITH MASTER SETTINGS AND PROFILE FILES
 ===============================================================================

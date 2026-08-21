@@ -1,98 +1,172 @@
 """
-Spatial transformer providing raycasting vision inputs using Numba JIT compilation.
+Compiles wall rays, state, compass, & GPS features with temporal memory.
 """
 
-import math
-from typing import Any, Tuple
+from typing import Tuple, Optional
 import numpy as np
 from numpy.typing import NDArray
-from numba import njit
 
-import config
-
-
-@njit(fastmath=True, nogil=True)
-def cast_ray_numba(
-    pos_x: float,
-    pos_y: float,
-    angle_rad: float,
-    max_dist: float,
-    wall_grid: NDArray[np.bool_],
-    grid_width: int,
-    grid_height: int
-) -> float:
-    """
-    Numba-compiled Digital Differential Analysis (DDA) raycasting kernel.
-    """
-    cos_a = math.cos(angle_rad)
-    sin_a = math.sin(angle_rad)
-
-    step_size = 0.05
-    dist = 0.0
-
-    while dist < max_dist:
-        check_x = int(math.floor(pos_x + cos_a * dist))
-        check_y = int(math.floor(pos_y + sin_a * dist))
-
-        if check_x < 0 or check_x >= grid_width or check_y < 0 or check_y >= grid_height:
-            return dist
-
-        if wall_grid[check_y, check_x]:
-            return dist
-
-        dist += step_size
-
-    return max_dist
+from core.map_data import MapData
+from core.pathfinder import BFSPathfinder
+from entities.agent_profile_registry import ResolvedAgentProfile
+from perception.spawn_heading import SpawnHeadingGenerator
+from perception.spatial.gps_sensor import TopologicalGPSSensor
+from perception.spatial.memory_stacker import TemporalMemoryStacker
+from perception.spatial.feature_compiler import SingleFrameFeatureCompiler
 
 
 class SpatialTransformer:
     """
-    Processes agent spatial environment inputs into neural network features.
+    Compiles sensory observations into stacked temporal feature vectors.
     """
 
-    def __init__(self) -> None:
-        self.num_rays: int = config.VISION_RAYS
-        self.arc_angle_rad: float = math.radians(config.VISION_ARC_ANGLE)
-        self.max_dist: float = config.VISION_MAX_DIST
-        self.include_compass: bool = config.INCLUDE_COMPASS
+    def __init__(
+        self,
+        profile: Optional[ResolvedAgentProfile] = None
+    ) -> None:
+        """
+        Initializes perception sensors, GPS sensor, & temporal stacker.
+        """
+        self.profile: Optional[ResolvedAgentProfile] = profile
+        self.gps_sensor: TopologicalGPSSensor = TopologicalGPSSensor(profile)
+        self.compiler: SingleFrameFeatureCompiler = (
+            SingleFrameFeatureCompiler(profile, self.gps_sensor)
+        )
+        self.memory_stacker: TemporalMemoryStacker = TemporalMemoryStacker()
 
-        if self.num_rays > 1:
-            self.ray_angles = np.linspace(
-                -self.arc_angle_rad / 2.0,
-                self.arc_angle_rad / 2.0,
-                self.num_rays,
-                dtype=np.float64
-            )
-        else:
-            self.ray_angles = np.array([0.0], dtype=np.float64)
+    @property
+    def last_gps_progress(self) -> Tuple[float, ...]:
+        """
+        Forwards last calculated GPS progress channels from GPS sensor.
+        """
+        return self.gps_sensor.last_gps_progress
+
+    @property
+    def sampler(self):
+        """
+        Forwarding property for backward compatibility with vision sampler.
+        """
+        return self.compiler.sampler
+
+    @property
+    def exit_compass(self):
+        """
+        Forwarding property for backward compatibility with exit compass.
+        """
+        return self.compiler.exit_compass
+
+    @property
+    def north_compass(self):
+        """
+        Forwarding property for backward compatibility with North compass.
+        """
+        return self.compiler.north_compass
+
+    @property
+    def cardinal_compass(self):
+        """
+        Forwarding property for backward compatibility with cardinal compass.
+        """
+        return self.compiler.cardinal_compass
+
+    def reset_candidate_history(self, candidate_idx: int) -> None:
+        """
+        Clears temporal observation history & GPS distance for candidate.
+        """
+        self.memory_stacker.reset_candidate_history(candidate_idx)
+        self.gps_sensor.reset_candidate_history(candidate_idx)
 
     def generate_random_heading(
-        self, map_data: Any = None, pos: Tuple[int, int] = None
+        self,
+        map_data: Optional[MapData] = None,
+        start_pos: Optional[Tuple[int, int]] = None
     ) -> float:
         """
-        Generates a uniform random spawn heading in radians [0, 2π).
+        Delegates spawn heading generation to SpawnHeadingGenerator.
         """
-        return float(np.random.uniform(0.0, 2.0 * math.pi))
+        use_bfs: bool = (
+            self.profile.use_bfs_spawn_heading
+            if self.profile is not None else True
+        )
+        return SpawnHeadingGenerator.generate_random_heading(
+            map_data, start_pos, use_bfs_spawn_heading=use_bfs
+        )
+
+    def compile_base_vector(
+        self,
+        candidate_x: float,
+        candidate_y: float,
+        heading_rad: float,
+        speed_ratio: float,
+        health_ratio: float,
+        map_data: MapData,
+        pathfinder: BFSPathfinder,
+        candidate_idx: int = 0,
+        prev_x: Optional[float] = None,
+        prev_y: Optional[float] = None,
+        prev_heading: Optional[float] = None,
+        is_collided: bool = False,
+        is_idle: bool = False,
+        is_healing: bool = False,
+        rot_ratio: float = 0.0
+    ) -> NDArray[np.float32]:
+        """
+        Compiles single-frame base vector for active or historical step.
+        """
+        return self.compiler.compile_base_vector(
+            candidate_x,
+            candidate_y,
+            heading_rad,
+            speed_ratio,
+            health_ratio,
+            map_data,
+            pathfinder,
+            candidate_idx=candidate_idx,
+            prev_x=prev_x,
+            prev_y=prev_y,
+            prev_heading=prev_heading,
+            is_collided=is_collided,
+            is_idle=is_idle,
+            is_healing=is_healing,
+            rot_ratio=rot_ratio
+        )
 
     def compile_feature_vector(
         self,
-        x: float,
-        y: float,
-        heading: float,
-        speed: float,
-        health: float,
-        wall_grid: NDArray[np.bool_]
-    ) -> NDArray[np.float64]:
+        candidate_x: float,
+        candidate_y: float,
+        heading_rad: float,
+        speed_ratio: float,
+        health_ratio: float,
+        map_data: MapData,
+        pathfinder: BFSPathfinder,
+        candidate_idx: int = 0,
+        is_collided: bool = False,
+        is_idle: bool = False,
+        is_healing: bool = False,
+        rot_ratio: float = 0.0
+    ) -> NDArray[np.float32]:
         """
-        Calculates ray distances and compiles sensor input features into a float array.
+        Samples active frame and stacks past memory_frames observations.
         """
-        grid_height, grid_width = wall_grid.shape
-        ray_distances = np.zeros(self.num_rays, dtype=np.float64)
+        base_vector = self.compile_base_vector(
+            candidate_x,
+            candidate_y,
+            heading_rad,
+            speed_ratio,
+            health_ratio,
+            map_data,
+            pathfinder,
+            candidate_idx=candidate_idx,
+            is_collided=is_collided,
+            is_idle=is_idle,
+            is_healing=is_healing,
+            rot_ratio=rot_ratio
+        )
 
-        for i in range(self.num_rays):
-            angle = heading + self.ray_angles[i]
-            d = cast_ray_numba(x, y, angle, self.max_dist, wall_grid, grid_width, grid_height)
-            ray_distances[i] = d / self.max_dist  # Normalized [0, 1]
-
-        kinematics_features = np.array([speed, health], dtype=np.float64)
-        return np.concatenate((ray_distances, kinematics_features))
+        mem_k: int = (
+            self.profile.memory_frames if self.profile is not None else 0
+        )
+        return self.memory_stacker.stack_base_vector(
+            candidate_idx, base_vector, mem_k
+        )

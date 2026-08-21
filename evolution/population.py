@@ -1,136 +1,120 @@
 """
-Population manager for CPU neuroevolution supporting Numba-accelerated inference
-and candidate weight extraction for multiprocessing/multithreading.
+Genetic algorithm population manager executing reproduction and mutation.
 """
 
-from typing import List, Tuple
-import numpy as np
-from numpy.typing import NDArray
-from numba import njit
+from typing import List, Tuple, Optional
 
-import config
-
-
-@njit(fastmath=True, nogil=True)
-def numba_layer_forward(current_in: NDArray[np.float64], weight: NDArray[np.float64], bias: NDArray[np.float64]) -> NDArray[np.float64]:
-    """
-    Numba-compiled forward pass step: dot product, bias addition, and tanh activation.
-    """
-    return np.tanh(np.dot(current_in, weight) + bias)
+from entities.agent_factory import AgentFactory
+from neural.network import NeuralNetwork
+from evolution.operators.selection import TournamentSelection
+from evolution.operators.crossover import UniformCrossover
+from evolution.operators.mutation import GaussianMutation
 
 
 class PopulationManager:
     """
-    Manages neural network weights and evolutionary operations across the population.
+    Manages neural network weight matrices across evolutionary generations.
     """
 
     def __init__(
         self,
-        pop_size: int,
-        input_size: int,
-        output_size: int,
-        hidden_layers: int = config.NEURAL_HIDDEN_LAYERS,
-        neurons_per_hidden: int = config.NEURAL_NEURONS
+        factory: Optional[AgentFactory] = None,
+        pop_size: int = 25,
+        mutation_rate: float = 0.25,
+        mutation_scale: float = 0.125,
+        elitism_ratio: float = 0.15
     ) -> None:
+        """
+        Initializes population parameters and candidate network pool.
+        """
         self.pop_size: int = pop_size
-        self.input_size: int = input_size
-        self.output_size: int = output_size
-        self.mutation_scale: float = config.MUTATION_SCALE
+        self.mutation_rate: float = mutation_rate
+        self.mutation_scale: float = mutation_scale
+        self.elitism_ratio: float = elitism_ratio
+        self.factory: Optional[AgentFactory] = factory
 
-        self.sizes: List[int] = [input_size]
-        for _ in range(hidden_layers):
-            self.sizes.append(neurons_per_hidden)
-        self.sizes.append(output_size)
+        if factory is not None:
+            self.networks: List[NeuralNetwork] = [
+                factory.create_network() for _ in range(pop_size)
+            ]
+        else:
+            self.networks = [NeuralNetwork() for _ in range(pop_size)]
 
-        self.weights: List[NDArray[np.float64]] = []
-        self.biases: List[NDArray[np.float64]] = []
-
-        self._initialize_population()
-
-    def _initialize_population(self) -> None:
-        self.weights.clear()
-        self.biases.clear()
-
-        for i in range(len(self.sizes) - 1):
-            in_dim = self.sizes[i]
-            out_dim = self.sizes[i + 1]
-
-            limit = np.sqrt(6.0 / (in_dim + out_dim))
-            w_layer = np.random.uniform(
-                -limit, limit, size=(self.pop_size, in_dim, out_dim)
-            ).astype(np.float64)
-
-            b_layer = np.zeros((self.pop_size, out_dim), dtype=np.float64)
-
-            self.weights.append(w_layer)
-            self.biases.append(b_layer)
-
-    def get_candidate_weights(
-        self, candidate_idx: int
-    ) -> List[Tuple[NDArray[np.float64], NDArray[np.float64]]]:
+    def seed_population_from_brain(
+        self,
+        seed_network: NeuralNetwork
+    ) -> None:
         """
-        Extracts weight and bias matrices for a single candidate.
-        Exposes weights cleanly for parallel evaluation workers.
+        Seeds population using cloned seed weights with exploration noise.
         """
-        candidate_layers = []
-        for l_idx in range(len(self.weights)):
-            w = self.weights[l_idx][candidate_idx].copy()
-            b = self.biases[l_idx][candidate_idx].copy()
-            candidate_layers.append((w, b))
-        return candidate_layers
+        if not self.networks:
+            return
 
-    def evolve_next_generation(self, fitness_scores: List[float]) -> None:
-        scores = np.asarray(fitness_scores, dtype=np.float64)
-        sorted_indices = np.argsort(scores)[::-1]
+        self.networks[0].copy_weights_from(seed_network)
 
-        num_elites = max(1, int(self.pop_size * config.ELITISM_RATIO))
-        elite_indices = sorted_indices[:num_elites]
+        for idx in range(1, self.pop_size):
+            self.networks[idx].copy_weights_from(seed_network)
+            GaussianMutation.apply_mutation(
+                self.networks[idx],
+                mutation_rate=1.0,
+                mutation_scale=self.mutation_scale
+            )
 
-        new_weights: List[NDArray[np.float64]] = [np.empty_like(w) for w in self.weights]
-        new_biases: List[NDArray[np.float64]] = [np.empty_like(b) for b in self.biases]
+    def evolve_next_generation(
+        self,
+        fitness_scores: List[float]
+    ) -> None:
+        """
+        Performs elitism, tournament selection, crossover, and mutation.
+        """
+        indexed_scores: List[Tuple[int, float]] = list(
+            enumerate(fitness_scores)
+        )
+        indexed_scores.sort(key=lambda item: item[1], reverse=True)
 
-        for l_idx in range(len(self.weights)):
-            new_weights[l_idx][:num_elites] = self.weights[l_idx][elite_indices]
-            new_biases[l_idx][:num_elites] = self.biases[l_idx][elite_indices]
+        num_elites: int = max(1, int(self.pop_size * self.elitism_ratio))
+        elite_indices: List[int] = [
+            idx for idx, _ in indexed_scores[:num_elites]
+        ]
 
-        num_offspring = self.pop_size - num_elites
-        if num_offspring > 0:
-            parent1_indices = self._tournament_selection(scores, num_offspring)
-            parent2_indices = self._tournament_selection(scores, num_offspring)
+        new_networks: List[NeuralNetwork] = []
 
-            for l_idx in range(len(self.weights)):
-                mask_w = np.random.rand(*self.weights[l_idx][parent1_indices].shape) < 0.5
-                mask_b = np.random.rand(*self.biases[l_idx][parent1_indices].shape) < 0.5
+        for idx in elite_indices:
+            elite_net = (
+                self.factory.create_network() if self.factory is not None
+                else NeuralNetwork()
+            )
+            elite_net.copy_weights_from(self.networks[idx])
+            new_networks.append(elite_net)
 
-                child_w = np.where(
-                    mask_w,
-                    self.weights[l_idx][parent1_indices],
-                    self.weights[l_idx][parent2_indices]
+        while len(new_networks) < self.pop_size:
+            parent_a = TournamentSelection.select(
+                self.networks, fitness_scores
+            )
+            parent_b = TournamentSelection.select(
+                self.networks, fitness_scores
+            )
+
+            child_net = (
+                self.factory.create_network() if self.factory is not None
+                else NeuralNetwork()
+            )
+
+            if parent_a is parent_b:
+                child_net.copy_weights_from(parent_a)
+                GaussianMutation.apply_mutation(
+                    child_net,
+                    mutation_rate=1.0,
+                    mutation_scale=self.mutation_scale
                 )
-                child_b = np.where(
-                    mask_b,
-                    self.biases[l_idx][parent1_indices],
-                    self.biases[l_idx][parent2_indices]
+            else:
+                UniformCrossover.apply_crossover(
+                    parent_a, parent_b, child_net
+                )
+                GaussianMutation.apply_mutation(
+                    child_net, self.mutation_rate, self.mutation_scale
                 )
 
-                mut_mask_w = np.random.rand(*child_w.shape) < config.MUTATION_RATE
-                mut_mask_b = np.random.rand(*child_b.shape) < config.MUTATION_RATE
+            new_networks.append(child_net)
 
-                child_w += mut_mask_w * np.random.normal(0.0, self.mutation_scale, size=child_w.shape)
-                child_b += mut_mask_b * np.random.normal(0.0, self.mutation_scale, size=child_b.shape)
-
-                new_weights[l_idx][num_elites:] = child_w
-                new_biases[l_idx][num_elites:] = child_b
-
-        self.weights = new_weights
-        self.biases = new_biases
-
-    def _tournament_selection(
-        self, scores: NDArray[np.float64], num_selections: int, tournament_size: int = 3
-    ) -> NDArray[np.int64]:
-        selected = np.empty(num_selections, dtype=np.int64)
-        for i in range(num_selections):
-            competitors = np.random.choice(self.pop_size, size=tournament_size, replace=False)
-            winner = competitors[np.argmax(scores[competitors])]
-            selected[i] = winner
-        return selected
+        self.networks = new_networks
