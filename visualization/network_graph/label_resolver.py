@@ -41,7 +41,7 @@ class GraphLabelResolver:
 
         labels.extend(["C-N", "C-E", "C-S", "C-W"])
         labels.extend(["NFL", "NFR", "NPL", "NPR"])
-        labels.extend(["EFL", "EFR", "EPL", "EPR"])
+        labels.extend(["EFR", "EFL", "EPR", "EPL"])
 
         return labels
 

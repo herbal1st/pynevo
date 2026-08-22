@@ -40,8 +40,11 @@ Architecture   : PyNevo is a self-contained 2D neuroevolution
                  Protocol for zero RAM bleeding, an unconstrained population
                  candidate mapper with symmetric slot-anchored selection, a
                  decoupled real-time Live Winner Solver (LiveWinnerRunner &
-                 LiveViewPresenter), and an interactive Pygame visualizer
-                 with a retro K.I.T.T.-style matrix HUD.
+                 LiveViewPresenter), dynamic procedural map strategies
+                 (Branching Walls, Labyrinth Random Scatter, Arcade Pacman
+                 Grid, and N-Anchor variants), unified BFS floodfill pocket
+                 filling, and an interactive Pygame visualizer with a retro
+                 K.I.T.T.-style matrix HUD.
 Primary Goal   : Train autonomous 2D AI agents to navigate procedural
                  labyrinths from randomized start tiles to exit tiles using a
                  multi-ray visual fan, orientation compasses, BFS GPS path
@@ -81,13 +84,24 @@ PyBiwis Chunks : Isolated in core/bitmask_encoder.py. Packs 64 grid tiles
                  to a single master number. This compresses level maps into
                  tiny integer arrays, allowing register-speed binary lookups
                  and lightweight memory snapshots without bit overflow.
-100% Solvability: All procedural map generators run BFS flood-fill checks to
-                 guarantee 100% floor connectivity with zero isolated pockets
-                 or unreachable corridors.
-Fail-Fast Pass : Map generation operates in a deterministic single pass. If
-                 a map fails flood-fill connectivity or BFS difficulty checks,
-                 the system fails fast with an explicit CLI error message,
-                 eliminating hidden retries and empty map fallbacks.
+100% Solvability & Pocket Filling: All procedural map generators guarantee 100%
+                 floor connectivity using a post-generation floodfill pass.
+                 The system identifies all open floor regions, retains the
+                 largest main connected walking area, and automatically turns
+                 any isolated unreachable floor pockets into solid walls.
+                 This guarantees every generated map is fully walkable without
+                 isolated dead-end traps or map generation failures.
+Fail-Fast Pass : Map generation operates in a single pass. If a map fails to
+                 meet floor count or BFS path difficulty bounds, the system
+                 fails fast with an explicit CLI error message, preventing
+                 empty map fallbacks or invalid training runs.
+Snake Corridor : Calculates maximum physically placeable wall capacity while
+                 guaranteeing a continuous 1-tile-wide serpentine corridor:
+                 Max = ((max_dim - 1) // 2) * min_dim - ((max_dim - 1) // 2)
+                 where max_dim and min_dim are inner bounds (width - 2,
+                 height - 2). Capping wall counts to this capacity ensures that
+                 even at high density settings (e.g. 0.75), maps always retain
+                 at least ~50%+ open floor space to breathe.
 BFS Distance   : Every generated level builds an O(1) step-distance matrix
                  originating backwards from the exit tile to calculate exact
                  topological path distances and shortest-path turn counts.
@@ -102,38 +116,25 @@ Multi-Point LOS: Pre-computes a 16-ray corner-to-corner Line-of-Sight (LOS)
 Map Strategies : Modularized under core/map_generation/:
                  - "BRANCHING_WALLS": Organic maze generator facade
                    (branching_walls.py) backed by branching/seed_manager.py
-                   (inner halo candidate pools & collinear 3x3 seed validation)
-                   and branching/extension_solver.py (serpentine wall capacity
-                   math & stem extension clearance solver). Grows continuous
-                   wall stems, sharp 90-degree turns, and T-junctions.
+                   and branching/extension_solver.py. Grows continuous wall
+                   stems, sharp 90-degree turns, and T-junctions.
                  - "BRANCHING_WALLS_N_ANCHOR": Dynamic N-anchor maze
                    generator. Parses integer N from map name string (e.g.
-                   BRANCHING_WALLS_1_ANCHOR, BRANCHING_WALLS_4_ANCHOR). Seeds
+                   BRANCHING_WALLS_1_ANCHOR, BRANCHING_WALLS_6_ANCHOR). Seeds
                    exactly N border-anchored stems directly off outer border
                    walls into the inner maze, followed by central stems.
-Snake Corridor : Calculates maximum physically placeable wall capacity for a
-                 1-tile-wide continuous serpentine path through the grid:
-                 Max = ((max_dim - 1) // 2) * min_dim - ((max_dim - 1) // 2)
-                 where max_dim and min_dim are inner bounds (width - 2,
-                 height - 2). Accounts for wall lines and turn passages.
-Generation Math: - Collinear & Orthogonal Seed Rule: Candidate seeds in
-                   candidate_set are valid if they touch either 2-3 collinear
-                   walls (enforcing clean 90-degree T-junctions) OR 1 single
-                   orthogonal wall neighbor (up, down, left, right).
-                   Plain Explanation: Allowing internal wall stubs to sprout
-                   from 1 orthogonal wall neighbor lets new floating branches
-                   spread organically across the inner room while preventing
-                   ugly diagonal corner touches.
-                 - On-Demand Candidate Popping: Candidates are validated when
-                   popped from candidate_set. Invalid or occupied seeds are
-                   discarded in O(1) time without preemptive loops.
-                 - Anchor Cap Control: In N-anchor mode, once N border anchor
-                   stems are placed, remaining inner halo candidates are
-                   filtered out, forcing subsequent growth internally. In
-                   standard mode, border anchors remain in the seed pool
-                   and can sprout organically at any time.
-                 - Thick Wall Immunity: Stem extension rules natively prevent
-                   2x2 solid wall blocks or thick wall clusters.
+                 - "RANDOM": Physics-safe random scatter labyrinth strategy
+                   (random_scatter.py). Uses on-demand diagonal validation to
+                   place walls up to the snake corridor cap while rejecting
+                   isolated diagonal wall touches. Produces organic random
+                   labyrinths free of diagonal physics traps.
+                 - "PACMAN" & "PACMAN_N_ANCHOR": Arcade pillar arena strategy
+                   (pacman_grid.py). Keeps the inner halo free of wall placements
+                   to guarantee an unbroken 1-tile outer ring corridor around
+                   central wall pillars. Uses permanent diagonal candidate
+                   discards to space out pillars cleanly. Optional N-anchor
+                   mode (e.g. PACMAN_25_ANCHOR) seeds up to N border stubs
+                   before clearing halo tiles for internal pillar growth.
 
 [3.0 SPATIAL PERCEPTION, DUAL COMPASSES & BFS GPS TRIGGERS]
 -------------------------------------------------------------------------------
@@ -266,7 +267,7 @@ Data-Driven YAML: System configurations are decoupled into dedicated profile
                    max_path_difficulty_ratio).
                  - profiles/map.yaml      : Defines procedural level bounds
                    (width, height), tile pixel sizes, wall densities, and
-                   branching stem termination rates.
+                   map strategies ("BRANCHING_WALLS", "RANDOM", "PACMAN").
 Master Selectors: Global config (config.py) contains active profile selectors
                  (ACTIVE_AGENT_PROFILE, ACTIVE_TRAINING_PROFILE, and
                  ACTIVE_MAP_PROFILE), Live Mode defaults (LIVE_RUNNER_MAX_STEPS,
@@ -646,9 +647,6 @@ PyNevo/
 │   ├── training.yaml               # Genetic algorithm & training profiles
 │   └── map.yaml                    # Procedural level geometry & map profiles
 │
-├── saved_brains/                   # Persistent Weight Archives
-│   └── TANK_1_v15_m2_h3_n40_b1_lin1.npz # Signature-tagged brain archive
-│
 ├── utils/                          # Shared Infrastructure
 │   ├── math_utils.py               # Angle normalization, spin math & vectors
 │   ├── geometry_utils.py           # Continuous ray-AABB clearance math
@@ -667,9 +665,12 @@ PyNevo/
 │       ├── base_strategy.py        # Abstract generator strategy interface
 │       ├── branching_walls.py      # Organic branching wall crawler facade
 │       ├── generator.py            # Map generator facade & flood-fill
+│       ├── halo_utils.py           # Shared halo geometry & capacity math
+│       ├── pacman_grid.py          # Arcade Pacman pillar arena strategy
+│       ├── random_scatter.py       # Physics-safe random scatter strategy
 │       └── branching/              # Branching Walls Sub-Package
-│           ├── seed_manager.py     # Halo candidate seed pool & collinear validator
-│           └── extension_solver.py # Serpentine wall capacity & stem extension solver
+│           ├── seed_manager.py     # Halo candidate seed pool manager
+│           └── extension_solver.py # Serpentine wall capacity solver
 │
 ├── entities/                       # Physical Entities & Factory
 │   ├── agent_profile_registry.py   # Agent profile registry facade

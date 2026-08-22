@@ -1,5 +1,5 @@
 """
-Procedural map generator orchestrator facade validating solvability via BFS.
+Procedural map generator orchestrator validating solvability via BFS.
 """
 
 import re
@@ -14,6 +14,7 @@ from core.pathfinder import BFSPathfinder
 from core.map_generation.base_strategy import BaseMapStrategy
 from core.map_generation.branching_walls import BranchingWallsStrategy
 from core.map_generation.random_scatter import RandomScatterStrategy
+from core.map_generation.pacman_grid import PacmanGridStrategy
 from entities.map_profile_registry import (
     MapProfileRegistry,
     ResolvedMapProfile
@@ -47,7 +48,7 @@ class MapGenerator:
         max_difficulty_ratio: float = 1.0
     ) -> MapData:
         """
-        Generates layout in a single pass or fails fast with an error message.
+        Generates layout in a single pass or fails fast with an error.
         """
         map_data: Optional[MapData] = self._try_generate_map(
             self.map_profile.wall_density,
@@ -71,11 +72,18 @@ class MapGenerator:
         """
         map_str: str = self.map_type.upper().replace("_", " ")
 
-        if "RANDOM" in map_str:
-            return RandomScatterStrategy()
-
         early_term: float = self.map_profile.stem_early_termination_rate
         min_steps: int = self.map_profile.min_straight_start_steps
+
+        if "PACMAN" in map_str or "PILLAR" in map_str or "ARENA" in map_str:
+            num_anchors = (
+                self._parse_anchor_count(map_str)
+                if "ANCHOR" in map_str else None
+            )
+            return PacmanGridStrategy(num_anchors=num_anchors)
+
+        if "RANDOM" in map_str:
+            return RandomScatterStrategy()
 
         if "ANCHOR" in map_str:
             num_anchors = self._parse_anchor_count(map_str)
@@ -107,7 +115,7 @@ class MapGenerator:
         max_difficulty_ratio: float
     ) -> Optional[MapData]:
         """
-        Applies strategy and verifies connectivity and path difficulty window.
+        Applies strategy and executes pocket filling & BFS exit selection.
         """
         dummy_start: Tuple[int, int] = (1, 1)
         dummy_exit: Tuple[int, int] = (self.width - 2, self.height - 2)
@@ -127,17 +135,25 @@ class MapGenerator:
             if map_data.is_walkable(x, y)
         ]
 
-        if len(open_tiles) < 2:
+        if len(open_tiles) < 10:
             return None
 
-        connected_tiles: Set[Tuple[int, int]] = self._flood_fill_region(
-            open_tiles[0], map_data
+        components: List[Set[Tuple[int, int]]] = (
+            self._find_all_connected_components(open_tiles, map_data)
         )
-
-        if len(connected_tiles) != len(open_tiles):
+        if not components:
             return None
 
-        start_pos: Tuple[int, int] = random.choice(open_tiles)
+        main_region: Set[Tuple[int, int]] = max(components, key=len)
+        if len(main_region) < 10:
+            return None
+
+        for pos in open_tiles:
+            if pos not in main_region:
+                map_data.set_wall(pos[0], pos[1], True)
+
+        main_open_tiles: List[Tuple[int, int]] = list(main_region)
+        start_pos: Tuple[int, int] = random.choice(main_open_tiles)
         map_data.start_pos = start_pos
 
         dist_from_start: Optional[List[List[int]]] = (
@@ -148,7 +164,7 @@ class MapGenerator:
 
         reachable_distances: List[int] = [
             dist_from_start[pos[1]][pos[0]]
-            for pos in open_tiles
+            for pos in main_open_tiles
             if pos != start_pos and dist_from_start[pos[1]][pos[0]] < 9999
         ]
 
@@ -159,15 +175,17 @@ class MapGenerator:
         target_min_dist: int = int(max_bfs_dist * min_difficulty_ratio)
         target_max_dist: int = int(max_bfs_dist * max_difficulty_ratio)
 
-        valid_exits: List[Tuple[int, int]] = []
-        for pos in open_tiles:
-            if pos == start_pos:
-                continue
-            dist_val: int = dist_from_start[pos[1]][pos[0]]
-            if dist_val >= 9999:
-                continue
-            if target_min_dist <= dist_val <= target_max_dist:
-                valid_exits.append(pos)
+        valid_exits: List[Tuple[int, int]] = [
+            pos for pos in main_open_tiles
+            if pos != start_pos
+            and target_min_dist <= dist_from_start[pos[1]][pos[0]] <= target_max_dist
+        ]
+
+        if not valid_exits:
+            valid_exits = [
+                pos for pos in main_open_tiles
+                if pos != start_pos and dist_from_start[pos[1]][pos[0]] < 9999
+            ]
 
         if not valid_exits:
             return None
@@ -179,30 +197,40 @@ class MapGenerator:
 
         return map_data
 
-    def _flood_fill_region(
+    def _find_all_connected_components(
         self,
-        start_node: Tuple[int, int],
+        open_tiles: List[Tuple[int, int]],
         map_data: MapData
-    ) -> Set[Tuple[int, int]]:
+    ) -> List[Set[Tuple[int, int]]]:
         """
-        Discovers all walkable tiles reachable from starting node.
+        Groups all open floor tiles into connected region sets.
         """
-        visited: Set[Tuple[int, int]] = {start_node}
-        queue: deque[Tuple[int, int]] = deque([start_node])
+        unvisited: Set[Tuple[int, int]] = set(open_tiles)
+        components: List[Set[Tuple[int, int]]] = []
         cardinal_moves: List[Tuple[int, int]] = [
             (0, -1), (0, 1), (-1, 0), (1, 0)
         ]
 
-        while queue:
-            cx, cy = queue.popleft()
-            for dx, dy in cardinal_moves:
-                nx: int = cx + dx
-                ny: int = cy + dy
-                if map_data.is_walkable(nx, ny) and (nx, ny) not in visited:
-                    visited.add((nx, ny))
-                    queue.append((nx, ny))
+        while unvisited:
+            start_node: Tuple[int, int] = next(iter(unvisited))
+            visited_component: Set[Tuple[int, int]] = {start_node}
+            queue: deque[Tuple[int, int]] = deque([start_node])
+            unvisited.remove(start_node)
 
-        return visited
+            while queue:
+                cx, cy = queue.popleft()
+                for dx, dy in cardinal_moves:
+                    nx: int = cx + dx
+                    ny: int = cy + dy
+                    node: Tuple[int, int] = (nx, ny)
+                    if node in unvisited:
+                        unvisited.remove(node)
+                        visited_component.add(node)
+                        queue.append(node)
+
+            components.append(visited_component)
+
+        return components
 
     def _compute_start_bfs(
         self,
