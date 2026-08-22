@@ -71,7 +71,9 @@ ACTIVE_TRAINING_PROFILE       : Training profile key to load from profiles/
                                 Metric: Profile ID string (str).
 
 ACTIVE_MAP_PROFILE            : Level map profile key to load from profiles/
-                                map.yaml (defines maze geometry rules).
+                                map.yaml (defines procedural level strategy:
+                                BRANCHING_WALLS, RANDOM, PACMAN, and
+                                _N_ANCHOR variants).
                                 Metric: Profile ID string (str).
 
 
