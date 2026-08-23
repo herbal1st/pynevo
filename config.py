@@ -17,13 +17,14 @@ MAX_TEMP_CACHE_SIZE_MB: int = 500  # megabytes limit
 GRID_ROWS: int = 3  # count
 GRID_COLS: int = 3  # count
 
-# ------ Viewport Transformation Defaults ------
-PLAYER_CAMERA_ZOOM: float = 1.00  # ratio
-
 # ------ Active Profile Selectors ------
 ACTIVE_AGENT_PROFILE: str = "TANK_1"  # profile
 ACTIVE_TRAINING_PROFILE: str = "DEFAULT"  # profile
 ACTIVE_MAP_PROFILE: str = "DEFAULT"  # profile
+
+# ------ Active Endless Profile Selectors ------
+USE_ENDLESS_MODE: bool = True
+ACTIVE_ENDLESS_MAP_PROFILE: str = "DEFAULT"
 
 # ------ Live Winner Mode Defaults ------
 LIVE_RUNNER_MAX_STEPS: int = 1000  # steps

@@ -3,7 +3,9 @@ Computes topological BFS step-distance GPS progress channels.
 """
 
 import math
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
+import numpy as np
+from numpy.typing import NDArray
 
 from core.map_data import MapData
 from core.pathfinder import BFSPathfinder
@@ -12,18 +14,25 @@ from entities.agent_profile_registry import ResolvedAgentProfile
 
 class TopologicalGPSSensor:
     """
-    Evaluates topological BFS GPS progress with bilinear distance interpolation.
+    Evaluates topological BFS GPS progress with bilinear interpolation.
     """
 
     def __init__(
         self,
-        profile: Optional[ResolvedAgentProfile] = None
+        profile: Optional[ResolvedAgentProfile] = None,
+        max_candidates: int = 128
     ) -> None:
         """
-        Initializes profile reference and candidate GPS history dictionary.
+        Initializes profile reference and pre-allocated array cache.
         """
         self.profile: Optional[ResolvedAgentProfile] = profile
-        self._last_gps_dist: Dict[int, Tuple[float, ...]] = {}
+        self.max_candidates: int = max_candidates
+        self._cache: NDArray[np.float32] = np.full(
+            (max_candidates, 2), 9999.0, dtype=np.float32
+        )
+        self._initialized: NDArray[np.bool_] = np.zeros(
+            max_candidates, dtype=bool
+        )
         self.last_gps_channels: Tuple[float, ...] = ()
 
     @property
@@ -35,10 +44,11 @@ class TopologicalGPSSensor:
 
     def reset_candidate_history(self, candidate_idx: int) -> None:
         """
-        Clears last recorded GPS distance for specified candidate.
+        Zeroes out recorded GPS distance slot for candidate.
         """
-        if candidate_idx in self._last_gps_dist:
-            del self._last_gps_dist[candidate_idx]
+        self._ensure_capacity(candidate_idx)
+        self._cache[candidate_idx].fill(9999.0)
+        self._initialized[candidate_idx] = False
 
     def compute_gps_channels(
         self,
@@ -224,7 +234,9 @@ class TopologicalGPSSensor:
 
         if curr_dist_val > max_active_dist:
             if not is_stateless:
-                self._last_gps_dist[candidate_idx] = (curr_dist_val,)
+                self._ensure_capacity(candidate_idx)
+                self._cache[candidate_idx, 0] = curr_dist_val
+                self._initialized[candidate_idx] = True
             return 0.0, 0.0
 
         if is_stateless and prev_x is not None and prev_y is not None:
@@ -235,14 +247,22 @@ class TopologicalGPSSensor:
                 r_body * math.sin(prev_heading or 0.0)
             )
             prev_dist = self.get_bilinear_bfs_distance(
-                prev_nose_x, prev_nose_y, map_data, pathfinder, prev_x, prev_y
+                prev_nose_x,
+                prev_nose_y,
+                map_data,
+                pathfinder,
+                prev_x,
+                prev_y
             )
         else:
-            prev_tuple = self._last_gps_dist.get(candidate_idx, None)
-            self._last_gps_dist[candidate_idx] = (curr_dist_val,)
-            if prev_tuple is None or curr_dist_val >= 9999.0:
+            self._ensure_capacity(candidate_idx)
+            if not self._initialized[candidate_idx]:
+                self._cache[candidate_idx, 0] = curr_dist_val
+                self._initialized[candidate_idx] = True
                 return 0.0, 0.0
-            prev_dist = prev_tuple[0]
+
+            prev_dist = float(self._cache[candidate_idx, 0])
+            self._cache[candidate_idx, 0] = curr_dist_val
 
         if curr_dist_val >= 9999.0 or prev_dist >= 9999.0:
             return 0.0, 0.0
@@ -272,7 +292,7 @@ class TopologicalGPSSensor:
         is_stateless: bool
     ) -> Tuple[float, float, float, float]:
         """
-        Computes 4 stereo GPS progress channels (BFSL-, BFSR-, BFSL+, BFSR+).
+        Computes 4 stereo GPS channels (BFSL-, BFSR-, BFSL+, BFSR+).
         """
         offset_deg: float = (
             self.profile.target_compasses_offset_angle
@@ -299,7 +319,10 @@ class TopologicalGPSSensor:
         min_curr_dist: float = min(dist_left, dist_right)
         if min_curr_dist > max_active_dist:
             if not is_stateless:
-                self._last_gps_dist[candidate_idx] = (dist_left, dist_right)
+                self._ensure_capacity(candidate_idx)
+                self._cache[candidate_idx, 0] = dist_left
+                self._cache[candidate_idx, 1] = dist_right
+                self._initialized[candidate_idx] = True
             return 0.0, 0.0, 0.0, 0.0
 
         if is_stateless and prev_x is not None and prev_y is not None:
@@ -313,19 +336,34 @@ class TopologicalGPSSensor:
             pry: float = prev_y + (r_body * math.sin(prev_right_head))
 
             prev_left = self.get_bilinear_bfs_distance(
-                plx, ply, map_data, pathfinder, prev_x, prev_y
+                plx,
+                ply,
+                map_data,
+                pathfinder,
+                prev_x,
+                prev_y
             )
             prev_right = self.get_bilinear_bfs_distance(
-                prx, pry, map_data, pathfinder, prev_x, prev_y
+                prx,
+                pry,
+                map_data,
+                pathfinder,
+                prev_x,
+                prev_y
             )
         else:
-            prev_tuple = self._last_gps_dist.get(candidate_idx, None)
-            self._last_gps_dist[candidate_idx] = (dist_left, dist_right)
-
-            if prev_tuple is None or len(prev_tuple) < 2:
+            self._ensure_capacity(candidate_idx)
+            if not self._initialized[candidate_idx]:
+                self._cache[candidate_idx, 0] = dist_left
+                self._cache[candidate_idx, 1] = dist_right
+                self._initialized[candidate_idx] = True
                 return 0.0, 0.0, 0.0, 0.0
 
-            prev_left, prev_right = prev_tuple[0], prev_tuple[1]
+            prev_left = float(self._cache[candidate_idx, 0])
+            prev_right = float(self._cache[candidate_idx, 1])
+
+            self._cache[candidate_idx, 0] = dist_left
+            self._cache[candidate_idx, 1] = dist_right
 
         d_left: float = (prev_left - dist_left) / max(1e-4, move_speed)
         d_right: float = (prev_right - dist_right) / max(1e-4, move_speed)
@@ -336,3 +374,21 @@ class TopologicalGPSSensor:
         sspr_neg: float = max(0.0, min(1.0, abs(min(0.0, d_right))))
 
         return sspl_pos, sspr_pos, sspl_neg, sspr_neg
+
+    def _ensure_capacity(self, candidate_idx: int) -> None:
+        """
+        Expands pre-allocated cache if candidate_idx exceeds bounds.
+        """
+        if candidate_idx >= self.max_candidates:
+            need_cands: int = max(self.max_candidates * 2, candidate_idx + 1)
+            new_cache = np.full(
+                (need_cands, 2), 9999.0, dtype=np.float32
+            )
+            new_cache[: self.max_candidates] = self._cache
+            self._cache = new_cache
+
+            new_init = np.zeros(need_cands, dtype=bool)
+            new_init[: self.max_candidates] = self._initialized
+            self._initialized = new_init
+
+            self.max_candidates = need_cands

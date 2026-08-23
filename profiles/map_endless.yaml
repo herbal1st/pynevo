@@ -1,0 +1,34 @@
+profiles:
+
+  DEFAULT:
+    map_type: "ENDLESS_NOISE"
+    world_seed: 420
+    noise_type: "SIMPLEX"
+    noise_scale: 36.0
+    octaves: 1
+    octaves_decay: 0.75
+    tile_size: 10
+    strata_layers:
+      - [0.15, "WATER"]
+      - [0.20, "SAND"]
+      - [0.35, "GRASS"]
+      - [0.45, "THICKET"]
+      - [0.60, "GRASS"]
+      - [0.65, "DIRT"]
+      - [0.80, "ROCK"]
+      - [1.00, "BEDROCK"]
+
+
+# ============================================================================
+# ENDLESS MAP PROFILE CONFIGURATION LEGEND
+# ============================================================================
+#
+# map_type:      Procedural engine pipeline selector string.
+# world_seed:    Master randomization seed integer for deterministic noise.
+# noise_type:    Noise algorithm selector ("SIMPLEX" or "PERLIN").
+# noise_scale:   Wavelength scale factor (larger = wide caverns, smaller = maze).
+# octaves:       Number of multi-octave noise detail passes [1 - 4].
+# octaves_decay: Amplitude decay ratio across secondary octave passes [0 - 1].
+# tile_size:     Rendered pixel size of an individual tile (pixels).
+# strata_layers: List of [max_threshold, tile_name] mappings in ascending order.
+# ============================================================================

@@ -1,0 +1,136 @@
+profiles:
+
+  MUD:
+    id: 0
+    name: "MUD"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [70, 45, 25]
+    border_color: [70, 45, 25]
+    border_width_ratio: 0.0
+
+  DIRT:
+    id: 1
+    name: "DIRT"
+    solid: true
+    indestructible: false
+    speed_multiplier: 1.0
+    color: [110, 75, 50]
+    border_color: [110, 75, 50]
+    border_width_ratio: 0.0
+
+  SAND:
+    id: 2
+    name: "SAND"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.85
+    color: [220, 190, 130]
+    border_color: [220, 190, 130]
+    border_width_ratio: 0.0
+
+  GRASS:
+    id: 3
+    name: "GRASS"
+    solid: false
+    indestructible: false
+    speed_multiplier: 1.0
+    color: [75, 145, 55]
+    border_color: [75, 145, 55]
+    border_width_ratio: 0.0
+
+  THICKET:
+    id: 4
+    name: "THICKET"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.7
+    color: [55, 110, 20]
+    border_color: [55, 110, 20]
+    border_width_ratio: 0.0
+
+  ROCK:
+    id: 5
+    name: "ROCK"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [100, 100, 100]
+    border_color: [100, 100, 100]
+    border_width_ratio: 0.0
+
+  BEDROCK:
+    id: 6
+    name: "BEDROCK"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [70, 70, 70]
+    border_color: [40, 40, 40]
+    border_width_ratio: 0.8
+
+  WATER:
+    id: 7
+    name: "WATER"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.5
+    color: [30, 100, 200]
+    border_color: [30, 100, 200]
+    border_width_ratio: 0.0
+
+  FLOOR:
+    id: 50
+    name: "FLOOR"
+    solid: false
+    indestructible: false
+    speed_multiplier: 1.0
+    color: [45, 30, 65]
+    border_color: [35, 35, 45]
+    border_width_ratio: 0.1
+
+  WALL:
+    id: 51
+    name: "WALL"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [45, 45, 55]
+    border_color: [70, 70, 85]
+    border_width_ratio: 0.1
+
+  START:
+    id: 100
+    name: "START"
+    solid: false
+    indestructible: true
+    speed_multiplier: 1.0
+    color: [40, 160, 220]
+    border_color: [80, 200, 255]
+    border_width_ratio: 0.25
+
+  EXIT:
+    id: 101
+    name: "EXIT"
+    solid: false
+    indestructible: true
+    speed_multiplier: 1.0
+    color: [50, 200, 100]
+    border_color: [100, 240, 150]
+    border_width_ratio: 0.25
+
+
+# ============================================================================
+# TILE LIBRARY CONFIGURATION LEGEND
+# ============================================================================
+#
+# id:                 Unique integer tile identifier index [0 - 255].
+# name:               Human-readable tile name string.
+# solid:              Collision toggle: true = blocks movement, false = open.
+# indestructible:     Protection toggle: true = immune to destruction.
+# speed_multiplier:   Kinematic surface speed ratio modifier (1.0 = normal).
+# color:              RGB fill color tuple [R, G, B] (0 - 255).
+# border_color:       RGB outline stroke color tuple [R, G, B] (0 - 255).
+# border_width_ratio: Normalized border inset ratio relative to tile size [0-1].
+# ============================================================================

@@ -9,16 +9,16 @@ profiles:
       turn_speed: 1800.0
       player_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.0005
+      health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
       health_idle_dmg_per_frame: 0.001
       heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.002
-      path_heal_per_frame: 0.004
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
-      vision_max_dist: 5.0
+      vision_max_dist: 2.0
       use_bfs_spawn_heading: true
       activate_gps_compass: true
       use_binocular_gps_compasses: true
@@ -45,16 +45,16 @@ profiles:
       turn_speed: 1800.0
       player_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.0005
+      health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
       health_idle_dmg_per_frame: 0.001
       heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.002
-      path_heal_per_frame: 0.004
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
-      vision_max_dist: 5.0
+      vision_max_dist: 2.0
       use_bfs_spawn_heading: true
       activate_gps_compass: true
       use_binocular_gps_compasses: false
@@ -81,16 +81,16 @@ profiles:
       turn_speed: 1800.0
       player_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.0005
+      health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
       health_idle_dmg_per_frame: 0.001
       heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.002
-      path_heal_per_frame: 0.004
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
-      vision_max_dist: 5.0
+      vision_max_dist: 2.0
       use_bfs_spawn_heading: true
       activate_gps_compass: true
       use_binocular_gps_compasses: true
@@ -117,16 +117,16 @@ profiles:
       turn_speed: 1800.0
       player_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.0005
+      health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
       health_idle_dmg_per_frame: 0.001
       heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.002
-      path_heal_per_frame: 0.004
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
-      vision_max_dist: 5.0
+      vision_max_dist: 2.0
       use_bfs_spawn_heading: true
       activate_gps_compass: true
       use_binocular_gps_compasses: false

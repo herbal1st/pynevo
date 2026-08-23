@@ -20,6 +20,7 @@ class ResolvedSkinProfile:
     """
 
     skin_name: str
+    camera_zoom: float
     color_player: Tuple[int, int, int]
     color_player_text: Tuple[int, int, int]
     color_player_vision_arc: Tuple[int, int, int, int]
@@ -110,12 +111,13 @@ class SkinProfileRegistry:
         Extracts required skin fields and builds ResolvedSkinProfile.
         """
         p_color = s_dict.get("color_player", [240, 180, 50])
-        default_arc = [p_color[0], p_color[1], p_color[2], 30]
-        default_rays = [p_color[0], p_color[1], p_color[2], 70]
+        default_arc = [p_color[0], p_color[1], p_color[2], 15]
+        default_rays = [p_color[0], p_color[1], p_color[2], 80]
         arc_col_raw = s_dict.get("solved_arc_color", [40, 160, 240])
 
         return ResolvedSkinProfile(
             skin_name=s_name,
+            camera_zoom=float(s_dict.get("camera_zoom", 1.0)),
             color_player=tuple(p_color),
             color_player_text=tuple(
                 s_dict.get("color_player_text", [10, 10, 15])

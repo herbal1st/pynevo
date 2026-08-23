@@ -40,7 +40,7 @@ class GraphLabelResolver:
             labels.extend(["BFSL-", "BFSR-", "BFSL+", "BFSR+"])
 
         labels.extend(["C-N", "C-E", "C-S", "C-W"])
-        labels.extend(["NFL", "NFR", "NPL", "NPR"])
+        labels.extend(["NFR", "NFL", "NPR", "NPL"])
         labels.extend(["EFR", "EFL", "EPR", "EPL"])
 
         return labels

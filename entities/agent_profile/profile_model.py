@@ -3,8 +3,6 @@ Immutable container holding resolved agent attributes and skin delegations.
 """
 
 from dataclasses import dataclass
-
-import config
 from entities.skin_profile_registry import ResolvedSkinProfile
 
 
@@ -57,9 +55,9 @@ class ResolvedAgentProfile:
     @property
     def player_camera_zoom(self) -> float:
         """
-        Forwards camera zoom scale from config.
+        Forwards camera zoom scale from composed skin profile.
         """
-        return config.PLAYER_CAMERA_ZOOM
+        return self.skin.camera_zoom
 
     @property
     def player_radius_ratio(self) -> float:

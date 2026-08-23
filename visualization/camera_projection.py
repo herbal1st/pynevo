@@ -7,7 +7,6 @@ from entities.map_profile_registry import (
     MapProfileRegistry,
     ResolvedMapProfile,
 )
-import config
 
 
 class CameraProjection:
@@ -25,7 +24,7 @@ class CameraProjection:
         is_zoomed: bool,
         rows: int,
         cols: int,
-        player_zoom: float = config.PLAYER_CAMERA_ZOOM,
+        player_zoom: float = 1.0,
         map_profile: Optional[ResolvedMapProfile] = None,
     ) -> float:
         """
@@ -34,9 +33,7 @@ class CameraProjection:
         if is_player_centered:
             base_tile_sz: float = float(
                 map_profile.tile_size if map_profile is not None
-                else MapProfileRegistry().get_profile(
-                    config.ACTIVE_MAP_PROFILE
-                ).tile_size
+                else MapProfileRegistry().get_profile("DEFAULT").tile_size
             )
             return base_tile_sz * player_zoom
 

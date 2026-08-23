@@ -53,13 +53,6 @@ GRID_COLS                     : Number of horizontal columns in the multi-
                                 Metric: Count (int).
 
 
-[VIEWPORT TRANSFORMATION DEFAULTS]
--------------------------------------------------------------------------------
-PLAYER_CAMERA_ZOOM            : Master camera zoom scale applied when tracking
-                                a candidate in player-centered mode.
-                                Metric: Zoom ratio [0.1 - 5.0] (float).
-
-
 [ACTIVE PROFILE SELECTORS]
 -------------------------------------------------------------------------------
 ACTIVE_AGENT_PROFILE          : Agent profile key to load from profiles/
@@ -71,9 +64,19 @@ ACTIVE_TRAINING_PROFILE       : Training profile key to load from profiles/
                                 Metric: Profile ID string (str).
 
 ACTIVE_MAP_PROFILE            : Level map profile key to load from profiles/
-                                map.yaml (defines procedural level strategy:
-                                BRANCHING_WALLS, RANDOM, PACMAN, and
-                                _N_ANCHOR variants).
+                                map.yaml (defines procedural level strategy).
+                                Metric: Profile ID string (str).
+
+
+[ACTIVE ENDLESS PROFILE SELECTORS]
+-------------------------------------------------------------------------------
+USE_ENDLESS_MODE              : Master toggle switching between legacy bounded
+                                mazes and the full-screen endless world.
+                                Metric: Toggle boolean (bool).
+
+ACTIVE_ENDLESS_MAP_PROFILE    : Endless world profile key to load from
+                                profiles/map_endless.yaml (defines noise &
+                                terrain strata layers: CAVERN, MEADOWS, etc.).
                                 Metric: Profile ID string (str).
 
 

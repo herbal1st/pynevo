@@ -103,7 +103,7 @@ class NativeMazeViewport(IViewportAdapter):
             is_zoomed,
             rows,
             cols,
-            player_zoom=config.PLAYER_CAMERA_ZOOM,
+            player_zoom=self.tile_renderer.skin_profile.camera_zoom,
         )
 
         self.vision_renderer.draw_vision_arc(

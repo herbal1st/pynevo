@@ -384,7 +384,10 @@ class LiveViewPresenter:
         tile_size: float = self.tile_renderer.map_profile.tile_size
 
         if self.is_player_centered:
-            tile_size = float(tile_size) * config.PLAYER_CAMERA_ZOOM
+            tile_size = (
+                float(tile_size) *
+                self.tile_renderer.skin_profile.camera_zoom
+            )
             center_px: float = float(rx) + (float(rw) / 2.0)
             center_py: float = float(ry) + (float(rh) / 2.0)
             self.tile_renderer._draw_player_centered_tiles(

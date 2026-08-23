@@ -1,6 +1,7 @@
 profiles:
 
   DEFAULT:
+    camera_zoom: 1.0
     color_player: [240, 180, 50]
     color_player_vision_arc: [240, 200, 160, 15]
     color_player_vision_rays: [240, 200, 160, 80]
@@ -20,6 +21,7 @@ profiles:
     color_player_heading_line: [255, 40, 20, 220]
 
   COLOR:
+    camera_zoom: 1.0
     color_player: [240, 180, 50]
     color_player_vision_arc: [240, 200, 160, 15]
     color_player_vision_rays: [240, 200, 160, 80]
@@ -39,6 +41,7 @@ profiles:
     color_player_heading_line: [255, 40, 20, 220]
 
   FACE:
+    camera_zoom: 1.0
     color_player: [240, 180, 50]
     color_player_vision_arc: [240, 200, 160, 15]
     color_player_vision_rays: [240, 200, 160, 80]
@@ -62,6 +65,7 @@ profiles:
 # AGENT LIBRARY CONFIGURATION LEGEND
 # ============================================================================
 #
+# camera_zoom:                Camera zoom scale applied to entity viewport.
 # color_player:               RGB color tuple for default agent body.
 # color_player_vision_arc:    RGBA color tuple for vision arc fan polygon.
 # color_player_vision_rays:   RGBA color tuple for individual DDA ray lines.

@@ -1,5 +1,5 @@
 """
-Vectorized 2D DDA raycaster for wall proximity sensing.
+Amanatides-Woo fast voxel traversal raycaster for wall proximity sensing.
 """
 
 import math
@@ -67,50 +67,54 @@ class VisionArcSampler:
         map_data: MapData
     ) -> Tuple[float, float]:
         """
-        DDA grid-line intersection marching to exact wall tile boundary.
+        Amanatides-Woo fast grid traversal raycast to wall boundary.
         """
         dir_x: float = math.cos(angle_rad)
         dir_y: float = math.sin(angle_rad)
 
-        if abs(dir_x) < 1e-9:
-            dir_x = 1e-9
-        if abs(dir_y) < 1e-9:
-            dir_y = 1e-9
+        eps: float = 1e-9
+        if abs(dir_x) < eps:
+            dir_x = eps if dir_x >= 0.0 else -eps
+        if abs(dir_y) < eps:
+            dir_y = eps if dir_y >= 0.0 else -eps
 
         tx: int = int(math.floor(ox))
         ty: int = int(math.floor(oy))
 
-        delta_tx: float = abs(1.0 / dir_x)
-        delta_ty: float = abs(1.0 / dir_y)
+        if map_data.is_wall(tx, ty):
+            return 1.0, 0.0
 
-        step_x: int = 1 if dir_x > 0 else -1
-        step_y: int = 1 if dir_y > 0 else -1
+        step_x: int = 1 if dir_x > 0.0 else -1
+        step_y: int = 1 if dir_y > 0.0 else -1
 
-        if dir_x > 0:
-            side_tx: float = ((tx + 1.0) - ox) * delta_tx
+        t_delta_x: float = abs(1.0 / dir_x)
+        t_delta_y: float = abs(1.0 / dir_y)
+
+        if dir_x > 0.0:
+            t_max_x: float = (float(tx + 1) - ox) * t_delta_x
         else:
-            side_tx = (ox - float(tx)) * delta_tx
+            t_max_x = (ox - float(tx)) * t_delta_x
 
-        if dir_y > 0:
-            side_ty: float = ((ty + 1.0) - oy) * delta_ty
+        if dir_y > 0.0:
+            t_max_y: float = (float(ty + 1) - oy) * t_delta_y
         else:
-            side_ty = (oy - float(ty)) * delta_ty
+            t_max_y = (oy - float(ty)) * t_delta_y
 
-        dist: float = 0.0
+        current_dist: float = 0.0
 
-        while dist < self.max_dist:
-            if side_tx < side_ty:
-                dist = side_tx
-                side_tx += delta_tx
+        while current_dist < self.max_dist:
+            if t_max_x < t_max_y:
+                current_dist = t_max_x
+                t_max_x += t_delta_x
                 tx += step_x
             else:
-                dist = side_ty
-                side_ty += delta_ty
+                current_dist = t_max_y
+                t_max_y += t_delta_y
                 ty += step_y
 
             if map_data.is_wall(tx, ty):
-                hit_dist: float = min(dist, self.max_dist)
+                hit_dist: float = min(current_dist, self.max_dist)
                 wall_prox: float = 1.0 - (hit_dist / self.max_dist)
-                return max(0.0, wall_prox), 0.0
+                return max(0.0, float(wall_prox)), float(hit_dist)
 
-        return 0.0, 0.0
+        return 0.0, float(self.max_dist)
