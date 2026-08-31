@@ -7,7 +7,7 @@ profiles:
       use_linear_speed_output: true
       move_speed: 0.25
       turn_speed: 1800.0
-      player_diameter_ratio: 0.5
+      agent_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -43,7 +43,7 @@ profiles:
       use_linear_speed_output: true
       move_speed: 0.25
       turn_speed: 1800.0
-      player_diameter_ratio: 0.5
+      agent_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -79,7 +79,7 @@ profiles:
       use_linear_speed_output: true
       move_speed: 0.25
       turn_speed: 1800.0
-      player_diameter_ratio: 0.5
+      agent_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -115,7 +115,7 @@ profiles:
       use_linear_speed_output: true
       move_speed: 0.25
       turn_speed: 1800.0
-      player_diameter_ratio: 0.5
+      agent_diameter_ratio: 0.5
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -154,7 +154,7 @@ profiles:
 # use_linear_speed_output:     Toggle: true = Task-Space, false = Direct Wheels.
 # move_speed:                 Maximum forward translation speed (tiles/tick).
 # turn_speed:                 Maximum rotational velocity (degrees/sec).
-# player_diameter_ratio:      Hit-box diameter scale relative to tile size.
+# agent_diameter_ratio:       Hit-box diameter scale relative to tile size.
 # health_coll_dmg_per_frame:  Health damage deducted per wall impact frame.
 # health_spin_dmg_per_frame:  Health damage deducted per physical spin frame.
 # idle_damage_speed_threshold: Physical speed ratio threshold for idle damage.

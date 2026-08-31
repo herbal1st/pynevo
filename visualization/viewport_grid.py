@@ -30,7 +30,7 @@ class ViewportGrid:
         self.layout: GridLayoutManager = GridLayoutManager(rect, rows, cols)
         self.selected_slot: int = 0
         self.is_zoomed: bool = False
-        self.is_player_centered: bool = False
+        self.is_camera_centered: bool = False
         self.refresh_seed_offset: int = 0
         self.adapter: IViewportAdapter = adapter or NativeMazeViewport(
             rect[2], rect[3]
@@ -98,9 +98,9 @@ class ViewportGrid:
 
     def toggle_camera_mode(self) -> None:
         """
-        Toggles between Map-Centered and Player-Centered tracking views.
+        Toggles between Map-Centered and Camera-Centered tracking views.
         """
-        self.is_player_centered = not self.is_player_centered
+        self.is_camera_centered = not self.is_camera_centered
 
     def navigate_grid(
         self,
@@ -157,7 +157,7 @@ class ViewportGrid:
             self.adapter.render_viewport(
                 surface, gen_data, self.selected_idx, active_step,
                 sub_rect, is_selected=True, is_zoomed=True,
-                is_player_centered=self.is_player_centered,
+                is_camera_centered=self.is_camera_centered,
                 rows=self.rows, cols=self.cols
             )
             return
@@ -172,7 +172,7 @@ class ViewportGrid:
             self.adapter.render_viewport(
                 surface, gen_data, cand_idx, active_step,
                 sub_rect, is_selected=is_sel, is_zoomed=False,
-                is_player_centered=self.is_player_centered,
+                is_camera_centered=self.is_camera_centered,
                 rows=self.rows, cols=self.cols
             )
 
@@ -183,7 +183,7 @@ class ViewportGrid:
         mouse_button: int = 1
     ) -> bool:
         """
-        Processes single-click selection, double-click zoom, & right-click camera.
+        Processes click selection, double-click zoom, & camera toggling.
         """
         cx, cy = click_pos
         slot_idx = self.layout.get_slot_index_from_click(cx, cy)

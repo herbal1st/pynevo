@@ -20,7 +20,7 @@ class IViewportAdapter:
         rect: Tuple[int, int, int, int],
         is_selected: bool,
         is_zoomed: bool,
-        is_player_centered: bool,
+        is_camera_centered: bool,
         rows: int,
         cols: int
     ) -> None:

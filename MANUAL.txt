@@ -21,19 +21,21 @@ SCREEN_HEIGHT                 : Vertical pixel height of the window on your
                                 computer desktop screen.
                                 Metric: Pixels (int).
 
-VIRTUAL_WIDTH                 : Internal base canvas width (1280) used for
-                                drawing graphics before scaling to screen.
+VIRTUAL_WIDTH                 : Internal base canvas width (1280). Graphics
+                                draw to this fixed canvas first, then scale
+                                cleanly to fit any monitor screen size.
                                 Metric: Pixels (int).
 
-VIRTUAL_HEIGHT                : Internal base canvas height (720) used for
-                                drawing graphics before scaling to screen.
+VIRTUAL_HEIGHT                : Internal base canvas height (720). Graphics
+                                draw to this fixed canvas first, then scale
+                                cleanly to fit any monitor screen size.
                                 Metric: Pixels (int).
 
 FPS                           : Target frame rate cap controlling animation
                                 smoothness and simulation refresh speed.
                                 Metric: Hertz / Frames per second (int).
 
-USE_RESIZABLE_WINDOW          : Enables dragging desktop window borders while
+USE_RESIZABLE_WINDOW          : Allows dragging desktop window borders while
                                 keeping proper 16:9 display proportions.
                                 Metric: Toggle boolean (bool).
 
@@ -56,7 +58,8 @@ GRID_COLS                     : Number of horizontal columns in the multi-
 [ACTIVE PROFILE SELECTORS]
 -------------------------------------------------------------------------------
 ACTIVE_AGENT_PROFILE          : Agent profile key to load from profiles/
-                                agent.yaml (defines neural & physics rules).
+                                agent.yaml (defines AI neural topology and
+                                driving physics rules).
                                 Metric: Profile ID string (str).
 
 ACTIVE_TRAINING_PROFILE       : Training profile key to load from profiles/
@@ -64,19 +67,25 @@ ACTIVE_TRAINING_PROFILE       : Training profile key to load from profiles/
                                 Metric: Profile ID string (str).
 
 ACTIVE_MAP_PROFILE            : Level map profile key to load from profiles/
-                                map.yaml (defines procedural level strategy).
+                                map.yaml (defines procedural maze strategy).
                                 Metric: Profile ID string (str).
 
 
 [ACTIVE ENDLESS PROFILE SELECTORS]
 -------------------------------------------------------------------------------
-USE_ENDLESS_MODE              : Master toggle switching between legacy bounded
-                                mazes and the full-screen endless world.
+USE_ENDLESS_MODE              : Master toggle switching between bounded maze
+                                training/replay modes and the full-screen
+                                procedural infinite world.
                                 Metric: Toggle boolean (bool).
 
+ACTIVE_PLAYER_PROFILE         : Player profile key to load from profiles/
+                                player.yaml (defines human player steering,
+                                speed, diameter ratio, and visual skin).
+                                Metric: Profile ID string (str).
+
 ACTIVE_ENDLESS_MAP_PROFILE    : Endless world profile key to load from
-                                profiles/map_endless.yaml (defines noise &
-                                terrain strata layers: CAVERN, MEADOWS, etc.).
+                                profiles/map_endless.yaml (defines noise
+                                algorithm and terrain strata layers).
                                 Metric: Profile ID string (str).
 
 
@@ -139,7 +148,7 @@ LAYOUT_SCRUBBER_RECT          : Screen bounding box (X, Y, Width, Height)
 
 [HUD TYPOGRAPHY & ELEMENT SIZING]
 -------------------------------------------------------------------------------
-HUD_PANEL_TITLE_FONT_SIZE     : Font point size for the telemetry panel header.
+HUD_PANEL_TITLE_FONT_SIZE     : Font point size for telemetry panel headers.
                                 Metric: Font points (int).
 
 HUD_PANEL_BODY_FONT_SIZE      : Font point size for dashboard telemetry text.
@@ -200,7 +209,7 @@ COLOR_START                   : Highlight color for start tile and headers.
 COLOR_EXIT                    : Highlight color for exit tile and solvers.
                                 Metric: RGB color tuple (int, int, int).
 
-COLOR_PLAYER_HIGHLIGHT        : Color for selected candidate borders and
+COLOR_VIEWPORT_HIGHLIGHT      : Color for selected candidate borders and
                                 active text label callouts.
                                 Metric: RGB color tuple (int, int, int).
 

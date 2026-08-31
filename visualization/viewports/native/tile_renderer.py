@@ -23,7 +23,7 @@ from visualization.map_renderer import MapRenderer
 
 class ViewportTileRenderer:
     """
-    Renders tilemap backgrounds in Map-Centered, Player, and Endless views.
+    Renders tilemap backgrounds in Map-Centered, Camera, and Endless views.
     """
 
     def __init__(self) -> None:
@@ -50,28 +50,28 @@ class ViewportTileRenderer:
         gen_idx: int,
         cx: float,
         cy: float,
-        is_player_centered: bool,
+        is_camera_centered: bool,
         is_zoomed: bool,
         rows: int,
         cols: int,
-        player_zoom: Optional[float] = None,
+        camera_zoom: Optional[float] = None,
     ) -> Tuple[float, Tuple[int, int]]:
         """
         Renders tile background and returns (tile_size, origin_pixel).
         """
         rx, ry, rw, rh = rect
         zoom_val: float = (
-            player_zoom if player_zoom is not None
+            camera_zoom if camera_zoom is not None
             else self.skin_profile.camera_zoom
         )
 
-        if is_player_centered:
+        if is_camera_centered:
             tile_size: float = (
                 float(self.map_profile.tile_size) * zoom_val
             )
             center_px: float = float(rx) + (float(rw) / 2.0)
             center_py: float = float(ry) + (float(rh) / 2.0)
-            self._draw_player_centered_tiles(
+            self._draw_camera_centered_tiles(
                 surface, rect, map_data, cx, cy, tile_size
             )
             origin_pixel = (int(round(center_px)), int(round(center_py)))
@@ -166,7 +166,7 @@ class ViewportTileRenderer:
 
         return tile_size
 
-    def _draw_player_centered_tiles(
+    def _draw_camera_centered_tiles(
         self,
         surface: pygame.Surface,
         rect: Tuple[int, int, int, int],
@@ -176,7 +176,7 @@ class ViewportTileRenderer:
         tile_size: float,
     ) -> None:
         """
-        Renders visible tiles dynamically centered around player position.
+        Renders visible tiles dynamically centered around focal position.
         """
         rx, ry, rw, rh = rect
         center_px: float = float(rx) + (float(rw) / 2.0)

@@ -1,22 +1,108 @@
 profiles:
 
-  DEFAULT:
+  SIMPLEX:
     map_type: "ENDLESS_NOISE"
     world_seed: 420
     noise_type: "SIMPLEX"
-    noise_scale: 36.0
+    noise_scale: 80.0
     octaves: 1
-    octaves_decay: 0.75
+    octaves_decay: 0.8
     tile_size: 10
     strata_layers:
-      - [0.15, "WATER"]
+      - [0.10, "WATER_DEEP"]
+      - [0.13, "WATER"]
+      - [0.15, "WATER_SHALLOW"]
+      - [0.17, "SAND_WET"]
       - [0.20, "SAND"]
+      - [0.24, "STEPPE"]
       - [0.35, "GRASS"]
-      - [0.45, "THICKET"]
-      - [0.60, "GRASS"]
-      - [0.65, "DIRT"]
-      - [0.80, "ROCK"]
-      - [1.00, "BEDROCK"]
+      - [0.50, "THICKET"]
+      - [0.64, "FOREST"]
+      - [0.72, "FOREST_DARK"]
+      - [0.80, "BEDROCK"]
+      - [0.86, "ROCK"]
+      - [0.90, "SNOW_LOW"]
+      - [0.94, "SNOW_MID"]
+      - [0.96, "SNOW_HIGH"]
+      - [1.00, "SNOW_TOP"]
+
+  PERLIN:
+    map_type: "ENDLESS_NOISE"
+    world_seed: 420
+    noise_type: "PERLIN"
+    noise_scale: 45.0
+    octaves: 1
+    octaves_decay: 0.8
+    tile_size: 10
+    strata_layers:
+      - [0.14, "WATER_DEEP"]
+      - [0.18, "WATER"]
+      - [0.22, "WATER_SHALLOW"]
+      - [0.25, "SAND_WET"]
+      - [0.28, "SAND"]
+      - [0.31, "STEPPE"]
+      - [0.40, "GRASS"]
+      - [0.48, "THICKET"]
+      - [0.55, "FOREST"]
+      - [0.59, "FOREST_DARK"]
+      - [0.64, "BEDROCK"]
+      - [0.70, "ROCK"]
+      - [0.76, "SNOW_LOW"]
+      - [0.80, "SNOW_MID"]
+      - [0.84, "SNOW_HIGH"]
+      - [1.00, "SNOW_TOP"]
+
+  SIMPLEX_BORDERED:
+    map_type: "ENDLESS_NOISE"
+    world_seed: 420
+    noise_type: "SIMPLEX"
+    noise_scale: 80.0
+    octaves: 1
+    octaves_decay: 0.8
+    tile_size: 10
+    strata_layers:
+      - [0.10, "WATER_DEEP_BORDERED"]
+      - [0.13, "WATER_BORDERED"]
+      - [0.15, "WATER_SHALLOW_BORDERED"]
+      - [0.17, "SAND_WET_BORDERED"]
+      - [0.20, "SAND_BORDERED"]
+      - [0.24, "STEPPE_BORDERED"]
+      - [0.35, "GRASS_BORDERED"]
+      - [0.50, "THICKET_BORDERED"]
+      - [0.64, "FOREST_BORDERED"]
+      - [0.72, "FOREST_STONE_BORDERED"]
+      - [0.80, "BEDROCK_BORDERED"]
+      - [0.86, "ROCK_BORDERED"]
+      - [0.90, "SNOW_LOW_BORDERED"]
+      - [0.94, "SNOW_MID_BORDERED"]
+      - [0.96, "SNOW_HIGH_BORDERED"]
+      - [1.00, "SNOW_TOP_BORDERED"]
+
+  PERLIN_BORDERED:
+    map_type: "ENDLESS_NOISE"
+    world_seed: 420
+    noise_type: "PERLIN"
+    noise_scale: 45.0
+    octaves: 1
+    octaves_decay: 0.8
+    tile_size: 10
+    strata_layers:
+      - [0.14, "WATER_DEEP_BORDERED"]
+      - [0.18, "WATER_BORDERED"]
+      - [0.22, "WATER_SHALLOW_BORDERED"]
+      - [0.25, "SAND_WET_BORDERED"]
+      - [0.28, "SAND_BORDERED"]
+      - [0.31, "STEPPE_BORDERED"]
+      - [0.40, "GRASS_BORDERED"]
+      - [0.48, "THICKET_BORDERED"]
+      - [0.55, "FOREST_BORDERED"]
+      - [0.59, "FOREST_STONE_BORDERED"]
+      - [0.64, "BEDROCK_BORDERED"]
+      - [0.70, "ROCK_BORDERED"]
+      - [0.76, "SNOW_LOW_BORDERED"]
+      - [0.80, "SNOW_MID_BORDERED"]
+      - [0.84, "SNOW_HIGH_BORDERED"]
+      - [1.00, "SNOW_TOP_BORDERED"]
 
 
 # ============================================================================

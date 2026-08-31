@@ -49,14 +49,14 @@ class ViewportHUDOverlayRenderer:
         idx_surf = font_norm.render(
             f"#{frame_state.cand_idx}",
             True,
-            config.COLOR_PLAYER_HIGHLIGHT[:3],
+            config.COLOR_VIEWPORT_HIGHLIGHT[:3],
         )
         surface.blit(idx_surf, (rx + 4, ry + 4))
 
         score_surf = font_small.render(
             f"{frame_state.score_val}",
             True,
-            config.COLOR_PLAYER_HIGHLIGHT[:3],
+            config.COLOR_VIEWPORT_HIGHLIGHT[:3],
         )
         score_rect = score_surf.get_rect(
             bottomright=(
@@ -104,7 +104,7 @@ class ViewportHUDOverlayRenderer:
 
         if is_selected:
             pygame.draw.rect(
-                surface, config.COLOR_PLAYER_HIGHLIGHT[:3], rect, 1
+                surface, config.COLOR_VIEWPORT_HIGHLIGHT[:3], rect, 1
             )
 
     def _draw_health_bar(

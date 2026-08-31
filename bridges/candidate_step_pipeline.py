@@ -8,7 +8,7 @@ from core.map_data import MapData
 from core.pathfinder import BFSPathfinder
 from core.kinematics.engine import CandidateKinematics
 from perception.spatial_transformer import SpatialTransformer
-from entities.player_state import PlayerState
+from entities.entity_state import AgentState
 from neural.network import NeuralNetwork
 from evolution.recorder import FrameRecorder
 from utils.math_utils import calculate_angle_delta
@@ -33,7 +33,7 @@ class CandidateStepPipeline:
     def execute_step(
         self,
         step_idx: int,
-        state: PlayerState,
+        state: AgentState,
         net: NeuralNetwork,
         map_data: MapData,
         pathfinder: BFSPathfinder,

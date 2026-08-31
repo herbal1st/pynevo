@@ -2,14 +2,14 @@
 Endless noise chunk generator mapping multi-octave noise to tile profiles.
 """
 
-from typing import Tuple
+from typing import Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
 from entities.map_endless_profile_registry import ResolvedMapEndlessProfile
 from world.tile_registry import TileRegistry
 from world.chunk import Chunk
-from utils.noise import SimplexNoise
+from utils.noise import SimplexNoise, PerlinNoise
 
 
 class EndlessNoiseGenerator:
@@ -29,7 +29,13 @@ class EndlessNoiseGenerator:
         """
         self.profile: ResolvedMapEndlessProfile = profile
         self.tile_registry: TileRegistry = tile_registry
-        self.noise_engine: SimplexNoise = SimplexNoise(profile.world_seed)
+
+        if profile.noise_type.upper() == "PERLIN":
+            self.noise_engine: Union[
+                SimplexNoise, PerlinNoise
+            ] = PerlinNoise(profile.world_seed)
+        else:
+            self.noise_engine = SimplexNoise(profile.world_seed)
 
         self._strata_cache: Tuple[Tuple[float, int], ...] = (
             self._precache_strata(profile, tile_registry)

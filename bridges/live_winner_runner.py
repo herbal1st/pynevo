@@ -21,7 +21,7 @@ from entities.map_profile_registry import (
     ResolvedMapProfile,
 )
 from entities.agent_factory import AgentFactory
-from entities.player_state import PlayerState
+from entities.entity_state import AgentState
 from neural.network import NeuralNetwork
 from neural.brain_persistence import BrainPersistence, SavedBrainMetadata
 from bridges.candidate_step_pipeline import CandidateStepPipeline
@@ -113,7 +113,7 @@ class LiveWinnerRunner:
 
         self.map_data: Optional[MapData] = None
         self.pathfinder: Optional[BFSPathfinder] = None
-        self.state: Optional[PlayerState] = None
+        self.state: Optional[AgentState] = None
         self.recorder: Optional[LiveWinnerDummyRecorder] = None
         self.total_run_steps: int = 0
         self.initial_bfs_dist: int = 9999
@@ -230,7 +230,7 @@ class LiveWinnerRunner:
         self.pathfinder = pathfinder
         self.initial_bfs_dist = initial_dist
 
-        self.state = PlayerState(float(sx) + 0.5, float(sy) + 0.5)
+        self.state = AgentState(float(sx) + 0.5, float(sy) + 0.5)
         self.transformer.reset_candidate_history(0)
         self.state.heading = self.transformer.generate_random_heading(
             map_data, map_data.start_pos

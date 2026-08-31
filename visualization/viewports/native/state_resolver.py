@@ -11,7 +11,8 @@ from entities.agent_profile_registry import (
     AgentProfileRegistry,
     ResolvedAgentProfile,
 )
-from entities.player_express import PlayerExpress
+from entities.skin_profile_registry import ResolvedSkinProfile
+from entities.entity_express import EntityExpress
 import config
 
 
@@ -37,6 +38,8 @@ class ViewportFrameState:
     net_delta: float
     face_str: str
     score_val: int
+    radius_ratio: float = 0.25
+    skin: Optional[ResolvedSkinProfile] = None
 
 
 class ViewportStateResolver:
@@ -103,7 +106,7 @@ class ViewportStateResolver:
             spd_ratio >= self.profile.heal_speed_threshold and is_alive
         )
 
-        face_str: str = PlayerExpress.resolve_face(
+        face_str: str = EntityExpress.resolve_face(
             reached_exit, hit_wall, is_alive, profile=self.profile
         )
 
@@ -130,6 +133,8 @@ class ViewportStateResolver:
             net_delta=net_delta,
             face_str=face_str,
             score_val=score_val,
+            radius_ratio=self.profile.agent_radius_ratio,
+            skin=self.profile.skin,
         )
 
     def _calculate_speed_ratio(

@@ -21,10 +21,10 @@ class ResolvedSkinProfile:
 
     skin_name: str
     camera_zoom: float
-    color_player: Tuple[int, int, int]
-    color_player_text: Tuple[int, int, int]
-    color_player_vision_arc: Tuple[int, int, int, int]
-    color_player_vision_rays: Tuple[int, int, int, int]
+    color_body: Tuple[int, int, int]
+    color_text: Tuple[int, int, int]
+    color_vision_arc: Tuple[int, int, int, int]
+    color_vision_rays: Tuple[int, int, int, int]
     face_walk: str
     face_wall: str
     face_dead: str
@@ -34,10 +34,10 @@ class ResolvedSkinProfile:
     status_ring_ratio: float
     solved_arc_segments: float
     solved_arc_color: Tuple[int, int, int]
-    player_face_text_scale: float
-    player_heading_line_length: float
-    player_heading_line_width: int
-    color_player_heading_line: Tuple[int, int, int, int]
+    face_text_scale: float
+    heading_line_length: float
+    heading_line_width: int
+    color_heading_line: Tuple[int, int, int, int]
 
 
 class SkinProfileRegistry:
@@ -110,23 +110,23 @@ class SkinProfileRegistry:
         """
         Extracts required skin fields and builds ResolvedSkinProfile.
         """
-        p_color = s_dict.get("color_player", [240, 180, 50])
-        default_arc = [p_color[0], p_color[1], p_color[2], 15]
-        default_rays = [p_color[0], p_color[1], p_color[2], 80]
+        body_col = s_dict.get("color_body", [240, 180, 50])
+        default_arc = [body_col[0], body_col[1], body_col[2], 15]
+        default_rays = [body_col[0], body_col[1], body_col[2], 80]
         arc_col_raw = s_dict.get("solved_arc_color", [40, 160, 240])
 
         return ResolvedSkinProfile(
             skin_name=s_name,
             camera_zoom=float(s_dict.get("camera_zoom", 1.0)),
-            color_player=tuple(p_color),
-            color_player_text=tuple(
-                s_dict.get("color_player_text", [10, 10, 15])
+            color_body=tuple(body_col),
+            color_text=tuple(
+                s_dict.get("color_text", [10, 10, 15])
             ),
-            color_player_vision_arc=tuple(
-                s_dict.get("color_player_vision_arc", default_arc)
+            color_vision_arc=tuple(
+                s_dict.get("color_vision_arc", default_arc)
             ),
-            color_player_vision_rays=tuple(
-                s_dict.get("color_player_vision_rays", default_rays)
+            color_vision_rays=tuple(
+                s_dict.get("color_vision_rays", default_rays)
             ),
             face_walk=str(s_dict.get("face_walk", "o_o")),
             face_wall=str(s_dict.get("face_wall", ">_<")),
@@ -139,18 +139,18 @@ class SkinProfileRegistry:
                 s_dict.get("solved_arc_segments", 60.0)
             ),
             solved_arc_color=tuple(arc_col_raw),
-            player_face_text_scale=float(
-                s_dict.get("player_face_text_scale", 0.80)
+            face_text_scale=float(
+                s_dict.get("face_text_scale", 0.80)
             ),
-            player_heading_line_length=float(
-                s_dict.get("player_heading_line_length", 1.25)
+            heading_line_length=float(
+                s_dict.get("heading_line_length", 1.25)
             ),
-            player_heading_line_width=int(
-                s_dict.get("player_heading_line_width", 1)
+            heading_line_width=int(
+                s_dict.get("heading_line_width", 1)
             ),
-            color_player_heading_line=tuple(
+            color_heading_line=tuple(
                 s_dict.get(
-                    "color_player_heading_line", [255, 40, 20, 220]
+                    "color_heading_line", [255, 40, 20, 220]
                 )
             )
         )

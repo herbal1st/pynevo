@@ -1,33 +1,50 @@
 """
-Dedicated full-screen visualizer window runner for endless spatial worlds.
+Full-canvas endless visualizer window hosting human player.
 """
 
+import math
 import os
 import sys
-from typing import Tuple
+from typing import Tuple, Optional
 import pygame
 
 import config
+from entities.player_profile_registry import (
+    PlayerProfileRegistry,
+    ResolvedPlayerProfile
+)
+from entities.skin_profile_registry import (
+    SkinProfileRegistry,
+    ResolvedSkinProfile
+)
+from entities.player_controller import PlayerController
 from entities.map_endless_profile_registry import (
     MapEndlessProfileRegistry,
-    ResolvedMapEndlessProfile,
+    ResolvedMapEndlessProfile
 )
 from world.tile_registry import TileRegistry
 from world.chunk_manager import ChunkManager
+from world.spawn_solver import EndlessSpawnSolver
 from world.generation.endless_noise import EndlessNoiseGenerator
 from visualization.viewports.native.tile_renderer import (
-    ViewportTileRenderer,
+    ViewportTileRenderer
+)
+from visualization.viewports.native.avatar_renderer import (
+    ViewportAvatarRenderer
+)
+from visualization.viewports.native.state_resolver import (
+    ViewportFrameState
 )
 
 
 class EndlessAppWindow:
     """
-    Manages display lifecycle and endless map rendering across full canvas.
+    Manages full-canvas display, endless map streaming, & player movement.
     """
 
     def __init__(self) -> None:
         """
-        Initializes Pygame window, endless engine, and tile renderer.
+        Initializes Pygame, endless engine, safe spawn, & player controller.
         """
         pygame.init()
 
@@ -43,20 +60,22 @@ class EndlessAppWindow:
         self.virtual_surface: pygame.Surface = pygame.Surface(
             (config.VIRTUAL_WIDTH, config.VIRTUAL_HEIGHT)
         )
-
         self.clock: pygame.time.Clock = pygame.time.Clock()
-        self.tile_renderer: ViewportTileRenderer = ViewportTileRenderer()
 
         self.tile_registry: TileRegistry = TileRegistry()
         self.endless_map_registry: MapEndlessProfileRegistry = (
             MapEndlessProfileRegistry()
         )
+        self.player_registry: PlayerProfileRegistry = (
+            PlayerProfileRegistry()
+        )
+        self.skin_registry: SkinProfileRegistry = SkinProfileRegistry()
 
-        p_name: str = getattr(
-            config, "ACTIVE_ENDLESS_MAP_PROFILE", "CAVERN"
+        p_endless_name: str = getattr(
+            config, "ACTIVE_ENDLESS_MAP_PROFILE", "SIMPLEX"
         )
         self.endless_profile: ResolvedMapEndlessProfile = (
-            self.endless_map_registry.get_profile(p_name)
+            self.endless_map_registry.get_profile(p_endless_name)
         )
 
         self.endless_generator: EndlessNoiseGenerator = (
@@ -68,8 +87,39 @@ class EndlessAppWindow:
             self.tile_registry, self.endless_profile.world_seed
         )
 
-        self.endless_focus_x: float = 0.0
-        self.endless_focus_y: float = 0.0
+        p_player_name: str = getattr(
+            config, "ACTIVE_PLAYER_PROFILE", "DEFAULT"
+        )
+        self.player_profile: ResolvedPlayerProfile = (
+            self.player_registry.get_profile(p_player_name)
+        )
+        self.skin_profile: ResolvedSkinProfile = (
+            self.skin_registry.get_skin(
+                self.player_profile.skin_profile
+            )
+        )
+
+        spawn_x, spawn_y = EndlessSpawnSolver.find_safe_spawn(
+            self.chunk_manager,
+            self.tile_registry,
+            self.endless_generator,
+            center_x=0.0,
+            center_y=0.0,
+            diameter_ratio=self.player_profile.diameter_ratio,
+            min_speed_mult=self.player_profile.min_spawn_speed
+        )
+
+        self.player: PlayerController = PlayerController(
+            self.player_profile, spawn_x, spawn_y
+        )
+
+        self.endless_focus_x: float = spawn_x
+        self.endless_focus_y: float = spawn_y
+
+        self.tile_renderer: ViewportTileRenderer = ViewportTileRenderer()
+        self.avatar_renderer: ViewportAvatarRenderer = (
+            ViewportAvatarRenderer()
+        )
 
     def run(self) -> None:
         """
@@ -118,19 +168,19 @@ class EndlessAppWindow:
 
     def _handle_events(self) -> bool:
         """
-        Polls keyboard input for smooth camera panning and window close.
+        Polls events, updates player input movement, & syncs camera focus.
         """
-        pan_speed: float = 0.5
         keys = pygame.key.get_pressed()
+        self.player.update(
+            keys,
+            self.chunk_manager,
+            self.tile_registry,
+            self.endless_generator,
+            fps=config.FPS
+        )
 
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            self.endless_focus_x -= pan_speed
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.endless_focus_x += pan_speed
-        if keys[pygame.K_UP] or keys[pygame.K_w]:
-            self.endless_focus_y -= pan_speed
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            self.endless_focus_y += pan_speed
+        self.endless_focus_x = self.player.x
+        self.endless_focus_y = self.player.y
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -149,18 +199,23 @@ class EndlessAppWindow:
 
     def _draw_frame(self) -> None:
         """
-        Renders endless tilemap across full virtual canvas (1280x720).
+        Renders endless tilemap and player avatar centered on virtual canvas.
         """
         self.virtual_surface.fill(config.COLOR_BG)
 
         canvas_rect: Tuple[int, int, int, int] = (
             0, 0, config.VIRTUAL_WIDTH, config.VIRTUAL_HEIGHT
         )
-        vw_tiles: float = float(config.VIRTUAL_WIDTH) / float(
-            self.endless_profile.tile_size
+        base_tile_sz: float = float(self.endless_profile.tile_size)
+        effective_tile_sz: float = (
+            base_tile_sz * self.skin_profile.camera_zoom
         )
-        vh_tiles: float = float(config.VIRTUAL_HEIGHT) / float(
-            self.endless_profile.tile_size
+
+        vw_tiles: float = (
+            float(config.VIRTUAL_WIDTH) / max(1.0, effective_tile_sz)
+        )
+        vh_tiles: float = (
+            float(config.VIRTUAL_HEIGHT) / max(1.0, effective_tile_sz)
         )
 
         self.chunk_manager.update_focus(
@@ -177,7 +232,52 @@ class EndlessAppWindow:
             self.chunk_manager,
             self.endless_focus_x,
             self.endless_focus_y,
-            tile_size_base=float(self.endless_profile.tile_size)
+            tile_size_base=base_tile_sz,
+            camera_zoom=self.skin_profile.camera_zoom
+        )
+
+        center_px: int = config.VIRTUAL_WIDTH // 2
+        center_py: int = config.VIRTUAL_HEIGHT // 2
+
+        self._draw_player_heading_indicator(
+            center_px, center_py, effective_tile_sz
+        )
+
+        face_text: str = (
+            self.skin_profile.face_wall
+            if self.player.last_collided
+            else self.skin_profile.face_walk
+        )
+
+        frame_state = ViewportFrameState(
+            cand_idx=0,
+            frame_idx=0,
+            x=self.player.x,
+            y=self.player.y,
+            heading=self.player.heading,
+            health=1.0,
+            dist=0,
+            hit_wall=self.player.last_collided,
+            is_alive=True,
+            reached_exit=False,
+            speed_ratio=1.0,
+            is_idle=False,
+            is_healing=False,
+            net_delta=0.0,
+            face_str=face_text,
+            score_val=0,
+            radius_ratio=self.player_profile.radius_ratio,
+            skin=self.skin_profile
+        )
+
+        self.avatar_renderer.draw_avatar(
+            self.virtual_surface,
+            (center_px, center_py),
+            effective_tile_sz,
+            frame_state,
+            is_selected=False,
+            ui_scale=1.0,
+            active_step=0
         )
 
         scale, offset_x, offset_y = self._get_scale_and_offset()
@@ -191,3 +291,35 @@ class EndlessAppWindow:
 
         self.screen.fill((0, 0, 0))
         self.screen.blit(scaled_surf, (offset_x, offset_y))
+
+    def _draw_player_heading_indicator(
+        self,
+        center_px: int,
+        center_py: int,
+        effective_tile_sz: float
+    ) -> None:
+        """
+        Renders directional heading line pointing along player orientation.
+        """
+        body_radius_px: float = (
+            effective_tile_sz * self.player_profile.radius_ratio
+        )
+        line_ext_px: float = (
+            self.skin_profile.heading_line_length * effective_tile_sz
+        )
+        line_len: float = body_radius_px + line_ext_px
+
+        hx: int = int(
+            center_px + (math.cos(self.player.heading) * line_len)
+        )
+        hy: int = int(
+            center_py + (math.sin(self.player.heading) * line_len)
+        )
+
+        pygame.draw.line(
+            self.virtual_surface,
+            self.skin_profile.color_heading_line,
+            (center_px, center_py),
+            (hx, hy),
+            self.skin_profile.heading_line_width
+        )

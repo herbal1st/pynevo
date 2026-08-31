@@ -70,7 +70,7 @@ class LiveViewPresenter:
             config.LAYOUT_SCRUBBER_RECT
         )
 
-        self.is_player_centered: bool = False
+        self.is_camera_centered: bool = False
         self.show_help_overlay: bool = False
         self.active_frame: int = 0
         self.active_frame_float: float = 0.0
@@ -124,20 +124,24 @@ class LiveViewPresenter:
             elif event.key == pygame.K_r:
                 self.generate_fresh_maze()
             elif event.key == pygame.K_TAB:
-                self.is_player_centered = not self.is_player_centered
+                self.is_camera_centered = not self.is_camera_centered
             elif event.key == pygame.K_h:
                 self.show_help_overlay = not self.show_help_overlay
             elif event.key == pygame.K_ESCAPE:
                 return False
             elif event.key in (
-                pygame.K_PAGEUP,
+                pygame.PAGEUP
+                if hasattr(pygame, "PAGEUP")
+                else pygame.K_PAGEUP,
                 pygame.K_PLUS,
                 pygame.K_KP_PLUS,
                 pygame.K_EQUALS,
             ):
                 self.timeline_scrubber.step_speed_up()
             elif event.key in (
-                pygame.K_PAGEDOWN,
+                pygame.PAGEDOWN
+                if hasattr(pygame, "PAGEDOWN")
+                else pygame.K_PAGEDOWN,
                 pygame.K_MINUS,
                 pygame.K_KP_MINUS,
             ):
@@ -169,7 +173,7 @@ class LiveViewPresenter:
                 if gx <= vx <= gx + gw and gy <= vy <= gy + gh:
                     self.show_help_overlay = not self.show_help_overlay
                 else:
-                    self.is_player_centered = not self.is_player_centered
+                    self.is_camera_centered = not self.is_camera_centered
 
         elif event.type == pygame.MOUSEMOTION:
             vx, vy = event.pos
@@ -193,7 +197,7 @@ class LiveViewPresenter:
 
     def update(self) -> None:
         """
-        Advances scrubbed frame pointer during playback and key repeats.
+        Advances scrubbed frame pointer during playback and auto-resets.
         """
         total_steps: int = max(1, self.runner.total_run_steps)
         sp: float = self.timeline_scrubber.playback_speed
@@ -222,9 +226,15 @@ class LiveViewPresenter:
         self.active_frame = int(self.active_frame_float)
 
         if self.active_frame >= total_steps:
-            self.active_frame = total_steps - 1
-            self.active_frame_float = float(self.active_frame)
-            self.timeline_scrubber.is_playing = False
+            auto_reset: bool = getattr(
+                config, "LIVE_RUNNER_AUTO_RESET", True
+            )
+            if auto_reset:
+                self.generate_fresh_maze()
+            else:
+                self.active_frame = total_steps - 1
+                self.active_frame_float = float(self.active_frame)
+                self.timeline_scrubber.is_playing = False
 
     def draw(self, surface: pygame.Surface) -> None:
         """
@@ -340,7 +350,7 @@ class LiveViewPresenter:
             frame_state.heading,
             origin_pixel,
             tile_size,
-            self.is_player_centered,
+            self.is_camera_centered,
             map_data,
         )
 
@@ -383,14 +393,14 @@ class LiveViewPresenter:
         rx, ry, rw, rh = rect
         tile_size: float = self.tile_renderer.map_profile.tile_size
 
-        if self.is_player_centered:
+        if self.is_camera_centered:
             tile_size = (
                 float(tile_size) *
                 self.tile_renderer.skin_profile.camera_zoom
             )
             center_px: float = float(rx) + (float(rw) / 2.0)
             center_py: float = float(ry) + (float(rh) / 2.0)
-            self.tile_renderer._draw_player_centered_tiles(
+            self.tile_renderer._draw_camera_centered_tiles(
                 surface, rect, map_data, cx, cy, tile_size
             )
             origin_pixel = (int(round(center_px)), int(round(center_py)))

@@ -61,7 +61,7 @@ class AgentFactory:
         return CandidateKinematics(
             move_speed=self.profile.move_speed,
             turn_speed_dpsec=self.profile.turn_speed,
-            player_diameter_ratio=self.profile.player_diameter_ratio,
+            agent_diameter_ratio=self.profile.agent_diameter_ratio,
             fps=config.FPS,
             profile_style=self.profile.profile_style
         )

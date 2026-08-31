@@ -4,7 +4,7 @@ Continuous min-max fitness evaluation module for candidate ranking.
 
 from typing import List
 
-from entities.player_state import PlayerState
+from entities.entity_state import AgentState
 
 
 class FitnessEvaluator:
@@ -14,7 +14,7 @@ class FitnessEvaluator:
 
     @staticmethod
     def calculate_raw_score(
-        state: PlayerState,
+        state: AgentState,
         initial_bfs_dist: int,
         max_steps: int = 1000,
         move_speed: float = 0.15,

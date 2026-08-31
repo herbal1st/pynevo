@@ -18,7 +18,7 @@ class ResolvedAgentProfile:
     use_linear_speed_output: bool
     move_speed: float
     turn_speed: float
-    player_diameter_ratio: float
+    agent_diameter_ratio: float
     health_coll_dmg_per_frame: float
     health_idle_dmg_per_frame: float
     health_spin_dmg_per_frame: float
@@ -53,18 +53,18 @@ class ResolvedAgentProfile:
         return self.move_heal_per_frame
 
     @property
-    def player_camera_zoom(self) -> float:
+    def camera_zoom(self) -> float:
         """
         Forwards camera zoom scale from composed skin profile.
         """
         return self.skin.camera_zoom
 
     @property
-    def player_radius_ratio(self) -> float:
+    def agent_radius_ratio(self) -> float:
         """
         Returns true physical body radius ratio (0.5 * diameter).
         """
-        return 0.5 * self.player_diameter_ratio
+        return 0.5 * self.agent_diameter_ratio
 
     @property
     def activate_bfs_way(self) -> bool:

@@ -100,7 +100,7 @@ class TopologicalGPSSensor:
             self.profile.move_speed if self.profile is not None else 0.125
         )
         rad_ratio: float = (
-            self.profile.player_radius_ratio
+            self.profile.agent_radius_ratio
             if self.profile is not None
             else 0.45
         )

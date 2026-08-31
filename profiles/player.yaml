@@ -1,0 +1,38 @@
+profiles:
+
+  DEFAULT:
+    skin_profile: "DEV"
+    profile_style: "DIRECT_VECTOR"
+    move_speed: 1.0
+    turn_speed: 540.0
+    diameter_ratio: 4.0
+    min_spawn_speed: 0.1
+
+  TANK:
+    skin_profile: "DEV"
+    profile_style: "TANK"
+    move_speed: 1.0
+    turn_speed: 540.0
+    diameter_ratio: 4.0
+    min_spawn_speed: 0.1
+
+  CAR:
+    skin_profile: "DEV"
+    profile_style: "CAR"
+    move_speed: 1.0
+    turn_speed: 540.0
+    diameter_ratio: 4.0
+    min_spawn_speed: 0.1
+
+
+# ============================================================================
+# PLAYER LIBRARY CONFIGURATION LEGEND
+# ============================================================================
+#
+# skin_profile:     Name key referencing visual skin profile in skin.yaml.
+# profile_style:    Steering mechanics selector ("DIRECT_VECTOR", "TANK", "CAR").
+# move_speed:       Base translation velocity scale per frame (tiles/tick).
+# turn_speed:       Maximum rotational velocity scale (degrees/sec).
+# diameter_ratio:   Hit-box diameter scale relative to full tile width.
+# min_spawn_speed:  Minimum terrain speed multiplier required for safe spawn.
+# ============================================================================

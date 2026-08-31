@@ -127,7 +127,7 @@ class AgentProfileParser:
         )
         diam_ratio: float = float(
             AgentProfileParser._get_required_val(
-                kin, "player_diameter_ratio", "kinematics", p_name, file_name
+                kin, "agent_diameter_ratio", "kinematics", p_name, file_name
             )
         )
         coll_dmg: float = float(
@@ -286,7 +286,7 @@ class AgentProfileParser:
             use_linear_speed_output=use_linear,
             move_speed=move_speed,
             turn_speed=turn_speed,
-            player_diameter_ratio=diam_ratio,
+            agent_diameter_ratio=diam_ratio,
             health_coll_dmg_per_frame=coll_dmg,
             health_idle_dmg_per_frame=idle_dmg,
             health_spin_dmg_per_frame=spin_dmg,

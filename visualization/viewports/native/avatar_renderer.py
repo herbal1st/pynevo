@@ -11,6 +11,7 @@ from entities.agent_profile_registry import (
     AgentProfileRegistry,
     ResolvedAgentProfile,
 )
+from entities.skin_profile_registry import ResolvedSkinProfile
 from utils.font_manager import FontManager
 from utils.math_utils import calculate_spin_angle
 from utils.color_utils import resolve_net_delta_color
@@ -48,17 +49,19 @@ class ViewportAvatarRenderer:
         """
         px, py = origin_pixel
         p_radius: int = max(
-            3, int(tile_size * self.profile.player_radius_ratio)
+            3, int(tile_size * frame_state.radius_ratio)
         )
 
-        body_color = (
-            config.COLOR_PLAYER_HIGHLIGHT[:3]
-            if is_selected
-            else self.profile.skin.color_player[:3]
+        active_skin: ResolvedSkinProfile = (
+            frame_state.skin
+            if frame_state.skin is not None
+            else self.profile.skin
         )
+
+        body_color = active_skin.color_body[:3]
         pygame.draw.circle(surface, body_color, (px, py), p_radius)
 
-        if self.profile.skin.show_status_ring:
+        if active_skin.show_status_ring:
             self._draw_status_ring(
                 surface,
                 px,
@@ -68,21 +71,22 @@ class ViewportAvatarRenderer:
                 frame_state.is_alive,
                 frame_state.net_delta,
                 active_step,
+                active_skin=active_skin,
             )
 
-        if self.profile.skin.show_ascii_faces:
+        if active_skin.show_ascii_faces:
             font_norm = self.font_manager.get_font(
                 max(10, int(12 * ui_scale))
             )
             raw_face = font_norm.render(
                 frame_state.face_str,
                 True,
-                self.profile.skin.color_player_text[:3],
+                active_skin.color_text[:3],
             )
             target_side: int = max(
                 2,
                 int(
-                    p_radius * 2 * self.profile.skin.player_face_text_scale
+                    p_radius * 2 * active_skin.face_text_scale
                 ),
             )
             scaled_face = scale_text_surface(raw_face, target_side)
@@ -99,17 +103,21 @@ class ViewportAvatarRenderer:
         is_alive: bool,
         net_delta: float,
         active_step: int,
+        active_skin: Optional[ResolvedSkinProfile] = None,
     ) -> None:
         """
         Renders status ring or counter-rotating solved arcs.
         """
+        skin: ResolvedSkinProfile = (
+            active_skin if active_skin is not None else self.profile.skin
+        )
         line_w: int = max(
-            1, int(float(p_radius) * self.profile.skin.status_ring_ratio)
+            1, int(float(p_radius) * skin.status_ring_ratio)
         )
 
         if reached_exit:
             self._draw_solved_counter_rotating_arcs(
-                surface, px, py, p_radius, line_w, active_step
+                surface, px, py, p_radius, line_w, active_step, active_skin=skin
             )
             return
 
@@ -131,11 +139,15 @@ class ViewportAvatarRenderer:
         p_radius: int,
         line_w: int,
         active_step: int,
+        active_skin: Optional[ResolvedSkinProfile] = None,
     ) -> None:
         """
         Renders concentric counter-rotating arcs for exit solvers.
         """
-        ratio: float = self.profile.skin.status_ring_ratio
+        skin: ResolvedSkinProfile = (
+            active_skin if active_skin is not None else self.profile.skin
+        )
+        ratio: float = skin.status_ring_ratio
         r_inner: int = p_radius
         r_outer: int = max(2, int(float(p_radius) * (1.0 + ratio)))
 
@@ -146,12 +158,8 @@ class ViewportAvatarRenderer:
             px - r_outer, py - r_outer, r_outer * 2, r_outer * 2
         )
 
-        color: Tuple[int, int, int] = (
-            self.profile.skin.solved_arc_color[:3]
-        )
-        arc_rad: float = math.radians(
-            self.profile.skin.solved_arc_segments
-        )
+        color: Tuple[int, int, int] = skin.solved_arc_color[:3]
+        arc_rad: float = math.radians(skin.solved_arc_segments)
 
         spin_angle: float = calculate_spin_angle(
             active_step, speed_rate=0.15

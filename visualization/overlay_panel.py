@@ -95,7 +95,7 @@ class OverlayPanel:
             lbl_sel = body_font.render(
                 f"SELECTED : {active_profile_title}",
                 True,
-                config.COLOR_PLAYER_HIGHLIGHT,
+                config.COLOR_VIEWPORT_HIGHLIGHT,
             )
             lbl_win = body_font.render(
                 f"WINNER   : {active_profile_title}",
@@ -106,7 +106,7 @@ class OverlayPanel:
             lbl_sel = body_font.render(
                 f"SELECTED : #{active_cand_idx}",
                 True,
-                config.COLOR_PLAYER_HIGHLIGHT,
+                config.COLOR_VIEWPORT_HIGHLIGHT,
             )
             lbl_win = body_font.render(
                 f"WINNER   : #{winner_idx}",

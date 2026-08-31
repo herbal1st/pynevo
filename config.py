@@ -24,11 +24,12 @@ ACTIVE_MAP_PROFILE: str = "DEFAULT"  # profile
 
 # ------ Active Endless Profile Selectors ------
 USE_ENDLESS_MODE: bool = True
-ACTIVE_ENDLESS_MAP_PROFILE: str = "DEFAULT"
+ACTIVE_PLAYER_PROFILE: str = "DEFAULT"  # profile
+ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX"  # profile
 
 # ------ Live Winner Mode Defaults ------
 LIVE_RUNNER_MAX_STEPS: int = 1000  # steps
-LIVE_RUNNER_AUTO_RESET: bool = True  # toggle
+LIVE_RUNNER_AUTO_RESET: bool = False  # toggle
 
 # ------ Interactive Scrubber & Playback Defaults ------
 DEFAULT_PLAYBACK_SPEED: float = 1.0  # multiplier
@@ -66,7 +67,7 @@ COLOR_FLOOR: Tuple[int, int, int] = (25, 25, 32)  # rgb
 COLOR_FLOOR_BORDER: Tuple[int, int, int] = (25, 25, 32)  # rgb
 COLOR_START: Tuple[int, int, int] = (40, 160, 220)  # rgb
 COLOR_EXIT: Tuple[int, int, int] = (50, 200, 100)  # rgb
-COLOR_PLAYER_HIGHLIGHT: Tuple[int, int, int] = (255, 220, 80)  # rgb
+COLOR_VIEWPORT_HIGHLIGHT: Tuple[int, int, int] = (255, 220, 80)  # rgb
 
 # ------ Health Bar & Status Frame Colors ------
 COLOR_HEALTH_FULL: Tuple[int, int, int] = (50, 200, 100)  # rgb

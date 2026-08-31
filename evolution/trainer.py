@@ -19,7 +19,7 @@ from entities.map_profile_registry import (
     ResolvedMapProfile
 )
 from entities.agent_factory import AgentFactory
-from entities.player_state import PlayerState
+from entities.entity_state import AgentState
 from evolution.fitness import FitnessEvaluator
 from evolution.population import PopulationManager
 from evolution.recorder import FrameRecorder
@@ -147,8 +147,8 @@ class HeadlessTrainer:
                 )
             )
 
-            candidate_states: List[PlayerState] = [
-                PlayerState(float(start_x) + 0.5, float(start_y) + 0.5)
+            candidate_states: List[AgentState] = [
+                AgentState(float(start_x) + 0.5, float(start_y) + 0.5)
                 for _ in range(self.pop_size)
             ]
 

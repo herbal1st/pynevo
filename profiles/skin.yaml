@@ -1,12 +1,27 @@
 profiles:
 
+  DEV:
+    camera_zoom: 1.0
+    color_body: [255, 230, 5]
+    color_text: [10, 10, 15]
+    face_text_scale: 0.80
+    face_walk: "o_o"
+    face_wall: ">_<"
+    face_dead: "X_X"
+    face_exit: "^_^"
+    show_ascii_faces: true
+    show_status_ring: false
+    heading_line_length: 1.5
+    heading_line_width: 1
+    color_heading_line: [255, 40, 20, 220]
+
   DEFAULT:
     camera_zoom: 1.0
-    color_player: [240, 180, 50]
-    color_player_vision_arc: [240, 200, 160, 15]
-    color_player_vision_rays: [240, 200, 160, 80]
-    color_player_text: [10, 10, 15]
-    player_face_text_scale: 0.80
+    color_body: [240, 180, 50]
+    color_vision_arc: [240, 200, 160, 15]
+    color_vision_rays: [240, 200, 160, 80]
+    color_text: [10, 10, 15]
+    face_text_scale: 0.80
     face_walk: "o_o"
     face_wall: ">_<"
     face_dead: "X_X"
@@ -16,17 +31,17 @@ profiles:
     status_ring_ratio: 1.0
     solved_arc_segments: 60.0
     solved_arc_color: [40, 160, 240]
-    player_heading_line_length: 1.25
-    player_heading_line_width: 1
-    color_player_heading_line: [255, 40, 20, 220]
+    heading_line_length: 1.25
+    heading_line_width: 1
+    color_heading_line: [255, 40, 20, 220]
 
   COLOR:
     camera_zoom: 1.0
-    color_player: [240, 180, 50]
-    color_player_vision_arc: [240, 200, 160, 15]
-    color_player_vision_rays: [240, 200, 160, 80]
-    color_player_text: [10, 10, 15]
-    player_face_text_scale: 0.80
+    color_body: [240, 180, 50]
+    color_vision_arc: [240, 200, 160, 15]
+    color_vision_rays: [240, 200, 160, 80]
+    color_text: [10, 10, 15]
+    face_text_scale: 0.80
     face_walk: "o_o"
     face_wall: ">_<"
     face_dead: "X_X"
@@ -36,17 +51,17 @@ profiles:
     status_ring_ratio: 1.0
     solved_arc_segments: 60.0
     solved_arc_color: [40, 160, 240]
-    player_heading_line_length: 1.25
-    player_heading_line_width: 1
-    color_player_heading_line: [255, 40, 20, 220]
+    heading_line_length: 1.25
+    heading_line_width: 1
+    color_heading_line: [255, 40, 20, 220]
 
   FACE:
     camera_zoom: 1.0
-    color_player: [240, 180, 50]
-    color_player_vision_arc: [240, 200, 160, 15]
-    color_player_vision_rays: [240, 200, 160, 80]
-    color_player_text: [10, 10, 15]
-    player_face_text_scale: 0.80
+    color_body: [240, 180, 50]
+    color_vision_arc: [240, 200, 160, 15]
+    color_vision_rays: [240, 200, 160, 80]
+    color_text: [10, 10, 15]
+    face_text_scale: 0.80
     face_walk: "o_o"
     face_wall: ">_<"
     face_dead: "X_X"
@@ -56,31 +71,31 @@ profiles:
     status_ring_ratio: 1.0
     solved_arc_segments: 60.0
     solved_arc_color: [40, 160, 240]
-    player_heading_line_length: 1.25
-    player_heading_line_width: 1
-    color_player_heading_line: [255, 40, 20, 220]
+    heading_line_length: 1.25
+    heading_line_width: 1
+    color_heading_line: [255, 40, 20, 220]
 
 
 # ============================================================================
-# AGENT LIBRARY CONFIGURATION LEGEND
+# SKIN LIBRARY CONFIGURATION LEGEND
 # ============================================================================
 #
-# camera_zoom:                Camera zoom scale applied to entity viewport.
-# color_player:               RGB color tuple for default agent body.
-# color_player_vision_arc:    RGBA color tuple for vision arc fan polygon.
-# color_player_vision_rays:   RGBA color tuple for individual DDA ray lines.
-# color_player_text:          RGB color tuple for ASCII face text string.
-# player_face_text_scale:     Scaling ratio for ASCII face text size.
-# face_walk:                  ASCII face rendered during normal walking.
-# face_wall:                  ASCII face rendered during wall collision.
-# face_dead:                  ASCII face rendered when health depletes.
-# face_exit:                  ASCII face rendered when exit is solved.
-# show_ascii_faces:           Master toggle: true = render ASCII faces.
-# show_status_ring:           Master toggle: true = render status ring.
-# status_ring_ratio:          Inner status ring inset scale ratio.
-# solved_arc_segments:        Arc segment length spread in degrees.
-# solved_arc_color:           RGB color tuple for counter-rotating arcs.
-# player_heading_line_length: Multiplier scaling directional heading line.
-# player_heading_line_width:  Pixel width of directional heading line.
-# color_player_heading_line:  RGBA color tuple for directional heading line.
+# camera_zoom:         Camera zoom scale applied to entity viewport.
+# color_body:          RGB color tuple for default avatar body.
+# color_text:          RGB color tuple for ASCII face text string.
+# color_vision_arc:    RGBA color tuple for vision arc fan polygon.
+# color_vision_rays:   RGBA color tuple for individual DDA ray lines.
+# face_text_scale:     Scaling ratio for ASCII face text size.
+# face_walk:           ASCII face rendered during normal walking.
+# face_wall:           ASCII face rendered during wall collision.
+# face_dead:           ASCII face rendered when health depletes.
+# face_exit:           ASCII face rendered when exit is solved.
+# show_ascii_faces:    Master toggle: true = render ASCII faces.
+# show_status_ring:    Master toggle: true = render status ring.
+# status_ring_ratio:   Inner status ring inset scale ratio.
+# solved_arc_segments: Arc segment length spread in degrees.
+# solved_arc_color:    RGB color tuple for counter-rotating arcs.
+# heading_line_length: Multiplier scaling directional heading line.
+# heading_line_width:  Pixel width of directional heading line.
+# color_heading_line:  RGBA color tuple for directional heading line.
 # ============================================================================

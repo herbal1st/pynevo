@@ -24,7 +24,7 @@ class CandidateKinematics:
         self,
         move_speed: float = 0.15,
         turn_speed_dpsec: float = 1800.0,
-        player_diameter_ratio: float = 0.45,
+        agent_diameter_ratio: float = 0.45,
         fps: int = config.FPS,
         profile_style: str = "TANK"
     ) -> None:
@@ -32,7 +32,7 @@ class CandidateKinematics:
         Initializes movement constants and binds active steering profile.
         """
         self.move_speed: float = move_speed
-        self.radius: float = 0.5 * player_diameter_ratio
+        self.radius: float = 0.5 * agent_diameter_ratio
         self.rad_per_frame: float = (
             math.radians(turn_speed_dpsec) / float(fps)
         )

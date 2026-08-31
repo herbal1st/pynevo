@@ -55,7 +55,7 @@ class NativeMazeViewport(IViewportAdapter):
         rect: Tuple[int, int, int, int],
         is_selected: bool,
         is_zoomed: bool,
-        is_player_centered: bool,
+        is_camera_centered: bool,
         rows: int,
         cols: int,
     ) -> None:
@@ -99,11 +99,11 @@ class NativeMazeViewport(IViewportAdapter):
             gen_idx,
             frame_state.x,
             frame_state.y,
-            is_player_centered,
+            is_camera_centered,
             is_zoomed,
             rows,
             cols,
-            player_zoom=self.tile_renderer.skin_profile.camera_zoom,
+            camera_zoom=self.tile_renderer.skin_profile.camera_zoom,
         )
 
         self.vision_renderer.draw_vision_arc(
@@ -117,7 +117,7 @@ class NativeMazeViewport(IViewportAdapter):
             frame_state.heading,
             origin_pixel,
             tile_size,
-            is_player_centered,
+            is_camera_centered,
             map_data,
         )
 

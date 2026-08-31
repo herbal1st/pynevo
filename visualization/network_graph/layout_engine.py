@@ -105,7 +105,7 @@ class GraphLayoutEngine:
             self._get_text_surface(
                 txt,
                 label_font_sz,
-                config.COLOR_PLAYER_HIGHLIGHT,
+                config.COLOR_VIEWPORT_HIGHLIGHT,
                 bold=False
             )
             for txt in input_labels
@@ -114,7 +114,7 @@ class GraphLayoutEngine:
             self._get_text_surface(
                 txt,
                 label_font_sz,
-                config.COLOR_PLAYER_HIGHLIGHT,
+                config.COLOR_VIEWPORT_HIGHLIGHT,
                 bold=False
             )
             for txt in output_labels

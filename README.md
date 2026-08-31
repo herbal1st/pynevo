@@ -16,49 +16,45 @@
 -------------------------------------------------------------------------------
 Core Philosophy: Sovereign Compute, Matrix-Isolated, Zero-Dependency.
 Architecture   : PyNevo is a self-contained 2D neuroevolution
-                 simulation engine built using vectorized NumPy matrix math,
-                 PyBiwis 64-bit integer bitmask map compression, spatial
-                 infinite chunking (16x16 tile chunks packed into 4 uint64
-                 words), deterministic multi-octave Simplex and Perlin noise
+                 simulation engine and infinite world visualizer built using
+                 vectorized NumPy matrix math, PyBiwis 64-bit integer bitmask
+                 map compression (packing 64 grid tiles into single 64-bit
+                 uint64 words, and 16x16 tile chunks into 4 uint64 words),
+                 spatial infinite chunking with hysteresis loading,
+                 deterministic multi-octave Simplex and classical Perlin noise
                  terrain generation with data-driven strata layers, continuous
                  Circle-to-AABB smooth wall physics with Minimum Translation
                  Vector (MTV) tile ejection, Amanatides-Woo fast voxel grid
                  traversal raycasting, pre-allocated contiguous sensor array
-                 caches, dual steering kinematics (Car and Tank profiles),
-                 data-driven YAML profiles (profiles/), a configurable
-                 dual-mode 4-neuron motor actuation switch (Task-Space vs
-                 Direct Differential Wheels via use_linear_speed_output),
-                 physical turning tax (DMG-S) with strict zero-gating,
-                 dual-mode orientation compasses (Focus and Peripheral North
-                 & Exit with optional Line-of-Sight wall gating via
-                 exit_compass_los_gating), topological BFS GPS path
-                 progress sensors (Mono Progress vs Stereo Binocular Progress),
-                 a dual-metabolic survival engine (Kinetic Move Heal &
-                 Invisible Topological Path Refuel), orthogonal cardinal spawn
-                 heading alignment (use_bfs_spawn_heading), 5-point
-                 multi-corner exit radar, live physical speedometer (SPD),
-                 actuation-isolated brain weight persistence (saved_brains/),
-                 contiguous float16 generational weight tensors (WeightBundler),
-                 active-step truncated float32 telemetry tensors
-                 (TelemetryBundler), uncompressed disk serialization with
-                 instant unlinking (ArchiveBridge), a Double-Cleanup
-                 Protocol for zero RAM bleeding, an unconstrained population
-                 candidate mapper with symmetric slot-anchored selection, a
-                 decoupled real-time Live Winner Solver (LiveWinnerRunner &
-                 LiveViewPresenter), dynamic procedural map strategies
-                 (Branching Walls, Labyrinth Random Scatter, Arcade Pacman
-                 Grid, N-Anchor variants, and Endless Noise Caverns), a
-                 data-driven TileRegistry (profiles/tiles.yaml), and a dual
-                 Pygame visualizer pipeline featuring a 3x3 candidate replay
-                 window (AppWindow) and a dedicated full-canvas 1280x720
-                 endless world window (EndlessAppWindow).
+                 caches, flexible steering kinematics (Car, Tank, and Direct
+                 Vector profiles), a data-driven profile library (profiles/),
+                 a configurable dual-mode 4-neuron motor actuation switch
+                 (Task-Space vs Direct Differential Wheels via
+                 use_linear_speed_output), physical turning tax (DMG-S)
+                 with strict zero-gating, dual-mode orientation compasses
+                 (Focus and Peripheral North & Exit with optional Line-of-Sight
+                 wall gating), topological BFS GPS path progress sensors
+                 (Mono Progress vs Stereo Binocular Progress), a dual-metabolic
+                 survival engine (Kinetic Move Heal & Invisible Topological
+                 Path Refuel), orthogonal cardinal spawn heading alignment,
+                 a multi-tile safe spawn solver (EndlessSpawnSolver),
+                 an endless kinematics physics engine (EndlessKinematics),
+                 a human player input controller (PlayerController),
+                 a decoupled Universal Entity Layer (EntityState, AgentState,
+                 and ViewportFrameState) supporting both AI companions and
+                 human players, and a dual Pygame visualizer pipeline
+                 featuring a 3x3 candidate replay window (AppWindow) and a
+                 dedicated full-canvas 1280x720 endless world window
+                 (EndlessAppWindow).
 Primary Goal   : Train autonomous 2D AI agents to navigate procedural
                  labyrinths and infinite terrain from randomized start tiles
                  to targets using a multi-ray visual fan, orientation
                  compasses, BFS GPS path progress triggers, rotation health
-                 taxes, and a physical topological progress refuel loop.
+                 taxes, and a physical topological progress refuel loop, while
+                 providing an extensible entity foundation for human-player
+                 and companion AI interactions.
 Presentation   : Interactive Pygame visualizers featuring dual camera tracking
-                 modes (Map-Centered and Player-Centered) toggleable via
+                 modes (Map-Centered and Camera-Centered) toggleable via
                  TAB or right-clicking viewports, skin-driven camera zoom
                  scales (camera_zoom in profiles/skin.yaml), 1/10x slow-motion
                  to 10x turbo speeds controllable via keys, buttons, or
@@ -70,17 +66,16 @@ Presentation   : Interactive Pygame visualizers featuring dual camera tracking
                  overlays (H key or right-clicking panels), dedicated Live
                  Winner Evaluation Mode (END key) with upfront pre-calculation
                  and on-the-fly brain hot-swapping for testing trained agents
-                 on fresh infinite mazes, smooth WASD/arrow key panning
-                 across endless spatial worlds (EndlessAppWindow), pre-rendered
-                 background surface caching with isolated live cache clearing,
-                 automatic 16:9 letterboxed screen projection, direct telemetry
-                 array slicing for lag-free 60+ FPS viewports, standardized
+                 on fresh infinite mazes, real-time WASD and Arrow key human
+                 player movement across endless spatial worlds
+                 (EndlessAppWindow), pre-rendered background surface caching,
+                 automatic 16:9 letterboxed screen projection, standardized
                  [0, 1000] fitness scoring, rank-colored timeline tick
                  markers, a dynamic inner shell status ring with a continuous
                  Libra Balance Engine, gyroscopic counter-rotating blue exit
                  arcs, non-blocking upper terminal score cards, real-time
                  neural activation graph heatmaps driven by live network
-                 forward passes, and stateless telemetry slice memory streams.
+                 forward passes, and profile-agnostic entity avatar rendering.
 
 [2.0 MEMORY, MAPS & PROCEDURAL GENERATION (PYBIWIS & STRATEGIES)]
 -------------------------------------------------------------------------------
@@ -111,20 +106,40 @@ Endless Chunking: Managed by world/chunk_manager.py. Uses a spatial dictionary
                  you step into them, and chunks far behind you turn off to save
                  energy and memory.
 Deterministic Noise: Managed by utils/noise.py and world/generation/
-                 endless_noise.py. Generates continuous 2D Simplex and Perlin
-                 noise fields seeded by world_seed. Multi-octave passes add
-                 cavern shapes and subtle edge roughness.
+                 endless_noise.py. Generates continuous 2D Simplex and classical
+                 Perlin noise fields seeded by world_seed. Simplex noise uses
+                 skewed triangular grids for fast multi-dimensional sampling,
+                 while classical Perlin noise evaluates gradient vectors at
+                 grid corners, smoothing transitions with a quintic curve
+                 6t^5 - 15t^4 + 10t^3. Multi-octave passes combine coarse
+                 terrain features with detailed surface textures.
                  Data-Driven Strata: Noise values in [0.0, 1.0] are mapped
                  to tile IDs via strata_layers thresholds defined in
-                 profiles/map_endless.yaml (e.g., Bedrock floor, Dirt trails,
-                 Sand beaches, Grass fields, Thicket bushes, Rock walls, Water
-                 ponds, and Obsidian cores).
+                 profiles/map_endless.yaml (e.g., Water ponds, Sand beaches,
+                 Grass fields, Thicket bushes, Forest trees, Dirt trails,
+                 Rock walls, Bedrock cores, and Snow peaks).
                  Plain Explanation: A mathematical algorithm generates smooth
                  hills and valleys of numbers between 0 and 1. The engine checks
-                 the height of each tile: low spots become lakes or open ground,
+                 the height of each tile: low spots become lakes or sand,
                  medium spots become grass or trails, and high spots become
-                 solid rock walls. Because the math uses a fixed seed, the
-                 world generates identically every time.
+                 solid rock walls or snow. Because the math uses a fixed seed,
+                 the world generates identically every time.
+Safe Spawn Solver: Managed by world/spawn_solver.py (EndlessSpawnSolver).
+                 Executes a 2D outward spiral search starting from target
+                 coordinates (0, 0) to locate the nearest safe, non-solid,
+                 walkable floor tile.
+                 Multi-Tile Clearance Footprint: Evaluates the full continuous
+                 bounding box footprint based on the entity's diameter ratio.
+                 For an entity with diameter_ratio = 4.0 (4 tiles wide), the
+                 solver ensures every tile covered by the entity's physical
+                 radius (R = 2.0 tiles) is non-solid and passable
+                 (speed_multiplier >= min_spawn_speed), guaranteeing large
+                 entities never spawn trapped inside solid rock or bedrock.
+                 Plain Explanation: When placing an entity in an endless world,
+                 the spawner checks the ground in an expanding circle. If the
+                 entity is small (0.5 tiles), it needs 1 walkable tile. If the
+                 entity is huge (4.0 tiles wide), it checks a 4x4 box of tiles
+                 to make sure no rock walls poke into its body when it appears.
 Tile Registry  : Managed by world/tile_registry.py. Loads profiles/tiles.yaml
                  defining tile attributes (id, name, solid collision flag,
                  indestructible protection flag, speed_multiplier, base fill
@@ -319,41 +334,51 @@ Memory Stream  : Managed by perception/spatial/memory_stacker.py. Stacks past
 Data-Driven YAML: System configurations are decoupled into dedicated profile
                  files under the profiles/ directory:
                  - profiles/agent.yaml    : Defines physical kinematics (Car
-                   vs Tank, use_linear_speed_output toggle, speed, diameter,
-                   collision/idle/spin damage, kinetic move heal rate
-                   move_heal_per_frame, and invisible topological path refuel
-                   rate path_heal_per_frame), perception parameters
-                   (exit_compass_los_gating toggle, use_bfs_spawn_heading
-                   toggle), neural hidden topology, and references a visual skin.
+                   vs Tank, use_linear_speed_output toggle, speed,
+                   agent_diameter_ratio, collision/idle/spin damage, kinetic
+                   move heal rate move_heal_per_frame, and invisible
+                   topological path refuel rate path_heal_per_frame),
+                   perception parameters (exit_compass_los_gating toggle,
+                   use_bfs_spawn_heading toggle), neural hidden topology,
+                   and references a visual skin.
+                 - profiles/player.yaml   : Defines human player profiles
+                   (DEFAULT, TANK, CAR), steering mechanics (DIRECT_VECTOR,
+                   TANK, CAR), translation speed, turn speed, body
+                   diameter_ratio, min_spawn_speed, and skin profile binding.
                  - profiles/skin.yaml     : Defines avatar skins, camera_zoom,
-                   colors, ASCII facial expressions, heading lines, status
-                   ring rules, and solved arc graphics.
+                   color_body, color_text, color_vision_arc, color_vision_rays,
+                   ASCII facial expressions, heading lines, status ring
+                   rules, and solved arc graphics.
                  - profiles/training.yaml : Defines genetic algorithm
                    hyperparameters, generation counts, population sizes, step
                    caps, mutation/elitism rates, and min/max path difficulty
-                   ratio bounds (min_path_difficulty_ratio &
-                   max_path_difficulty_ratio).
+                   ratio bounds.
                  - profiles/map.yaml      : Defines procedural level bounds
                    (width, height), tile pixel sizes, wall densities, and
                    bounded map strategies ("BRANCHING_WALLS", "RANDOM",
                    "PACMAN").
                  - profiles/map_endless.yaml : Defines endless noise map
-                   profiles ("CAVERN", "MEADOWS", "ABYSS"), world seeds,
-                   noise types ("SIMPLEX", "PERLIN"), noise scales, octaves,
-                   octaves_decay, base tile sizes, and strata_layers lists.
+                   profiles ("SIMPLEX", "PERLIN"), world seeds, noise types,
+                   noise scales, octaves, octaves_decay, base tile sizes, and
+                   strata_layers lists.
                  - profiles/tiles.yaml    : Defines tile properties (id, name,
                    solid collision flag, indestructible flag, speed_multiplier,
                    fill color, border_color, border_width_ratio).
 Master Selectors: Global config (config.py) contains active profile selectors
-                 (ACTIVE_AGENT_PROFILE, ACTIVE_TRAINING_PROFILE,
-                 ACTIVE_MAP_PROFILE, and ACTIVE_ENDLESS_MAP_PROFILE), master
-                 toggles (USE_ENDLESS_MODE), Live Mode defaults
-                 (LIVE_RUNNER_MAX_STEPS, LIVE_RUNNER_AUTO_RESET), UI layout
-                 bounds, safety limits (MAX_TEMP_CACHE_SIZE_MB), and theme
-                 colors.
+                 (ACTIVE_AGENT_PROFILE, ACTIVE_PLAYER_PROFILE,
+                 ACTIVE_TRAINING_PROFILE, ACTIVE_MAP_PROFILE, and
+                 ACTIVE_ENDLESS_MAP_PROFILE), master toggles (USE_ENDLESS_MODE),
+                 Live Mode defaults (LIVE_RUNNER_MAX_STEPS,
+                 LIVE_RUNNER_AUTO_RESET), UI layout bounds, safety limits
+                 (MAX_TEMP_CACHE_SIZE_MB), and theme colors.
 Fail-Fast      : Dedicated registry modules under entities/ and world/ parse
                  YAML files and validate required parameters at boot with clear
                  CLI error messages.
+Player Registry: Managed by entities/player_profile_registry.py. Loads
+                 profiles/player.yaml and resolves immutable player profiles
+                 (ResolvedPlayerProfile). Operates as an isolated registry,
+                 ensuring zero coupling or interference with the MLP agent
+                 neuroevolution pipelines.
 Agent Factory  : entities/agent_factory.py instantiates neural networks,
                  spatial transformers, and kinematics engines dynamically
                  matching the active profile's input shape derived from
@@ -381,8 +406,7 @@ Dual-Mode Motor: Configured via use_linear_speed_output in profiles/agent.yaml:
                     - Kinematic Translation: move_effort = (net_r + net_l) / 2.
                     - Kinematic Steering: turn_effort = (net_r - net_l) / 2.
                     Plain Explanation: Provides direct, un-abstracted 2-wheel
-                    differential drive control ideal for real-world robotics
-                    like the Arduino Alvik.
+                    differential drive control ideal for real-world robotics.
 Disk Persistence: neural/brain_persistence.py automatically saves winning
                  candidate weight matrices using signature-tagged filenames
                  (saved_brains/PROFILE_vV_mM_hH_nN_bB_linX.npz), incorporating
@@ -396,8 +420,7 @@ Disk Persistence: neural/brain_persistence.py automatically saves winning
 Brain Discovery: BrainPersistence.discover_saved_brains() scans saved_brains/
                  using a named Regular Expression (Regex) parser. It extracts
                  clean display titles (e.g. "TANK_1", "CAR_2") and embedded
-                 topology parameters (rays, memory frames, layers, neurons,
-                 compass, actuation) into cached metadata objects without
+                 topology parameters into cached metadata objects without
                  costly re-scans during visualizer playback.
 
 [5.0 KINEMATICS, HEALTH & DUAL-METABOLIC REFUEL ENGINE]
@@ -409,15 +432,34 @@ Kinematics     : Decoupled into core/kinematics/:
                    when standing still).
                  - engine.py: Handles 2D translation and continuous Circle-
                    to-AABB penetration resolution using Minimum Translation
-                   Vectors (MTV). Accepts signed translation effort move_effort
-                   in [-1.0, 1.0]. Body radius is calculated as r_body = 0.5 *
-                   player_diameter_ratio (0.25 tiles), matching the visual
-                   body sprite 1-to-1.
-Wall Physics   : core/kinematics/engine.py executes robust Circle-to-AABB
-                 wall collision checks with zero-distance AABB tile ejection
-                 and strict outer map border clamping. Candidates slide
-                 smoothly along walls and corners without tunneling or
-                 walking past outer map boundaries.
+                   Vectors (MTV) for bounded maps. Accepts signed translation
+                   effort move_effort in [-1.0, 1.0].
+                 - endless_engine.py (EndlessKinematics): Universal physics
+                   engine for infinite noise chunk terrain. Provides 2D
+                   translation, steering mode math ("DIRECT_VECTOR", "TANK",
+                   "CAR"), terrain friction scaling, and Circle-to-AABB MTV
+                   wall collision ejection directly against ChunkManager.
+                 Plain Explanation: The kinematics engine acts like the laws of
+                 physics. It calculates where an entity moves when pushed by
+                 keys or a neural network, slows it down when walking in deep
+                 water or mud, and pushes it smoothly out of rock walls so it
+                 slides cleanly along corners instead of getting stuck.
+Terrain Friction: Read directly from TileRegistry for the tile underneath the
+                 entity's center (X, Y). Scales step distance dynamically:
+                 Step Distance = move_effort * base_move_speed * speed_multiplier
+                 For example, walking on Grass (1.0) moves at full speed, while
+                 walking through Water (0.5) or Mud (0.1) feels physically
+                 heavy and sluggish.
+Player Controller: Managed by entities/player_controller.py (PlayerController).
+                 Translates raw Pygame keyboard input (WASD / Arrow keys) into
+                 normalized movement and rotational effort based on the active
+                 steering style (DIRECT_VECTOR 8-directional, TANK in-place,
+                 or CAR motion-scaled), delegating physical step execution
+                 to EndlessKinematics.
+Wall Physics   : Both kinematics engines execute robust Circle-to-AABB wall
+                 collision checks with zero-distance AABB tile ejection.
+                 Entities slide smoothly along walls and corners without
+                 tunneling or clipping through obstacles.
 Optimal Spawn  : perception/spawn_heading.py automatically aligns candidate
                  spawn headings strictly along orthogonal cardinal directions
                  (0°, 90°, 180°, 270°) facing an open corridor, ensuring zero
@@ -439,12 +481,7 @@ Dual Metabolism: Candidates start at 100% health (1.0). Health represents the
                    physical/environmental mechanic (invisible to Layer 0).
                    Executed inside CandidateStepPipeline.execute_step(), the
                    system reads stereo BFS progress intensities (BFSL+, BFSR+)
-                   and applies an instant health refuel:
-                   Refuel = 0.5 * path_heal_per_frame * (BFSL+ + BFSR+)
-                   Candidates driving along the optimal BFS path constantly
-                   refuel their health tanks, keeping them alive and healthy.
-                   Candidates standing still or circling in dead-ends drain
-                   health and die rapidly.
+                   and applies an instant health refuel.
                  - Hard Health Cap: Health is strictly capped at 1.0 (100%),
                    preventing agents from building over-healing shield buffers.
 Libra Balance  : utils/color_utils.py resolves a continuous Net Delta score:
@@ -452,16 +489,11 @@ Libra Balance  : utils/color_utils.py resolves a continuous Net Delta score:
                  - Net Delta = 0.0 (Neutral)  : Yellow highlight ring.
                  - Net Delta > 0.0 (Damage)   : Smoothly blends Yellow -> Red.
                  - Net Delta < 0.0 (Recovery) : Smoothly blends Yellow -> Green.
-                 Plain Explanation: Like a balanced scale, active wall impacts,
-                 stalling, and turning damage push the status ring toward Red,
-                 while high-speed kinetic healing pulls it toward Green.
 Gyroscopic Arcs: Solved candidates render concentric dual-radius blue arcs
                  (solved_arc_color). The inner arcs glide along the inside edge
                  of the body skin, while the outer arcs orbit along the outside
-                 edge, counter-rotating in opposite directions. Rotation
-                 angles derive from live timeline steps via calculate_spin_angle,
-                 ensuring continuous rotation during scrubber playback.
-Expressive UI  : entities/player_express.py maps physical flags to custom
+                 edge, counter-rotating in opposite directions.
+Expressive UI  : entities/entity_express.py maps physical flags to custom
                  ASCII facial expressions defined in YAML:
                  - face_walk (o_o) : Normal walking traversal.
                  - face_wall (>_<) : Active wall impact collision.
@@ -470,11 +502,10 @@ Expressive UI  : entities/player_express.py maps physical flags to custom
 
 [6.0 ZERO-ALLOCATION TELEMETRY, CONTIGUOUS TENSORS & LIVE BRAIN REPLAY]
 -------------------------------------------------------------------------------
-Zero Allocation: Simulation histories write physical telemetry values (x, y,
-                 heading, health, distance, wall hits) directly into flat,
-                 pre-allocated NumPy memory matrices via TelemetryBundler.
-                 Eliminates intermediate Python object allocations and keeps
-                 memory consumption completely flat (~20 MB).
+Zero Allocation: Simulation histories write physical telemetry values directly
+                 into flat, pre-allocated NumPy memory matrices via
+                 TelemetryBundler. Eliminates intermediate Python object
+                 allocations and keeps memory consumption flat (~20 MB).
 Contiguous Tensors: Generational population neural network parameters are
                  flattened into a master 3D float16 tensor (WeightBundler) of
                  shape (num_generations, population_size, total_params).
@@ -513,47 +544,19 @@ Live Evaluation : In addition to historical replay, PyNevo features a
                  key loads trained winner weights from saved_brains/ into a
                  live NeuralNetwork and spawns the agent on a fresh procedural
                  solvable maze.
-                 - Upfront Pre-Calculation: When a fresh maze is generated,
-                   the solver executes a fast headless pass (~1ms) up to max
-                   steps or until solve/death, recording telemetry into a
-                   flat single-candidate buffer.
-                 - Timeline Scrubbing: Pre-calculation gives full interactive
-                   scrubbing across all frames (0 to total run steps). Dragging
-                   or stepping the scrubber immediately updates candidate
-                   position, vision fan, and neural heatmaps for any frame.
-                 - Auto-Pause & Reset: Reaching the final step automatically
-                   pauses playback and displays the terminal scorecard card.
-                   Pressing R generates a fresh maze and auto-resumes play.
+                 - Upfront Pre-Calculation: Executes a fast headless pass
+                   (~1ms) up to max steps or until solve/death, recording
+                   telemetry into a flat single-candidate buffer.
                  - Saved Brain Hot-Swapping: Pressing UP or DOWN arrow keys
-                   cycles through all brain files in saved_brains/. The runner
-                   inspects the brain signature, hot-swaps network layers and
-                   kinematics dynamically matching the target brain's exact
-                   topology, generates a fresh maze, and auto-resumes play.
-                 - HUD Title Display: Displays clean brain titles (e.g.
-                   "SELECTED : TANK_1") in the top-right telemetry dashboard,
-                   replacing generic candidate slot numbers.
-Dynamic Graph HUD: visualization/network_graph/graph_facade.py derives
-                 base_channels dynamically from len(input_labels) using
-                 label_resolver.py. The node layout, slot heights, and text
-                 labels adapt 1-to-1 on-the-fly, dynamically displaying
-                 FWD/BWD/S-L/S-R or L-FWD/L-BWD/R-FWD/R-BWD matching the
-                 profile's use_linear_speed_output setting.
-Pre-Rendering  : visualization/map_renderer.py pre-renders static maze tile
-                 graphics ONCE into cached background surfaces for 60 FPS
-                 performance.
-Camera Math    : visualization/camera_projection.py converts world tile
-                 coordinates into viewport pixel coordinates for both
-                 Map-Centered and Player-Centered tracking modes using
-                 skin.camera_zoom as the clean single ground truth.
-Canvas Projection: visualization/app_window.py and endless_app_window.py render
-                 all UI elements onto fixed 1280x720 virtual canvases,
-                 smoothly scaled to fit any screen resolution with automatic
-                 letterboxing/pillarboxing.
-Vision Drawing : visualization/vision_renderer.py draws semi-transparent
-                 vision fan polygons and heading lines onto alpha scratchpads.
-Input Controller: visualization/input_controller.py dispatches mouse clicks,
-                 mouse wheel scroll events, and keyboard shortcuts to control
-                 UI viewports and transport scrubbing.
+                   cycles through all brain files in saved_brains/, hot-swapping
+                   network layers and kinematics dynamically.
+Decoupled Avatar Renderer: visualization/viewports/native/avatar_renderer.py
+                 renders candidate body sprites, ASCII faces, status rings, and
+                 directional heading indicators driven by ViewportFrameState.
+                 Decouples entity radius (radius_ratio) and skin palette
+                 (skin) from profile registries, allowing human players,
+                 neural agents, or custom entities to render accurately at
+                 their exact configured sizes and colors.
 
 [7.0 NEUROEVOLUTION, UNCONSTRAINED POOLS & SLOT STRATIFICATION]
 -------------------------------------------------------------------------------
@@ -562,29 +565,11 @@ Unconstrained GA : Population size (population_size) is fully unconstrained
                    profiles/training.yaml. Training is no longer clamped to
                    the number of viewport grid slots.
 Slot Stratification: Managed by visualization/viewports/candidate_mapper.py.
-                   Plain Explanation: Think of it like an honor roll display.
-                   The top row always showcases the highest-performing
-                   candidates, the bottom row shows struggling candidates,
-                   and middle slots sample evenly from stratified success-rate
-                   middle pools.
-                   - Top Rows: Displays the highest-scoring candidates in
-                     descending rank order (Slot 0 = True Winner).
-                   - Bottom Rows: Displays the lowest-scoring candidates (Slot
-                     R-1 = Absolute Worst).
-                   - Middle Rows: Symmetric 1/2 row logic restricts random
-                     stratum sampling to 1 row for odd screen rows (R > 2) and
-                     2 rows for even screen rows (R > 2), centered cleanly in
-                     the middle of the viewport grid.
-Slot Selection : visualization/viewport_grid.py anchors user selection to
-                 grid cell slot indices (0 .. R x C - 1) rather than
-                 candidate ID numbers. When switching generations in both
-                 multiscreen and fullscreen zoomed views, the yellow selection
-                 frame stays locked to the same viewport grid cell, dynamically
-                 displaying whichever candidate occupies that slot.
-Interactive Refresh: Pressing the R key increments a seed offset counter to
-                 instantly re-sample fresh candidates for middle-row viewports,
-                 allowing on-demand candidate exploration without losing the
-                 active selection or changing generations.
+                   Maps candidate indices to grid slots sorted by rank:
+                   - Top Rows: Displays the highest-scoring candidates (Winner
+                     at Slot 0).
+                   - Bottom Rows: Displays the lowest-scoring candidates.
+                   - Middle Rows: Stratified sampling across middle pools.
 Self-Breeding Rule: evolution/population.py checks whether Parent A == Parent B.
                  When a dominant candidate breeds with itself, the child is
                  forced to undergo Gaussian weight mutation (mutation_rate = 1.0),
@@ -594,20 +579,8 @@ Step Pipeline  : bridges/candidate_step_pipeline.py encapsulates candidate
                  ticks (Sensory Input -> Neural Forward -> Kinematics Step ->
                  Health Update -> BFS Recovery -> Direct Array Write).
 In-Place GA Pool: evolution/population.py maintains clean memory isolation,
-                 instantiating fresh NeuralNetwork instances every generation
-                 for elites and offspring to prevent array reference aliasing.
-Evolution Ops  : Modularized under evolution/operators/:
-                 - selection.py: Tournament selection selecting top candidates.
-                 - crossover.py: In-place uniform crossover strategy.
-                 - mutation.py: In-place Gaussian noise mutation.
-Fitness Math   : Standardized [0, 1000] fitness scoring in evolution/fitness.py:
-                 - Configurable Re-balancing: Split by dist_to_time_bonus_ratio
-                   (R): Distance Weight = 1000 x R, Time Weight = 1000 x (1-R).
-                 - Path Progress: Distance score equals W_dist x (Progress / L_min).
-                 - Time Bonus: Time score equals W_time x (Saved Frames / Max
-                   Saved Frames) awarded strictly upon reaching exit tile.
-                 - Health Weighting: Final raw score is scaled by health:
-                   Final Score = Raw Score x [(1 - Impact) + (Impact x HP)].
+                 instantiating fresh NeuralNetwork instances every generation.
+Fitness Math   : Standardized [0, 1000] fitness scoring in evolution/fitness.py.
 
 [7.1 DISPLAY HUD, CLI METRICS & INTERACTIVE CONTROLS]
 -------------------------------------------------------------------------------
@@ -620,94 +593,39 @@ CLI Progress Table: Real-time console table outputting:
   - EXITS: Total candidate exit solver count for the generation.
   - TIME : Wall-clock execution time per generation in seconds (e.g., 1.42s).
 
-Interactive Controls:
+Interactive Replay & Live Mode Controls:
   - END          : Toggle between Historical Replay Mode and Live Winner Mode.
   - SPACE        : Toggle Timeline Playback (Replay Mode) OR Pause/Resume
                    live physics simulation ticks (Live Mode).
   - ENTER        : Toggle Viewport Zoom Mode (Expands selected candidate view).
-  - TAB / R-CLICK: Toggle Camera Tracking Mode (Map-Centered vs Player-
+  - TAB / R-CLICK: Toggle Camera Tracking Mode (Map-Centered vs Camera-
                    Centered) on any viewport or zoomed view.
   - LEFT / RIGHT : Jump frame scrubber backward / forward. Jump step size is
-                   scaled by current playback speed (TIMELINE_FRAME_JUMP_RATIO x
-                   playback_speed) for consistent scrubbing feel. Continuous
-                   scrubbing is supported by holding Left or Right arrow keys.
+                   scaled by current playback speed. Continuous scrubbing is
+                   supported by holding Left or Right arrow keys.
   - UP / DOWN    : Switch active Generation forward / backward (Replay Mode)
                    OR cycle through saved brain archives in saved_brains/
                    (Live Winner Mode). Single discrete tap per switch.
   - 0 / NUMPAD 0 : Toggle Repeat Mode (Loop All Generations vs Loop Active Gen).
   - PGUP/DN, +/- : Step Playback Speed multiplier up or down through a 19-step
-                   granular linear scale (1/10x, 1/9x, 1/8x, 1/7x, 1/6x,
-                   1/5x, 1/4x, 1/3x, 1/2x, 1x, 2x, 3x, 4x, 5x, 6x, 7x, 8x,
-                   9x, 10x).
-  - WHEEL SCROLL : Step Playback Speed multiplier up (scroll forward) or
-                   down (scroll backward) globally anywhere in visualizer.
+                   scale (1/10x to 10x).
+  - WHEEL SCROLL : Step Playback Speed multiplier up or down globally.
   - PERIOD (.)   : Reset Playback Speed back to default 1x.
   - R            : Resample middle-row viewport candidates (Replay Mode) OR
                    generate a fresh maze for the live solver and auto-resume
                    playback (Live Winner Mode).
-  - NUMPAD 1..9  : 8-directional grid navigation for candidate viewport selection
-                   (7/9/1/3 diagonal, 8/2/4/6 cardinal).
+  - NUMPAD 1..9  : 8-directional grid navigation for candidate selection.
   - NUMPAD 5     : Reset active candidate selection to Candidate #0.
-  - H / R-CLICK  : Toggle interactive cheat-sheet overlay panel (HelpOverlay
-                   in Replay Mode, LiveHelpOverlay in Live Mode).
+  - H / R-CLICK  : Toggle interactive cheat-sheet overlay panel.
   - ESCAPE       : Exit Visualizer GUI.
-  - Left Mouse   : Click candidate viewport to select agent; double-click to zoom;
-                   click or click-and-drag timeline bars to scrub frames or
-                   generations continuously.
-  - Right Mouse  : Right-click viewport to toggle tracking mode; right-click
-                   graph panel to toggle help overlay; right-click Speed
-                   Button to step playback speed downward.
 
-Color Indicators & Scrubber Modes:
-  - Terminal Cards : High-contrast score cards rendered in the upper 25% of the
-                     sub-viewport upon candidate solve (Green) or death (Red),
-                     leaving central agents and spinning arcs 100% visible.
-                     Suppressed in Live Winner Mode for clean navigation.
-  - Generation Bar : Renders continuous rectangular blocks when
-                     TIMELINE_BLOCK_GENERATION_BAR: true. Block colors are
-                     normalized relative to the session's peak solver count
-                     (Red -> Orange -> Yellow -> Green). Unsolved generations
-                     show default grey track. Active generation renders a
-                     centered 2px black outline box.
-  - Frame Scrubber : Exit solve tick marks color-graded by candidate arrival
-                     speed rank (Green for fastest solver down to Red for slower
-                     solvers). Selected candidate tick retains 100% opacity,
-                     while unselected ticks render semi-transparently.
-  - Viewport Borders: Solved (Green) / Dead (Red) status frames render as an
-                     inner 3px border along the outer edge. The Yellow selection
-                     frame renders on top with 1px stroke, allowing the inner
-                     2px status border to peek out clearly.
-  - Viewport Scores: Candidate raw score renders as an integer in the lower-right
-                     corner of each viewport (e.g., 1000 or 823).
-
-Telemetry HUD    : visualization/overlay_panel.py displays active agent stats,
-                   integer frame step count (e.g. 956/1000), generation index,
-                   top score, and winner callout in a clear two-column dashboard.
-                   In Live Winner Mode, displays clean display titles (e.g.
-                   "SELECTED : TANK_1") in place of generic candidate numbers.
-Graph & Help HUD : Bounded to the bottom-right panel (LAYOUT_GRAPH_RECT):
-                   - Activation Sub-Package (visualization/network_graph/):
-                     Decoupled into label_resolver, layout_engine, column_renderer,
-                     and graph_facade. Displays real-time neural activations
-                     as dynamic rectangular heatmaps (dark red to bright orange).
-                     Uses a unified fractional column unit layout
-                     (U_total = 1.0 + M + H + 0.5 + 1.0) where standard
-                     node columns take 1.0 unit width and the output column
-                     takes 0.5 unit width.
-                     Inter-column gaps are uniformly spaced via HUD_GRAPH_SPACING.
-                     Font sizing automatically adapts via _fit_font_size and
-                     HUD_GRAPH_TEXT_SCALE. Displays uniform headers (INP,
-                     M-1..M-k, H-1..H-3, OUT), observation shorthands
-                     (-120°..+120°, SPD, HP, DMG-C, DMG-I, DMG-S, HEAL,
-                     BFSL-..BFSR+, C-N..C-W, NFL..NPR, EFL..EPR), and
-                     4-character semantic output labels matching active actuation
-                     mode (FWD/BWD/S-L/S-R or L-FWD/L-BWD/R-FWD/R-BWD). Rendered
-                     node heatmaps represent candidate C's exact 100% true
-                     historical or real-time live candidate neural activations.
-                   - Cheat-Sheet Overlays: Replaces graph when toggled with H
-                     key or right-clicking the graph panel, displaying a
-                     tailored two-column key legend (help_overlay.py for
-                     Replay Mode, live_help_overlay.py for Live Mode).
+Endless World Human Player Controls (USE_ENDLESS_MODE = True):
+  - W / A / S / D: Drive human player character (Up, Left, Down, Right).
+  - ARROW KEYS   : Alternate directional driving keys.
+  - Steering Mode: DIRECT_VECTOR (8-directional auto-facing), TANK (in-place
+                   differential turning), or CAR (motion-scaled turning) as
+                   configured in profiles/player.yaml.
+  - ESCAPE       : Exit Endless World Application.
 
 [8.0 COMPLETE MODULAR CODEBASE STRUCTURE]
 -------------------------------------------------------------------------------
@@ -722,6 +640,7 @@ PyNevo/
 │
 ├── profiles/                       # Data-Driven Profile Library
 │   ├── agent.yaml                  # Agent kinematics, perception & neural
+│   ├── player.yaml                 # Human player steering, speed & skins
 │   ├── skin.yaml                   # Visual rendering skins, zoom & colors
 │   ├── training.yaml               # Genetic algorithm & training profiles
 │   ├── map.yaml                    # Bounded procedural map profiles
@@ -741,6 +660,7 @@ PyNevo/
 │   ├── chunk.py                    # 16x16 tile chunk container & bitmask
 │   ├── chunk_manager.py            # Spatial chunk manager & radial loader
 │   ├── tile_registry.py            # O(1) tile property & color registry
+│   ├── spawn_solver.py             # Multi-tile safe spawn solver
 │   └── generation/                 # Endless Procedural Generation
 │       └── endless_noise.py        # Multi-octave noise chunk generator
 │
@@ -750,7 +670,8 @@ PyNevo/
 │   ├── pathfinder.py               # Topological BFS pathfinder coordinator
 │   ├── kinematics/                 # Kinematics Subsystem
 │   │   ├── profiles.py             # Car and Tank steering profiles
-│   │   └── engine.py               # Candidate kinematics & MTV collision
+│   │   ├── engine.py               # Bounded candidate kinematics & MTV
+│   │   └── endless_engine.py       # Endless chunk kinematics & terrain friction
 │   └── map_generation/             # Procedural Generation Package
 │       ├── base_strategy.py        # Abstract generator strategy interface
 │       ├── branching_walls.py      # Organic branching wall crawler facade
@@ -764,13 +685,15 @@ PyNevo/
 │
 ├── entities/                       # Physical Entities & Factory
 │   ├── agent_profile_registry.py   # Agent profile registry facade
+│   ├── player_profile_registry.py  # Human player YAML profile registry
+│   ├── player_controller.py        # Human player input dispatcher
 │   ├── skin_profile_registry.py    # Visual Skin YAML profile registry
 │   ├── training_profile_registry.py# Training YAML profile registry
 │   ├── map_profile_registry.py     # Map Geometry YAML profile registry
 │   ├── map_endless_profile_registry.py # Endless Map YAML profile registry
 │   ├── agent_factory.py            # Profile-driven agent component factory
-│   ├── player_state.py             # Candidate status data container
-│   ├── player_express.py           # ASCII face expression resolver
+│   ├── entity_state.py             # Entity & Agent state data containers
+│   ├── entity_express.py           # ASCII face expression resolver
 │   └── agent_profile/              # Agent Profile Sub-Package
 │       ├── profile_model.py        # ResolvedAgentProfile data model
 │       └── yaml_parser.py          # Fail-fast YAML loader & validator
@@ -839,8 +762,8 @@ PyNevo/
         ├── native_maze_viewport.py # Native 2D maze viewport facade
         └── native/                 # Native Viewport Sub-Package
             ├── state_resolver.py   # Telemetry row & physics delta resolver
-            ├── tile_renderer.py    # Map & player centered tile renderer
-            └── avatar_renderer.py  # Body sprite, face, ring & solved arcs
+            ├── tile_renderer.py    # Map & camera centered tile renderer
+            ├── avatar_renderer.py  # Body sprite, face, ring & solved arcs
             └── hud_overlay_renderer.py # Health bar, ID/score tags & cards
 
 

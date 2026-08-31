@@ -14,7 +14,7 @@ from entities.agent_profile_registry import (
     ResolvedAgentProfile
 )
 from entities.agent_factory import AgentFactory
-from entities.player_express import PlayerExpress
+from entities.entity_express import EntityExpress
 from perception.spatial_transformer import SpatialTransformer
 from neural.brain_persistence import BrainPersistence
 from neural.network import NeuralNetwork
@@ -189,7 +189,7 @@ class PlaybackPresenter:
         is_alive: bool = bool(row[6] > 0.5)
         reached_exit: bool = bool(row[7] > 0.5)
 
-        face_str: str = PlayerExpress.resolve_face(
+        face_str: str = EntityExpress.resolve_face(
             reached_exit, hit_wall, is_alive, profile=self.profile
         )
 

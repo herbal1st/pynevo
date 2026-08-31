@@ -7,7 +7,7 @@ from typing import List, Tuple
 import numpy as np
 
 import config
-from entities.player_state import PlayerState
+from entities.entity_state import AgentState
 
 
 class CLIPresenter:
@@ -48,7 +48,7 @@ class CLIPresenter:
         scaled_scores: List[float],
         initial_bfs_dist: int,
         norm_scores: List[float],
-        candidate_states: List[PlayerState],
+        candidate_states: List[AgentState],
         elapsed_sec: float = 0.0,
         done_pct: int = 0
     ) -> None:

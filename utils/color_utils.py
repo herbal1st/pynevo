@@ -47,7 +47,7 @@ def resolve_net_delta_color(
     """
     Maps Net Delta (Bad - Good) across Red <- Yellow -> Green scale.
     """
-    c_neutral: Tuple[int, int, int] = config.COLOR_PLAYER_HIGHLIGHT[:3]
+    c_neutral: Tuple[int, int, int] = config.COLOR_VIEWPORT_HIGHLIGHT[:3]
     c_damage: Tuple[int, int, int] = config.COLOR_HEALTH_LOW[:3]
     c_heal: Tuple[int, int, int] = config.COLOR_EXIT[:3]
 
