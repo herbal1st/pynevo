@@ -37,8 +37,8 @@ class EndlessNoiseGenerator:
         else:
             self.noise_engine = SimplexNoise(profile.world_seed)
 
-        self._strata_cache: Tuple[Tuple[float, int], ...] = (
-            self._precache_strata(profile, tile_registry)
+        self._thresh_arr, self._id_arr = self._precache_strata(
+            profile, tile_registry
         )
 
     def generate_chunk(
@@ -49,16 +49,16 @@ class EndlessNoiseGenerator:
         tile_registry: TileRegistry
     ) -> Chunk:
         """
-        Generates a 16x16 chunk grid at (cx, cy) using noise stratification.
+        Generates 16x16 chunk grid at (cx, cy) using noise stratification.
         """
         wx_start: int = cx * self.CHUNK_SIZE
         wy_start: int = cy * self.CHUNK_SIZE
 
-        x_coords: NDArray[np.float32] = (
-            np.arange(wx_start, wx_start + self.CHUNK_SIZE, dtype=np.float32)
+        x_coords: NDArray[np.float32] = np.arange(
+            wx_start, wx_start + self.CHUNK_SIZE, dtype=np.float32
         )
-        y_coords: NDArray[np.float32] = (
-            np.arange(wy_start, wy_start + self.CHUNK_SIZE, dtype=np.float32)
+        y_coords: NDArray[np.float32] = np.arange(
+            wy_start, wy_start + self.CHUNK_SIZE, dtype=np.float32
         )
 
         wx_grid, wy_grid = np.meshgrid(x_coords, y_coords)
@@ -71,39 +71,39 @@ class EndlessNoiseGenerator:
             octaves_decay=self.profile.octaves_decay
         )
 
-        grid: NDArray[np.uint8] = np.zeros(
-            (self.CHUNK_SIZE, self.CHUNK_SIZE), dtype=np.uint8
+        indices: NDArray[np.intp] = np.digitize(
+            noise_field, self._thresh_arr
         )
+        np.clip(indices, 0, len(self._id_arr) - 1, out=indices)
 
-        for r in range(self.CHUNK_SIZE):
-            for c in range(self.CHUNK_SIZE):
-                val: float = float(noise_field[r, c])
-                grid[r, c] = np.uint8(self._resolve_tile_id(val))
+        grid: NDArray[np.uint8] = self._id_arr[indices].astype(np.uint8)
 
-        return Chunk(cx, cy, grid, tile_registry)
-
-    def _resolve_tile_id(self, noise_val: float) -> int:
-        """
-        Resolves tile ID by evaluating strata thresholds in ascending order.
-        """
-        for thresh, t_id in self._strata_cache:
-            if noise_val <= thresh:
-                return t_id
-
-        return self._strata_cache[-1][1] if self._strata_cache else 0
+        return Chunk(
+            cx,
+            cy,
+            grid,
+            tile_registry,
+            tile_size=self.profile.tile_size
+        )
 
     def _precache_strata(
         self,
         profile: ResolvedMapEndlessProfile,
         registry: TileRegistry
-    ) -> Tuple[Tuple[float, int], ...]:
+    ) -> Tuple[NDArray[np.float32], NDArray[np.uint8]]:
         """
-        Precaches strata thresholds and tile IDs for fast runtime resolution.
+        Precaches strata thresholds and tile IDs for fast vectorized math.
         """
-        cache: list[Tuple[float, int]] = []
-        for thresh, t_name in profile.strata_layers:
-            tile_prof = registry.get_tile_by_name(t_name)
-            cache.append((thresh, tile_prof.tile_id))
+        sorted_strata = sorted(profile.strata_layers, key=lambda x: x[0])
+        thresh_list: list[float] = [item[0] for item in sorted_strata]
+        id_list: list[int] = [
+            registry.get_tile_by_name(item[1]).tile_id
+            for item in sorted_strata
+        ]
 
-        cache.sort(key=lambda x: x[0])
-        return tuple(cache)
+        thresh_arr: NDArray[np.float32] = np.array(
+            thresh_list, dtype=np.float32
+        )
+        id_arr: NDArray[np.uint8] = np.array(id_list, dtype=np.uint8)
+
+        return thresh_arr, id_arr

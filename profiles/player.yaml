@@ -3,25 +3,25 @@ profiles:
   DEFAULT:
     skin_profile: "DEV"
     profile_style: "DIRECT_VECTOR"
-    move_speed: 1.0
+    move_speed: 4.0
     turn_speed: 540.0
-    diameter_ratio: 4.0
+    diameter_ratio: 5.0
     min_spawn_speed: 0.1
 
   TANK:
     skin_profile: "DEV"
     profile_style: "TANK"
-    move_speed: 1.0
+    move_speed: 4.0
     turn_speed: 540.0
-    diameter_ratio: 4.0
+    diameter_ratio: 5.0
     min_spawn_speed: 0.1
 
   CAR:
     skin_profile: "DEV"
     profile_style: "CAR"
-    move_speed: 1.0
+    move_speed: 4.0
     turn_speed: 540.0
-    diameter_ratio: 4.0
+    diameter_ratio: 5.0
     min_spawn_speed: 0.1
 
 

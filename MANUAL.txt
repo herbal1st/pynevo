@@ -88,6 +88,11 @@ ACTIVE_ENDLESS_MAP_PROFILE    : Endless world profile key to load from
                                 algorithm and terrain strata layers).
                                 Metric: Profile ID string (str).
 
+ACTIVE_LIGHTING_PROFILE       : Active lighting profile key to load from
+                                profiles/lighting.yaml (defines day/night
+                                cycle duration, keyframes, and opacity).
+                                Metric: Profile ID string (str).
+
 
 [LIVE WINNER MODE DEFAULTS]
 -------------------------------------------------------------------------------

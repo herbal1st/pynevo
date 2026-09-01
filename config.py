@@ -25,7 +25,8 @@ ACTIVE_MAP_PROFILE: str = "DEFAULT"  # profile
 # ------ Active Endless Profile Selectors ------
 USE_ENDLESS_MODE: bool = True
 ACTIVE_PLAYER_PROFILE: str = "DEFAULT"  # profile
-ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX"  # profile
+ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX_MIXED"  # profile
+ACTIVE_LIGHTING_PROFILE: str = "DEFAULT"  # profile
 
 # ------ Live Winner Mode Defaults ------
 LIVE_RUNNER_MAX_STEPS: int = 1000  # steps

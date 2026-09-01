@@ -98,73 +98,78 @@ class ViewportTileRenderer:
         chunk_manager: ChunkManager,
         focus_x: float,
         focus_y: float,
-        tile_size_base: float = 50.0,
+        tile_size_base: float = 10.0,
         camera_zoom: Optional[float] = None
     ) -> float:
         """
-        Renders endless chunk manager tiles dynamically centered on focus.
+        Blits endless chunks using top-left anchor grid snapping.
         """
         rx, ry, rw, rh = rect
         zoom_val: float = (
             camera_zoom if camera_zoom is not None
             else self.skin_profile.camera_zoom
         )
-        tile_size: float = float(tile_size_base) * zoom_val
+        base_chunk_px: int = int(round(16 * tile_size_base))
+        scaled_chunk_px: int = int(round(base_chunk_px * zoom_val))
+
+        if scaled_chunk_px <= 0:
+            return tile_size_base * zoom_val
 
         center_px: float = float(rx) + (float(rw) / 2.0)
         center_py: float = float(ry) + (float(rh) / 2.0)
 
-        min_tile_x: int = math.floor(
-            focus_x - (float(rw) / (2.0 * tile_size))
+        c_size: float = float(ChunkManager.CHUNK_SIZE)
+        focus_cx: float = focus_x / c_size
+        focus_cy: float = focus_y / c_size
+
+        min_cx: int = math.floor(
+            focus_cx - (float(rw) / (2.0 * float(scaled_chunk_px)))
         )
-        max_tile_x: int = math.ceil(
-            focus_x + (float(rw) / (2.0 * tile_size))
+        max_cx: int = math.ceil(
+            focus_cx + (float(rw) / (2.0 * float(scaled_chunk_px)))
         )
-        min_tile_y: int = math.floor(
-            focus_y - (float(rh) / (2.0 * tile_size))
+        min_cy: int = math.floor(
+            focus_cy - (float(rh) / (2.0 * float(scaled_chunk_px)))
         )
-        max_tile_y: int = math.ceil(
-            focus_y + (float(rh) / (2.0 * tile_size))
+        max_cy: int = math.ceil(
+            focus_cy + (float(rh) / (2.0 * float(scaled_chunk_px)))
         )
 
-        for ty in range(min_tile_y, max_tile_y + 1):
-            for tx in range(min_tile_x, max_tile_x + 1):
-                t_x: int = int(
-                    round(center_px + (float(tx) - focus_x) * tile_size)
-                )
-                t_y: int = int(
-                    round(center_py + (float(ty) - focus_y) * tile_size)
-                )
-                t_rect = (t_x, t_y, int(tile_size) + 1, int(tile_size) + 1)
+        anchor_chk_x: int = int(
+            round(
+                center_px + (float(min_cx) - focus_cx) * scaled_chunk_px
+            )
+        )
+        anchor_chk_y: int = int(
+            round(
+                center_py + (float(min_cy) - focus_cy) * scaled_chunk_px
+            )
+        )
 
-                tile_id: int = chunk_manager.get_tile(tx, ty)
-                tile_prof = self.tile_registry.get_tile(tile_id)
+        is_scaled: bool = (scaled_chunk_px != base_chunk_px)
 
-                pygame.draw.rect(surface, tile_prof.color, t_rect)
+        for cy in range(min_cy, max_cy + 1):
+            rel_cy: int = cy - min_cy
+            chk_y: int = anchor_chk_y + (rel_cy * scaled_chunk_px)
 
-                if tile_prof.border_width_ratio > 0.0:
-                    b_px: int = max(
-                        1,
-                        int(
-                            tile_size *
-                            tile_prof.border_width_ratio *
-                            0.5
-                        )
-                    )
-                    inner_rect = (
-                        t_x + b_px,
-                        t_y + b_px,
-                        max(1, int(tile_size) + 1 - (2 * b_px)),
-                        max(1, int(tile_size) + 1 - (2 * b_px))
-                    )
-                    pygame.draw.rect(
-                        surface, tile_prof.border_color, t_rect
-                    )
-                    pygame.draw.rect(
-                        surface, tile_prof.color, inner_rect
-                    )
+            for cx in range(min_cx, max_cx + 1):
+                chunk = chunk_manager.get_chunk(cx, cy)
+                if chunk is None or chunk.surface is None:
+                    continue
 
-        return tile_size
+                rel_cx: int = cx - min_cx
+                chk_x: int = anchor_chk_x + (rel_cx * scaled_chunk_px)
+
+                if is_scaled:
+                    scaled_surf = pygame.transform.scale(
+                        chunk.surface,
+                        (scaled_chunk_px, scaled_chunk_px)
+                    )
+                    surface.blit(scaled_surf, (chk_x, chk_y))
+                else:
+                    surface.blit(chunk.surface, (chk_x, chk_y))
+
+        return tile_size_base * zoom_val
 
     def _draw_camera_centered_tiles(
         self,

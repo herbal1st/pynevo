@@ -26,6 +26,7 @@ from world.tile_registry import TileRegistry
 from world.chunk_manager import ChunkManager
 from world.spawn_solver import EndlessSpawnSolver
 from world.generation.endless_noise import EndlessNoiseGenerator
+from world.lighting.atmosphere_overlay import AtmosphereOverlayManager
 from visualization.viewports.native.tile_renderer import (
     ViewportTileRenderer
 )
@@ -121,17 +122,26 @@ class EndlessAppWindow:
             ViewportAvatarRenderer()
         )
 
+        p_lighting_name: str = getattr(
+            config, "ACTIVE_LIGHTING_PROFILE", "DEFAULT"
+        )
+        self.lighting_overlay: AtmosphereOverlayManager = (
+            AtmosphereOverlayManager(profile_name=p_lighting_name)
+        )
+
     def run(self) -> None:
         """
         Executes event loop and full-canvas endless world render cycle.
         """
         running: bool = True
         while running:
+            dt: float = float(self.clock.tick(config.FPS)) / 1000.0
+            self.lighting_overlay.update(dt)
+
             running = self._handle_events()
             self._draw_frame()
 
             pygame.display.flip()
-            self.clock.tick(config.FPS)
 
         pygame.quit()
 
@@ -199,7 +209,7 @@ class EndlessAppWindow:
 
     def _draw_frame(self) -> None:
         """
-        Renders endless tilemap and player avatar centered on virtual canvas.
+        Renders endless tilemap, avatar, & dynamic atmosphere overlay.
         """
         self.virtual_surface.fill(config.COLOR_BG)
 
@@ -278,6 +288,17 @@ class EndlessAppWindow:
             is_selected=False,
             ui_scale=1.0,
             active_step=0
+        )
+
+        self.lighting_overlay.draw_overlay(
+            self.virtual_surface,
+            self.endless_focus_x,
+            self.endless_focus_y,
+            vw_tiles,
+            vh_tiles,
+            self.chunk_manager,
+            self.endless_generator,
+            effective_tile_sz
         )
 
         scale, offset_x, offset_y = self._get_scale_and_offset()

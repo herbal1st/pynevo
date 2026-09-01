@@ -4,7 +4,6 @@ Spatial chunk manager managing memory, O(1) lookups & radial loading.
 
 import math
 from typing import Dict, Tuple, Optional, Any
-import numpy as np
 
 from world.tile_registry import TileRegistry
 from world.chunk import Chunk
@@ -89,47 +88,61 @@ class ChunkManager:
         generator: Any
     ) -> None:
         """
-        Synchronously loads chunks in R_load and purges beyond R_unload.
+        Synchronously loads chunks in circular R_load & purges R_unload.
         """
         center_tile_x: int = math.floor(center_x)
         center_tile_y: int = math.floor(center_y)
 
-        center_cx: int = math.floor(center_tile_x / self.CHUNK_SIZE)
-        center_cy: int = math.floor(center_tile_y / self.CHUNK_SIZE)
+        center_cx: float = float(center_tile_x) / float(self.CHUNK_SIZE)
+        center_cy: float = float(center_tile_y) / float(self.CHUNK_SIZE)
 
-        vis_chunks_x: int = math.ceil(viewport_w_tiles / self.CHUNK_SIZE)
-        vis_chunks_y: int = math.ceil(viewport_h_tiles / self.CHUNK_SIZE)
+        int_center_cx: int = math.floor(center_cx)
+        int_center_cy: int = math.floor(center_cy)
 
-        rad_load: int = max(
-            math.ceil(vis_chunks_x / 2.0),
-            math.ceil(vis_chunks_y / 2.0)
-        ) + 1  # safety zone
+        diag_tiles: float = math.sqrt(
+            (viewport_w_tiles ** 2) + (viewport_h_tiles ** 2)
+        )
+        rad_load_chunks: float = (
+            (diag_tiles / (2.0 * float(self.CHUNK_SIZE))) + 1.0
+        )
+        rad_unload_chunks: float = rad_load_chunks + 2.0
 
-        rad_unload: int = rad_load + 2  # hysteresis zone
+        r_load_sq: float = rad_load_chunks ** 2
+        r_unload_sq: float = rad_unload_chunks ** 2
 
-        # 1. Load missing chunks within R_load
-        for dy in range(-rad_load, rad_load + 1):
-            for dx in range(-rad_load, rad_load + 1):
-                target_cx: int = center_cx + dx
-                target_cy: int = center_cy + dy
-                coord_key: Tuple[int, int] = (target_cx, target_cy)
+        search_bound: int = math.ceil(rad_load_chunks)
 
-                if coord_key not in self.chunks:
-                    new_chunk: Chunk = generator.generate_chunk(
-                        target_cx,
-                        target_cy,
-                        self.world_seed,
-                        self.tile_registry
-                    )
-                    self.chunks[coord_key] = new_chunk
+        # 1. Load missing chunks within circular R_load
+        for dy in range(-search_bound, search_bound + 1):
+            for dx in range(-search_bound, search_bound + 1):
+                target_cx: int = int_center_cx + dx
+                target_cy: int = int_center_cy + dy
 
-        # 2. Unload distant chunks outside R_unload
+                dist_sq: float = (
+                    (float(target_cx) + 0.5 - center_cx) ** 2 +
+                    (float(target_cy) + 0.5 - center_cy) ** 2
+                )
+
+                if dist_sq <= r_load_sq:
+                    coord_key: Tuple[int, int] = (target_cx, target_cy)
+                    if coord_key not in self.chunks:
+                        new_chunk: Chunk = generator.generate_chunk(
+                            target_cx,
+                            target_cy,
+                            self.world_seed,
+                            self.tile_registry
+                        )
+                        self.chunks[coord_key] = new_chunk
+
+        # 2. Unload distant chunks outside circular R_unload
         for coord_key in list(self.chunks.keys()):
-            cx, cy = coord_key
-            dist_x: int = abs(cx - center_cx)
-            dist_y: int = abs(cy - center_cy)
+            cx_idx, cy_idx = coord_key
+            dist_sq = (
+                (float(cx_idx) + 0.5 - center_cx) ** 2 +
+                (float(cy_idx) + 0.5 - center_cy) ** 2
+            )
 
-            if max(dist_x, dist_y) > rad_unload:
+            if dist_sq > r_unload_sq:
                 del self.chunks[coord_key]
 
     def clear(self) -> None:

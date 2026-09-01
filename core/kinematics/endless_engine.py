@@ -15,6 +15,8 @@ class EndlessKinematics:
     Handles 2D entity movement physics and wall ejection in endless terrain.
     """
 
+    MAX_SUB_STEP_DIST: float = 0.20  # tiles limit
+
     @classmethod
     def apply_rotation(
         cls,
@@ -60,7 +62,7 @@ class EndlessKinematics:
         passes: int = 2
     ) -> Tuple[float, float, bool]:
         """
-        Calculates forward step scaled by terrain friction and resolves walls.
+        Calculates forward step scaled by friction with physics sub-stepping.
         """
         clamped_effort: float = max(-1.0, min(1.0, float(move_effort)))
         if abs(clamped_effort) < 1e-4:
@@ -78,20 +80,39 @@ class EndlessKinematics:
             0.0, float(center_tile_prof.speed_multiplier)
         )
 
-        step_dist: float = clamped_effort * base_move_speed * speed_mult
-        next_x: float = cx + (math.cos(heading_rad) * step_dist)
-        next_y: float = cy + (math.sin(heading_rad) * step_dist)
+        total_dist: float = clamped_effort * base_move_speed * speed_mult
+        if abs(total_dist) < 1e-5:
+            return cx, cy, False
 
-        resolved_x, resolved_y, hit = cls._resolve_circle_aabb(
-            next_x,
-            next_y,
-            diameter_ratio,
-            chunk_manager,
-            tile_registry,
-            generator,
-            passes=passes
+        num_sub_steps: int = max(
+            1, math.ceil(abs(total_dist) / cls.MAX_SUB_STEP_DIST)
         )
-        return resolved_x, resolved_y, hit
+        sub_dist: float = total_dist / float(num_sub_steps)
+
+        dx_sub: float = math.cos(heading_rad) * sub_dist  # tiles
+        dy_sub: float = math.sin(heading_rad) * sub_dist  # tiles
+
+        curr_x: float = cx  # tiles
+        curr_y: float = cy  # tiles
+        has_any_collision: bool = False
+
+        for _ in range(num_sub_steps):
+            curr_x += dx_sub
+            curr_y += dy_sub
+
+            curr_x, curr_y, hit = cls._resolve_circle_aabb(
+                curr_x,
+                curr_y,
+                diameter_ratio,
+                chunk_manager,
+                tile_registry,
+                generator,
+                passes=passes
+            )
+            if hit:
+                has_any_collision = True
+
+        return curr_x, curr_y, has_any_collision
 
     @classmethod
     def _resolve_circle_aabb(

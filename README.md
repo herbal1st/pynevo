@@ -15,44 +15,53 @@
 [1.0 SYSTEM OVERVIEW]
 -------------------------------------------------------------------------------
 Core Philosophy: Sovereign Compute, Matrix-Isolated, Zero-Dependency.
-Architecture   : PyNevo is a self-contained 2D neuroevolution
-                 simulation engine and infinite world visualizer built using
-                 vectorized NumPy matrix math, PyBiwis 64-bit integer bitmask
-                 map compression (packing 64 grid tiles into single 64-bit
-                 uint64 words, and 16x16 tile chunks into 4 uint64 words),
-                 spatial infinite chunking with hysteresis loading,
-                 deterministic multi-octave Simplex and classical Perlin noise
-                 terrain generation with data-driven strata layers, continuous
-                 Circle-to-AABB smooth wall physics with Minimum Translation
-                 Vector (MTV) tile ejection, Amanatides-Woo fast voxel grid
-                 traversal raycasting, pre-allocated contiguous sensor array
-                 caches, flexible steering kinematics (Car, Tank, and Direct
-                 Vector profiles), a data-driven profile library (profiles/),
-                 a configurable dual-mode 4-neuron motor actuation switch
-                 (Task-Space vs Direct Differential Wheels via
-                 use_linear_speed_output), physical turning tax (DMG-S)
+Architecture   : PyNevo is a self-contained 2D neuroevolution simulation
+                 engine and infinite world visualizer built using vectorized
+                 NumPy matrix math, PyBiwis 64-bit integer bitmask map
+                 compression (packing 64 grid tiles into single uint64 words,
+                 and 16x16 tile chunks into 4 uint64 words), pre-rendered
+                 hardware-formatted chunk surface caching (.convert()),
+                 spatial infinite chunking with Euclidean circular hysteresis
+                 loading, top-left anchor grid snapping for 100% seam-free
+                 rendering, fully vectorized multi-octave Simplex and
+                 classical Perlin noise terrain generation with fast array-
+                 threshold strata mapping (np.digitize), continuous Circle-
+                 to-AABB smooth wall physics with Minimum Translation Vector
+                 (MTV) tile ejection, physics sub-stepping for anti-tunneling
+                 at high velocities (EndlessKinematics), a 3-pass direct-canvas
+                 dynamic lighting and 3D hillshading pipeline featuring a
+                 360-degree counterclockwise solar orbit clock (DayNightClock),
+                 vectorized height field sampling (ViewportHeightSampler),
+                 Tile-Aware base-color additive highlights and mountain
+                 shadows (VectorizedHeightShadowEngine), multiplicative day/night
+                 ambient tinting (AmbientPaletteResolver), Amanatides-Woo fast
+                 voxel grid traversal raycasting, pre-allocated contiguous
+                 sensor array caches, flexible steering kinematics (Car, Tank,
+                 and Direct Vector profiles), a data-driven profile library
+                 (profiles/), a configurable dual-mode 4-neuron motor
+                 actuation switch (Task-Space vs Direct Differential Wheels
+                 via use_linear_speed_output), physical turning tax (DMG-S)
                  with strict zero-gating, dual-mode orientation compasses
                  (Focus and Peripheral North & Exit with optional Line-of-Sight
-                 wall gating), topological BFS GPS path progress sensors
-                 (Mono Progress vs Stereo Binocular Progress), a dual-metabolic
+                 wall gating), topological BFS GPS path progress sensors (Mono
+                 Progress vs Stereo Binocular Progress), a dual-metabolic
                  survival engine (Kinetic Move Heal & Invisible Topological
-                 Path Refuel), orthogonal cardinal spawn heading alignment,
-                 a multi-tile safe spawn solver (EndlessSpawnSolver),
-                 an endless kinematics physics engine (EndlessKinematics),
-                 a human player input controller (PlayerController),
-                 a decoupled Universal Entity Layer (EntityState, AgentState,
-                 and ViewportFrameState) supporting both AI companions and
-                 human players, and a dual Pygame visualizer pipeline
-                 featuring a 3x3 candidate replay window (AppWindow) and a
-                 dedicated full-canvas 1280x720 endless world window
-                 (EndlessAppWindow).
+                 Path Refuel), orthogonal cardinal spawn heading alignment, a
+                 multi-tile safe spawn solver (EndlessSpawnSolver), a human
+                 player input controller (PlayerController), a decoupled
+                 Universal Entity Layer (EntityState, AgentState, and
+                 ViewportFrameState) supporting both AI companions and human
+                 players, and a dual Pygame visualizer pipeline featuring a
+                 3x3 candidate replay window (AppWindow) and a dedicated
+                 full-canvas 1280x720 endless world window (EndlessAppWindow).
 Primary Goal   : Train autonomous 2D AI agents to navigate procedural
                  labyrinths and infinite terrain from randomized start tiles
                  to targets using a multi-ray visual fan, orientation
                  compasses, BFS GPS path progress triggers, rotation health
                  taxes, and a physical topological progress refuel loop, while
                  providing an extensible entity foundation for human-player
-                 and companion AI interactions.
+                 and companion AI interactions in living, atmospheric
+                 environments.
 Presentation   : Interactive Pygame visualizers featuring dual camera tracking
                  modes (Map-Centered and Camera-Centered) toggleable via
                  TAB or right-clicking viewports, skin-driven camera zoom
@@ -61,69 +70,102 @@ Presentation   : Interactive Pygame visualizers featuring dual camera tracking
                  global mouse wheel scrolling, ergonomic keyboard navigation
                  (Left/Right for frame scrubbing, Up/Down for generations or
                  saved brain cycling), active generation block outlines,
-                 8-directional candidate selection via Numpad keys, interactive
-                 candidate resample shortcut (R key), toggleable cheat-sheet
-                 overlays (H key or right-clicking panels), dedicated Live
-                 Winner Evaluation Mode (END key) with upfront pre-calculation
-                 and on-the-fly brain hot-swapping for testing trained agents
-                 on fresh infinite mazes, real-time WASD and Arrow key human
-                 player movement across endless spatial worlds
-                 (EndlessAppWindow), pre-rendered background surface caching,
-                 automatic 16:9 letterboxed screen projection, standardized
-                 [0, 1000] fitness scoring, rank-colored timeline tick
-                 markers, a dynamic inner shell status ring with a continuous
-                 Libra Balance Engine, gyroscopic counter-rotating blue exit
-                 arcs, non-blocking upper terminal score cards, real-time
-                 neural activation graph heatmaps driven by live network
-                 forward passes, and profile-agnostic entity avatar rendering.
+                 8-directional candidate selection via Numpad keys,
+                 interactive candidate resample shortcut (R key), toggleable
+                 cheat-sheet overlays (H key or right-clicking panels),
+                 dedicated Live Winner Evaluation Mode (END key) with upfront
+                 pre-calculation and on-the-fly brain hot-swapping for testing
+                 trained agents on fresh infinite mazes, real-time WASD and
+                 Arrow key human player movement across endless spatial
+                 worlds (EndlessAppWindow), pre-rendered background surface
+                 caching, automatic 16:9 letterboxed screen projection,
+                 standardized [0, 1000] fitness scoring, rank-colored
+                 timeline tick markers, a dynamic inner shell status ring
+                 with a continuous Libra Balance Engine, gyroscopic counter-
+                 rotating blue exit arcs, non-blocking upper terminal score
+                 cards, real-time neural activation graph heatmaps driven by
+                 live network forward passes, dynamic 3D relief terrain,
+                 rotating light and shadow fields, and profile-agnostic
+                 entity avatar rendering.
 
 [2.0 MEMORY, MAPS & PROCEDURAL GENERATION (PYBIWIS & STRATEGIES)]
 -------------------------------------------------------------------------------
-Grid Storage   : Rectangular tile grids represented internally as 2D
-                 integer matrix arrays. Bounded grid bounds and tile sizes
-                 are configured in profiles/map.yaml, while endless spatial
+Grid Storage   : Rectangular tile grids represented internally as 2D integer
+                 matrix arrays. Bounded grid bounds and tile sizes are
+                 configured in profiles/map.yaml, while endless spatial
                  worlds use profiles/map_endless.yaml.
-PyBiwis Chunks : Isolated in core/bitmask_encoder.py and world/chunk.py.
-                 Packs 64 grid tiles into single 64-bit unsigned integers
-                 (np.uint64). In endless mode, each 16x16 tile chunk (256
-                 tiles) is packed into exactly 4 64-bit integer words.
-                 Plain Explanation: Think of it like mapping 64 light switches
-                 to a single master number. This compresses level maps into
-                 tiny integer arrays, allowing register-speed binary lookups
-                 and lightweight memory snapshots without bit overflow.
+PyBiwis Chunks : Isolated in core/bitmask_encoder.py, world/bitmask_encoder.py,
+                 and world/chunk.py. Packs 64 grid tiles into single 64-bit
+                 unsigned integers (np.uint64). In endless mode, each 16x16
+                 tile chunk (256 tiles) is packed into exactly 4 64-bit integer
+                 words.
+                 Pre-Rendered Surface Caching: Each 16x16 chunk bakes its
+                 visual tiles and borders into a cached hardware-formatted
+                 image buffer (.convert()) upon creation. During rendering,
+                 the engine blits whole chunk images directly instead of
+                 drawing thousands of individual tile rectangles, reducing
+                 draw overhead by over 95%.
+                 Plain Explanation: Think of mapping 64 light switches to a
+                 single master number. This compresses level maps into tiny
+                 integer arrays for register-speed binary lookups. At the
+                 same time, painting the chunk once onto a reusable canvas
+                 lets the computer draw entire landscape sections in single
+                 fast image sweeps rather than drawing every tile one by one.
 Endless Chunking: Managed by world/chunk_manager.py. Uses a spatial dictionary
                  mapping chunk coordinates (cx, cy) to 16x16 tile chunks.
                  Tracks active camera focus and enforces a single-threaded
-                 radial loading loop with hysteresis:
-                 - Load Radius (R_load): Visually required chunks + 1 safety
-                   perimeter chunk loaded on-the-fly.
+                 Euclidean circular loading loop with hysteresis:
+                 - Load Radius (R_load): Calculated from the screen diagonal
+                   distance + 1 safety perimeter chunk.
                  - Unload Radius (R_unload): Chunks beyond R_load + 2 are
-                   purged from RAM to cap memory consumption and prevent
-                   memory thrashing when stepping back and forth across chunk
-                   seams.
-                 Plain Explanation: Imagine walking through a dark room with a
-                 moving lantern. Chunks just outside your view light up before
-                 you step into them, and chunks far behind you turn off to save
-                 energy and memory.
+                   purged from RAM to cap memory consumption (~7.5 MB RAM)
+                   and prevent memory thrashing when stepping back and forth
+                   across chunk seams.
+                 - Seam Trickle Capping: The circular perimeter prevents
+                   massive single-frame chunk bursts when moving diagonally,
+                   capping chunk load requests to a smooth trickle of 1 to 3
+                   chunks per step.
+                 Plain Explanation: Imagine walking through a dark landscape
+                 with a circular spotlight. Chunks just outside your screen
+                 diagonal light up before you step onto them, while distant
+                 chunks far behind you turn off to save memory. Using a
+                 round spotlight instead of a square box stops huge bursts
+                 of terrain from loading all at once when moving sideways.
+Anchor-Based Grid: Managed by visualization/viewports/native/tile_renderer.py.
+                 Locks viewport chunk projection to a single top-left anchor
+                 chunk (min_cx, min_cy) evaluated each frame. All visible
+                 chunks project from this anchor using whole-number tile
+                 offsets (anchor + offset * chunk_width).
+                 Plain Explanation: Floating-point camera coordinates can
+                 cause nearby chunks to round their pixel positions
+                 independently, leaving ugly 1-pixel black cracks (seams)
+                 between them. Anchoring the grid to the top-left chunk and
+                 placing every other chunk using exact integer steps snaps
+                 the entire world map together with zero gaps.
 Deterministic Noise: Managed by utils/noise.py and world/generation/
-                 endless_noise.py. Generates continuous 2D Simplex and classical
-                 Perlin noise fields seeded by world_seed. Simplex noise uses
-                 skewed triangular grids for fast multi-dimensional sampling,
-                 while classical Perlin noise evaluates gradient vectors at
-                 grid corners, smoothing transitions with a quintic curve
-                 6t^5 - 15t^4 + 10t^3. Multi-octave passes combine coarse
-                 terrain features with detailed surface textures.
-                 Data-Driven Strata: Noise values in [0.0, 1.0] are mapped
-                 to tile IDs via strata_layers thresholds defined in
+                 endless_noise.py. Generates continuous 2D Simplex and
+                 classical Perlin noise fields seeded by world_seed. Simplex
+                 noise uses skewed triangular grids for fast multi-
+                 dimensional sampling, while classical Perlin noise evaluates
+                 gradient vectors at grid corners using smooth quintic curves.
+                 Multi-octave passes combine coarse terrain features with
+                 detailed surface textures.
+                 Vectorized NumPy Math: Noise field sampling and strata layer
+                 classification run across entire 2D matrix arrays in
+                 parallel using C-speed NumPy math (np.digitize), eliminating
+                 scalar Python loops and accelerating generation by 10x-20x.
+                 Data-Driven Strata: Noise values in [0.0, 1.0] are mapped to
+                 tile IDs via strata_layers thresholds defined in
                  profiles/map_endless.yaml (e.g., Water ponds, Sand beaches,
                  Grass fields, Thicket bushes, Forest trees, Dirt trails,
                  Rock walls, Bedrock cores, and Snow peaks).
                  Plain Explanation: A mathematical algorithm generates smooth
-                 hills and valleys of numbers between 0 and 1. The engine checks
-                 the height of each tile: low spots become lakes or sand,
-                 medium spots become grass or trails, and high spots become
-                 solid rock walls or snow. Because the math uses a fixed seed,
-                 the world generates identically every time.
+                 hills and valleys of numbers between 0 and 1. The engine
+                 checks height thresholds in parallel to assign terrain
+                 types: low spots become lakes, medium spots become grass,
+                 and high spots become mountain rocks. Because the math uses
+                 a fixed seed and precise permutation hashing, the world
+                 generates identically every time.
 Safe Spawn Solver: Managed by world/spawn_solver.py (EndlessSpawnSolver).
                  Executes a 2D outward spiral search starting from target
                  coordinates (0, 0) to locate the nearest safe, non-solid,
@@ -135,11 +177,12 @@ Safe Spawn Solver: Managed by world/spawn_solver.py (EndlessSpawnSolver).
                  radius (R = 2.0 tiles) is non-solid and passable
                  (speed_multiplier >= min_spawn_speed), guaranteeing large
                  entities never spawn trapped inside solid rock or bedrock.
-                 Plain Explanation: When placing an entity in an endless world,
-                 the spawner checks the ground in an expanding circle. If the
-                 entity is small (0.5 tiles), it needs 1 walkable tile. If the
-                 entity is huge (4.0 tiles wide), it checks a 4x4 box of tiles
-                 to make sure no rock walls poke into its body when it appears.
+                 Plain Explanation: When placing an entity in an endless
+                 world, the spawner checks the ground in an expanding circle.
+                 If the entity is small (0.5 tiles), it needs 1 walkable tile.
+                 If the entity is huge (4.0 tiles wide), it checks a 4x4 box
+                 of tiles to make sure no rock walls poke into its body when
+                 it appears.
 Tile Registry  : Managed by world/tile_registry.py. Loads profiles/tiles.yaml
                  defining tile attributes (id, name, solid collision flag,
                  indestructible protection flag, speed_multiplier, base fill
@@ -147,11 +190,11 @@ Tile Registry  : Managed by world/tile_registry.py. Loads profiles/tiles.yaml
                  minimum outline safeguard).
 100% Solvability & Pocket Filling: All bounded procedural map generators
                  guarantee 100% floor connectivity using a post-generation
-                 floodfill pass. The system identifies all open floor regions,
-                 retains the largest main connected walking area, and
-                 automatically turns any isolated unreachable floor pockets
-                 into solid walls. This guarantees every generated bounded map
-                 is fully walkable without isolated dead-end traps.
+                 floodfill pass. The system identifies all open floor
+                 regions, retains the largest main connected walking area,
+                 and automatically turns any isolated unreachable floor
+                 pockets into solid walls. This guarantees every generated
+                 bounded map is fully walkable without isolated dead ends.
 Fail-Fast Pass : Map generation operates in a single pass. If a map fails to
                  meet floor count or BFS path difficulty bounds, the system
                  fails fast with an explicit CLI error message, preventing
@@ -160,9 +203,9 @@ Snake Corridor : Calculates maximum physically placeable wall capacity while
                  guaranteeing a continuous 1-tile-wide serpentine corridor:
                  Max = ((max_dim - 1) // 2) * min_dim - ((max_dim - 1) // 2)
                  where max_dim and min_dim are inner bounds (width - 2,
-                 height - 2). Capping wall counts to this capacity ensures that
-                 even at high density settings (e.g. 0.75), maps always retain
-                 at least ~50%+ open floor space to breathe.
+                 height - 2). Capping wall counts to this capacity ensures
+                 that even at high density settings (e.g. 0.75), maps always
+                 retain at least ~50%+ open floor space to breathe.
 BFS Distance   : Every generated bounded level builds an O(1) step-distance
                  matrix originating backwards from the exit tile to calculate
                  exact topological path distances and shortest-path turn
@@ -195,9 +238,9 @@ Map Strategies : Modularized under core/map_generation/ and world/generation/:
                    placements to guarantee an unbroken 1-tile outer ring
                    corridor around central wall pillars. Uses permanent
                    diagonal candidate discards to space out pillars cleanly.
-                   Optional N-anchor mode (e.g. PACMAN_25_ANCHOR) seeds up to N
-                   border stubs before clearing halo tiles for internal pillar
-                   growth.
+                   Optional N-anchor mode (e.g. PACMAN_25_ANCHOR) seeds up to
+                   N border stubs before clearing halo tiles for internal
+                   pillar growth.
                  - "ENDLESS_NOISE": Endless spatial world generator
                    (endless_noise.py). Evaluates multi-octave 2D Simplex/Perlin
                    noise fields across 16x16 chunk coordinate grids, mapping
@@ -221,24 +264,25 @@ Vision Fan     : Managed by perception/vision_arc.py. Casts probe rays
 Exit Lock Radar: Managed by perception/exit_compass.py. Computes goal
                  orientation signals using 5-point inset visibility (center +
                  4 inset corners) to eliminate corner signal flicker. Features
-                 an optional Line-of-Sight gating toggle (exit_compass_los_gating
-                 in profiles/agent.yaml). When gating is enabled (true), exit
-                 signals are hidden behind walls. When disabled (false), exit
-                 signals pass through solid walls, providing 360-degree spatial
-                 target awareness even when navigating dead ends or backing out
-                 of corridors. Always outputs 4 Focus/Peripheral eye channels
-                 (EFL, EFR, EPL, EPR) with Euclidean distance scaling across
-                 both modes. Eye offset angle is configured via
+                 an optional Line-of-Sight gating toggle
+                 (exit_compass_los_gating in profiles/agent.yaml). When
+                 gating is enabled (true), exit signals are hidden behind
+                 walls. When disabled (false), exit signals pass through
+                 solid walls, providing 360-degree spatial target awareness
+                 even when navigating dead ends or backing out of corridors.
+                 Always outputs 4 Focus/Peripheral eye channels (EFL, EFR,
+                 EPL, EPR) with Euclidean distance scaling across both modes.
+                 Eye offset angle is configured via
                  target_compasses_offset_angle.
                  Plain Explanation: Think of this like a target radar. When
                  gating is ON, walls block the signal like solid obstacles.
-                 When gating is OFF, it acts like a directional magnetic compass
-                 tuned directly to the exit coordinate even through walls.
+                 When gating is OFF, it acts like a directional magnetic
+                 compass tuned directly to the exit coordinate even through
+                 walls.
 North Compass  : Managed by perception/cardinal_compass.py. Computes world
-                 North alignment signals. Always outputs 4 Focus/Peripheral eye
-                 channels (NFL, NFR, NPL, NPR).
-                 Eye offset angle is configured via
-                 target_compasses_offset_angle.
+                 North alignment signals. Always outputs 4 Focus/Peripheral
+                 eye channels (NFL, NFR, NPL, NPR). Eye offset angle is
+                 configured via target_compasses_offset_angle.
 Cardinal Needles: Managed by perception/cardinal_compass.py. Computes four
                  view-facing 90-degree linear decay needle signals (C-N,
                  C-E, C-S, C-W) providing 4-way orthogonal grid alignment
@@ -276,8 +320,8 @@ BFS Path GPS   : Managed by perception/spatial_transformer.py. Computes
                  goal each step. Using two sensors (left and right) lets the
                  agent feel which way the path curves before it even turns.
 Proprioception : Tracks 6 core physical state channels in Layer 0:
-                 - SPD    : Continuous physical displacement speedometer ratio
-                            (delta d / move_speed in [0.0, 1.0]).
+                 - SPD    : Continuous physical displacement speedometer
+                            ratio (delta d / move_speed in [0.0, 1.0]).
                  - HP     : Overall health ratio (0.0 .. 1.0).
                  - DMG-C  : Wall collision impact pulse (1.0 or 0.0).
                  - DMG-I  : Stalling / idle damage pulse (1.0 or 0.0).
@@ -349,6 +393,10 @@ Data-Driven YAML: System configurations are decoupled into dedicated profile
                    color_body, color_text, color_vision_arc, color_vision_rays,
                    ASCII facial expressions, heading lines, status ring
                    rules, and solved arc graphics.
+                 - profiles/lighting.yaml : Defines environmental lighting
+                   profiles (day_cycle_duration, start_time_ratio,
+                   start_light_angle_deg, terrain_steepness, shadow_intensity,
+                   highlight_intensity, and ambient_keyframes lists).
                  - profiles/training.yaml : Defines genetic algorithm
                    hyperparameters, generation counts, population sizes, step
                    caps, mutation/elitism rates, and min/max path difficulty
@@ -366,11 +414,12 @@ Data-Driven YAML: System configurations are decoupled into dedicated profile
                    fill color, border_color, border_width_ratio).
 Master Selectors: Global config (config.py) contains active profile selectors
                  (ACTIVE_AGENT_PROFILE, ACTIVE_PLAYER_PROFILE,
-                 ACTIVE_TRAINING_PROFILE, ACTIVE_MAP_PROFILE, and
-                 ACTIVE_ENDLESS_MAP_PROFILE), master toggles (USE_ENDLESS_MODE),
-                 Live Mode defaults (LIVE_RUNNER_MAX_STEPS,
-                 LIVE_RUNNER_AUTO_RESET), UI layout bounds, safety limits
-                 (MAX_TEMP_CACHE_SIZE_MB), and theme colors.
+                 ACTIVE_LIGHTING_PROFILE, ACTIVE_TRAINING_PROFILE,
+                 ACTIVE_MAP_PROFILE, and ACTIVE_ENDLESS_MAP_PROFILE), master
+                 toggles (USE_ENDLESS_MODE), Live Mode defaults
+                 (LIVE_RUNNER_MAX_STEPS, LIVE_RUNNER_AUTO_RESET), UI layout
+                 bounds, safety limits (MAX_TEMP_CACHE_SIZE_MB), and theme
+                 colors.
 Fail-Fast      : Dedicated registry modules under entities/ and world/ parse
                  YAML files and validate required parameters at boot with clear
                  CLI error messages.
@@ -379,6 +428,10 @@ Player Registry: Managed by entities/player_profile_registry.py. Loads
                  (ResolvedPlayerProfile). Operates as an isolated registry,
                  ensuring zero coupling or interference with the MLP agent
                  neuroevolution pipelines.
+Lighting Registry: Managed by entities/lighting_profile_registry.py. Loads
+                 profiles/lighting.yaml and resolves immutable lighting
+                 profiles (ResolvedLightingProfile) governing time progression
+                 and terrain hillshading.
 Agent Factory  : entities/agent_factory.py instantiates neural networks,
                  spatial transformers, and kinematics engines dynamically
                  matching the active profile's input shape derived from
@@ -437,13 +490,25 @@ Kinematics     : Decoupled into core/kinematics/:
                  - endless_engine.py (EndlessKinematics): Universal physics
                    engine for infinite noise chunk terrain. Provides 2D
                    translation, steering mode math ("DIRECT_VECTOR", "TANK",
-                   "CAR"), terrain friction scaling, and Circle-to-AABB MTV
-                   wall collision ejection directly against ChunkManager.
+                   "CAR"), terrain friction scaling, physics sub-stepping
+                   anti-tunneling safeguards, and Circle-to-AABB MTV wall
+                   collision ejection directly against ChunkManager.
                  Plain Explanation: The kinematics engine acts like the laws of
                  physics. It calculates where an entity moves when pushed by
                  keys or a neural network, slows it down when walking in deep
                  water or mud, and pushes it smoothly out of rock walls so it
                  slides cleanly along corners instead of getting stuck.
+Physics Sub-Stepping: Managed by EndlessKinematics in core/kinematics/
+                 endless_engine.py. Prevents high-speed entities from slipping
+                 or tunneling through mountain walls. When movement step
+                 displacement exceeds MAX_SUB_STEP_DIST (0.20 tiles), the
+                 engine divides the frame step into smaller micro-steps (up
+                 to 20 sub-steps for high velocities).
+                 Plain Explanation: Imagine a fast player moving 4 tiles in a
+                 single frame tick. Instead of teleporting through a 2-tile
+                 thick rock wall in 1 jump, the engine checks collisions in
+                 tiny micro-steps (0.2 tiles each), guaranteeing the player
+                 hits the front face of the cliff cleanly and slides along it.
 Terrain Friction: Read directly from TileRegistry for the tile underneath the
                  entity's center (X, Y). Scales step distance dynamically:
                  Step Distance = move_effort * base_move_speed * speed_multiplier
@@ -499,6 +564,68 @@ Expressive UI  : entities/entity_express.py maps physical flags to custom
                  - face_wall (>_<) : Active wall impact collision.
                  - face_dead (X_X) : Depleted health state.
                  - face_exit (^_^) : Reached target exit tile.
+
+[5.1 DYNAMIC LIGHTING, 3D HILLSHADING & ATMOSPHERE PIPELINE]
+-------------------------------------------------------------------------------
+Architecture   : Isolated under world/lighting/. Implements a direct 3-pass
+                 screenwide atmosphere and 3D terrain relief engine that
+                 operates on the 1280x720 main canvas without altering or
+                 re-baking static 16x16 chunk surfaces.
+                 Plain Explanation: Instead of drawing shadows directly onto
+                 the ground graphics (which is slow), the world draws normally
+                 first. Then, light, shadows, and night colors are painted
+                 directly over the screen in fast, single-sweep passes.
+360° Solar Orbit: Managed by world/lighting/time_clock.py (DayNightClock).
+                 Tracks elapsed time and computes a continuous 360-degree
+                 counterclockwise solar light vector theta = start_light_angle
+                 - (2 * pi * normalized_time). 
+                 - Counterclockwise Trajectory: The sun rises in the East,
+                   travels across North, sets in the West, and loops smoothly
+                   through the night without directional snaps or jumps.
+                 - Static Relief Mode: Setting day_cycle_duration to 0.0
+                   freezes orbital rotation, locking the light source at
+                   start_light_angle_deg (e.g. 135° South-East) for classic,
+                   frozen 2D relief maps.
+Height Sampler : Managed by world/lighting/viewport_height_sampler.py
+                 (ViewportHeightSampler). Queries EndlessNoiseGenerator for
+                 the raw, continuous float noise field (0.0 to 1.0) of
+                 visible screen tiles plus a 1-tile safety perimeter. Uses
+                 C-speed 2D chunk slice array copies (zero Python loops) to
+                 sample 14,000+ screen tiles in ~0.02 milliseconds.
+                 Plain Explanation: To make mountain slopes look smooth, the
+                 light engine samples the underlying continuous height numbers
+                 of the landscape rather than flat tile blocks. This makes
+                 light and shadow flow naturally down entire mountain faces.
+Dual Hillshading: Managed by world/lighting/height_shadow_engine.py
+                 (VectorizedHeightShadowEngine). Calculates 2D spatial
+                 gradients (dH/dx, dH/dy) and computes the dot product
+                 S = dH . L against the active solar light vector:
+                 - Tile-Aware Additive Highlights (S > 0): Slopes facing the
+                   light source generate an additive highlight surface. In
+                   contrast to flat white overlays that wash out contrast,
+                   highlights query each tile's natural base RGB color from
+                   TileRegistry (grass glints sunny green, water glints cyan,
+                   sand glints gold, snow glints white). Blitted directly to
+                   the canvas using pygame.BLEND_ADD.
+                 - Subtractive Mountain Shadows (S < 0): Slopes facing away
+                   from the light source generate a dark alpha shadow mask,
+                   darkening valley floors and cliff backs.
+Multiplicative Tint: Managed by world/lighting/ambient_palette.py
+                 (AmbientPaletteResolver) and AtmosphereOverlayManager.
+                 Interpolates pure RGB color tuples across keyframes defined
+                 in profiles/lighting.yaml (e.g., [255, 255, 255] for Noon,
+                 [40, 50, 110] for Midnight Blue). Blits the ambient surface
+                 onto the viewport canvas using pygame.BLEND_MULT.
+                 Plain Explanation: Multiplicative blending behaves like
+                 real-world physics. Daylight white leaves terrain untouched,
+                 while night blue darkens the world while preserving 100% of
+                 the underlying grass, water, and rock texture details without
+                 creating a foggy, washed-out haze.
+The 3-Pass Sequence: Every frame executes in 3 distinct, un-choked steps:
+                 1. Pass 1: Draw base terrain chunks and entities (Player/AI).
+                 2. Pass 2A & 2B: Blit subtractive mountain shadows and
+                    Tile-Aware additive highlights directly onto the canvas.
+                 3. Pass 3: Blit time-of-day ambient color using BLEND_MULT.
 
 [6.0 ZERO-ALLOCATION TELEMETRY, CONTIGUOUS TENSORS & LIVE BRAIN REPLAY]
 -------------------------------------------------------------------------------
@@ -642,6 +769,7 @@ PyNevo/
 │   ├── agent.yaml                  # Agent kinematics, perception & neural
 │   ├── player.yaml                 # Human player steering, speed & skins
 │   ├── skin.yaml                   # Visual rendering skins, zoom & colors
+│   ├── lighting.yaml               # Environmental lighting & hillshading
 │   ├── training.yaml               # Genetic algorithm & training profiles
 │   ├── map.yaml                    # Bounded procedural map profiles
 │   ├── map_endless.yaml            # Endless noise world profiles
@@ -657,12 +785,18 @@ PyNevo/
 │
 ├── world/                          # Spatial World & Endless Engine
 │   ├── bitmask_encoder.py          # PyBiwis 64-bit uint64 chunk encoder
-│   ├── chunk.py                    # 16x16 tile chunk container & bitmask
-│   ├── chunk_manager.py            # Spatial chunk manager & radial loader
+│   ├── chunk.py                    # 16x16 chunk container & surface cache
+│   ├── chunk_manager.py            # Spatial chunk manager & circular loader
 │   ├── tile_registry.py            # O(1) tile property & color registry
 │   ├── spawn_solver.py             # Multi-tile safe spawn solver
-│   └── generation/                 # Endless Procedural Generation
-│       └── endless_noise.py        # Multi-octave noise chunk generator
+│   ├── generation/                 # Endless Procedural Generation
+│   │   └── endless_noise.py        # Vectorized noise chunk generator
+│   └── lighting/                   # Dynamic Atmosphere & Hillshading
+│       ├── time_clock.py           # 360° counterclockwise orbital clock
+│       ├── ambient_palette.py      # RGB keyframe palette resolver
+│       ├── viewport_height_sampler.py # Vectorized float noise height sampler
+│       ├── height_shadow_engine.py # Tile-Aware additive highlights & shadows
+│       └── atmosphere_overlay.py   # Direct 3-pass canvas overlay manager
 │
 ├── core/                           # Physics & World Systems
 │   ├── bitmask_encoder.py          # PyBiwis 64-bit integer bitmask encoder
@@ -671,7 +805,7 @@ PyNevo/
 │   ├── kinematics/                 # Kinematics Subsystem
 │   │   ├── profiles.py             # Car and Tank steering profiles
 │   │   ├── engine.py               # Bounded candidate kinematics & MTV
-│   │   └── endless_engine.py       # Endless chunk kinematics & terrain friction
+│   │   └── endless_engine.py       # Endless kinematics & sub-stepping
 │   └── map_generation/             # Procedural Generation Package
 │       ├── base_strategy.py        # Abstract generator strategy interface
 │       ├── branching_walls.py      # Organic branching wall crawler facade
@@ -686,6 +820,7 @@ PyNevo/
 ├── entities/                       # Physical Entities & Factory
 │   ├── agent_profile_registry.py   # Agent profile registry facade
 │   ├── player_profile_registry.py  # Human player YAML profile registry
+│   ├── lighting_profile_registry.py# Lighting YAML profile registry
 │   ├── player_controller.py        # Human player input dispatcher
 │   ├── skin_profile_registry.py    # Visual Skin YAML profile registry
 │   ├── training_profile_registry.py# Training YAML profile registry
@@ -756,21 +891,4 @@ PyNevo/
     │   └── renderer.py             # Transport buttons & track renderer
     ├── viewport_grid.py            # Viewport grid coordinator facade
     └── viewports/                  # Modular Viewports Sub-Package
-        ├── adapter_interface.py    # IViewportAdapter abstract contract
-        ├── grid_layout.py          # Spatial R x C layout geometry & bounds
-        ├── candidate_mapper.py     # Stratified candidate slot mapper
-        ├── native_maze_viewport.py # Native 2D maze viewport facade
-        └── native/                 # Native Viewport Sub-Package
-            ├── state_resolver.py   # Telemetry row & physics delta resolver
-            ├── tile_renderer.py    # Map & camera centered tile renderer
-            ├── avatar_renderer.py  # Body sprite, face, ring & solved arcs
-            └── hud_overlay_renderer.py # Health bar, ID/score tags & cards
-
-
-===============================================================================
-[!] PYNEVO | SOVEREIGN NEUROEVOLUTION ENGINE
-===============================================================================
-Distributed under the PyNevo Source-Available End User License Agreement.
-Copyright (c) 2026 herbal1st. All Rights Reserved.
-Strictly for personal evaluation, education, private editing, and non-commercial
-research.
+        ├── adapt
