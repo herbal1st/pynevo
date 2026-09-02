@@ -49,16 +49,17 @@ class EndlessNoiseGenerator:
         tile_registry: TileRegistry
     ) -> Chunk:
         """
-        Generates 16x16 chunk grid at (cx, cy) using noise stratification.
+        Generates 16x16 chunk grid at (cx, cy) using 18x18 halo padding.
         """
-        wx_start: int = cx * self.CHUNK_SIZE
-        wy_start: int = cy * self.CHUNK_SIZE
+        wx_start: int = (cx * self.CHUNK_SIZE) - 1
+        wy_start: int = (cy * self.CHUNK_SIZE) - 1
+        padded_dim: int = self.CHUNK_SIZE + 2
 
         x_coords: NDArray[np.float32] = np.arange(
-            wx_start, wx_start + self.CHUNK_SIZE, dtype=np.float32
+            wx_start, wx_start + padded_dim, dtype=np.float32
         )
         y_coords: NDArray[np.float32] = np.arange(
-            wy_start, wy_start + self.CHUNK_SIZE, dtype=np.float32
+            wy_start, wy_start + padded_dim, dtype=np.float32
         )
 
         wx_grid, wy_grid = np.meshgrid(x_coords, y_coords)
@@ -76,14 +77,18 @@ class EndlessNoiseGenerator:
         )
         np.clip(indices, 0, len(self._id_arr) - 1, out=indices)
 
-        grid: NDArray[np.uint8] = self._id_arr[indices].astype(np.uint8)
+        padded_grid: NDArray[np.uint8] = self._id_arr[indices].astype(
+            np.uint8
+        )
+        inner_grid: NDArray[np.uint8] = padded_grid[1:17, 1:17].copy()
 
         return Chunk(
             cx,
             cy,
-            grid,
+            inner_grid,
             tile_registry,
-            tile_size=self.profile.tile_size
+            tile_size=self.profile.tile_size,
+            padded_grid=padded_grid
         )
 
     def _precache_strata(

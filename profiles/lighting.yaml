@@ -12,7 +12,7 @@ profiles:
       - [1.00, 255, 255, 255]  # day
 
   DEFAULT:
-    day_cycle_duration: 10.0
+    day_cycle_duration: 60.0
     start_time_ratio: 0.25
     start_light_angle_deg: 300.0
     terrain_steepness: 80.0
