@@ -4,12 +4,27 @@ profiles:
     map_type: "ENDLESS_NOISE"
     world_seed: 420
     noise_type: "SIMPLEX"
-    noise_scale: 60.0
+    noise_scale: 40.0
     octaves: 1
     octaves_decay: 0.8
-    tile_size: 5
+    tile_size: 50
     strata_layers:
-      - [1.00, "GRASS"]
+      - [0.10, "WATER_DEEP"]
+      - [0.13, "WATER"]
+      - [0.15, "WATER_SHALLOW"]
+      - [0.17, "SAND_WET"]
+      - [0.20, "SAND"]
+      - [0.24, "STEPPE_BORDERED"]
+      - [0.35, "GRASS"]
+      - [0.50, "THICKET"]
+      - [0.64, "FOREST"]
+      - [0.72, "FOREST_STONE_BORDERED"]
+      - [0.80, "BEDROCK"]
+      - [0.86, "ROCK"]
+      - [0.90, "SNOW_LOW"]
+      - [0.94, "SNOW_MID"]
+      - [0.96, "SNOW_HIGH"]
+      - [1.00, "SNOW_TOP"]
 
   SIMPLEX:
     map_type: "ENDLESS_NOISE"

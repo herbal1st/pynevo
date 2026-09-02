@@ -55,9 +55,6 @@ class VisionRenderer:
         """
         Renders semi-transparent vision arc cone, ray lines, & heading line.
         """
-        center_px: float = float(rx) + (float(rw) / 2.0)
-        center_py: float = float(ry) + (float(rh) / 2.0)
-
         rel_origin: Tuple[int, int] = (
             origin_pixel[0] - rx, origin_pixel[1] - ry
         )
@@ -73,17 +70,14 @@ class VisionRenderer:
             dist_tiles: float = (
                 (1.0 - wall_prox) * self.profile.vision_max_dist
             )
-            ex: float = cx + (math.cos(ray_angle) * dist_tiles)
-            ey: float = cy + (math.sin(ray_angle) * dist_tiles)
 
-            if is_camera_centered:
-                px_e: int = int(round(center_px + (ex - cx) * tile_size))
-                py_e: int = int(round(center_py + (ey - cy) * tile_size))
-            else:
-                px_e = int(rx + (ex * tile_size))
-                py_e = int(ry + (ey * tile_size))
+            dx_tiles: float = math.cos(ray_angle) * dist_tiles
+            dy_tiles: float = math.sin(ray_angle) * dist_tiles
 
-            rel_end: Tuple[int, int] = (px_e - rx, py_e - ry)
+            px_e: int = int(round(rel_origin[0] + (dx_tiles * tile_size)))
+            py_e: int = int(round(rel_origin[1] + (dy_tiles * tile_size)))
+
+            rel_end: Tuple[int, int] = (px_e, py_e)
             cone_points.append(rel_end)
             ray_endpoints.append(rel_end)
 

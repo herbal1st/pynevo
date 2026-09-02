@@ -1,11 +1,9 @@
 """
-Full-canvas endless visualizer window hosting human player.
+Full-canvas endless visualizer window hosting human player and companion AI.
 """
 
 import math
 import os
-import sys
-from typing import Tuple, Optional
 import pygame
 
 import config
@@ -27,6 +25,8 @@ from world.chunk_manager import ChunkManager
 from world.spawn_solver import EndlessSpawnSolver
 from world.generation.endless_noise import EndlessNoiseGenerator
 from world.lighting.atmosphere_overlay import AtmosphereOverlayManager
+from utils.font_manager import FontManager
+from visualization.companion_presenter import CompanionPresenter
 from visualization.viewports.native.tile_renderer import (
     ViewportTileRenderer
 )
@@ -45,7 +45,7 @@ class EndlessAppWindow:
 
     def __init__(self) -> None:
         """
-        Initializes Pygame, endless engine, safe spawn, & player controller.
+        Initializes Pygame, endless engine, safe spawn, & companion AI.
         """
         pygame.init()
 
@@ -114,6 +114,16 @@ class EndlessAppWindow:
             self.player_profile, spawn_x, spawn_y
         )
 
+        # Companion AI Presenter Delegation
+        self.companion_presenter: CompanionPresenter = CompanionPresenter(
+            spawn_x,
+            spawn_y,
+            self.player.heading,
+            self.chunk_manager,
+            self.tile_registry,
+            self.endless_generator
+        )
+
         self.endless_focus_x: float = spawn_x
         self.endless_focus_y: float = spawn_y
 
@@ -121,6 +131,7 @@ class EndlessAppWindow:
         self.avatar_renderer: ViewportAvatarRenderer = (
             ViewportAvatarRenderer()
         )
+        self.font_manager: FontManager = FontManager()
 
         p_lighting_name: str = getattr(
             config, "ACTIVE_LIGHTING_PROFILE", "DEFAULT"
@@ -139,6 +150,12 @@ class EndlessAppWindow:
             self.lighting_overlay.update(dt)
 
             running = self._handle_events()
+            self.companion_presenter.update(
+                self.player,
+                self.player_profile,
+                self.chunk_manager,
+                self.endless_generator
+            )
             self._draw_frame()
 
             pygame.display.flip()
@@ -159,7 +176,7 @@ class EndlessAppWindow:
         except pygame.error:
             pass
 
-    def _get_scale_and_offset(self) -> Tuple[float, int, int]:
+    def _get_scale_and_offset(self) -> tuple[float, int, int]:
         """
         Computes uniform scale factor and screen letterboxing offsets.
         """
@@ -209,11 +226,11 @@ class EndlessAppWindow:
 
     def _draw_frame(self) -> None:
         """
-        Renders endless tilemap, avatar, & dynamic atmosphere overlay.
+        Renders endless tilemap, avatars, atmosphere overlay, & FPS HUD.
         """
         self.virtual_surface.fill(config.COLOR_BG)
 
-        canvas_rect: Tuple[int, int, int, int] = (
+        canvas_rect: tuple[int, int, int, int] = (
             0, 0, config.VIRTUAL_WIDTH, config.VIRTUAL_HEIGHT
         )
         base_tile_sz: float = float(self.endless_profile.tile_size)
@@ -249,6 +266,7 @@ class EndlessAppWindow:
         center_px: int = config.VIRTUAL_WIDTH // 2
         center_py: int = config.VIRTUAL_HEIGHT // 2
 
+        # 1. Draw Player Avatar & Heading Indicator
         self._draw_player_heading_indicator(
             center_px, center_py, effective_tile_sz
         )
@@ -259,7 +277,7 @@ class EndlessAppWindow:
             else self.skin_profile.face_walk
         )
 
-        frame_state = ViewportFrameState(
+        player_frame_state = ViewportFrameState(
             cand_idx=0,
             frame_idx=0,
             x=self.player.x,
@@ -284,12 +302,26 @@ class EndlessAppWindow:
             self.virtual_surface,
             (center_px, center_py),
             effective_tile_sz,
-            frame_state,
+            player_frame_state,
             is_selected=False,
             ui_scale=1.0,
             active_step=0
         )
 
+        # 2. Draw Companion AI via Presenter
+        self.companion_presenter.draw(
+            self.virtual_surface,
+            self.endless_focus_x,
+            self.endless_focus_y,
+            center_px,
+            center_py,
+            effective_tile_sz,
+            self.player,
+            self.player_profile,
+            self.chunk_manager
+        )
+
+        # 3. Lighting Overlay & FPS Counter
         self.lighting_overlay.draw_overlay(
             self.virtual_surface,
             self.endless_focus_x,
@@ -300,6 +332,8 @@ class EndlessAppWindow:
             self.endless_generator,
             effective_tile_sz
         )
+
+        self._draw_fps_counter()
 
         scale, offset_x, offset_y = self._get_scale_and_offset()
 
@@ -344,3 +378,25 @@ class EndlessAppWindow:
             (hx, hy),
             self.skin_profile.heading_line_width
         )
+
+    def _draw_fps_counter(self) -> None:
+        """
+        Renders live FPS text overlay with a dark semi-transparent box.
+        """
+        if not getattr(config, "SHOW_FPS_COUNTER", True):
+            return
+
+        fps_val: float = self.clock.get_fps()
+        font = self.font_manager.get_font(14, bold=True)
+        fps_surf = font.render(
+            f"FPS: {fps_val:4.1f}", True, config.COLOR_START
+        )
+
+        w: int = fps_surf.get_width() + 12
+        h: int = fps_surf.get_height() + 8
+
+        bg_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+        bg_surf.fill((15, 15, 20, 200))
+
+        self.virtual_surface.blit(bg_surf, (8, 8))
+        self.virtual_surface.blit(fps_surf, (14, 12))

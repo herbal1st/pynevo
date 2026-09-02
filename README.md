@@ -54,11 +54,16 @@ Architecture   : PyNevo is a self-contained 2D neuroevolution simulation
                  alignment, a multi-tile safe spawn solver
                  (EndlessSpawnSolver), a human player input controller
                  (PlayerController), a decoupled Universal Entity Layer
-                 (EntityState, AgentState, and ViewportFrameState) supporting
-                 both AI companions and human players, and a dual Pygame
-                 visualizer pipeline featuring a 3x3 candidate replay window
-                 (AppWindow) and a dedicated full-canvas 1280x720 endless
-                 world window (EndlessAppWindow).
+                 (EntityState, AgentState, and ViewportFrameState), an
+                 Endless Adapter Facade subsystem (EndlessMapDataFacade
+                 and EndlessPathfinderFacade) enabling zero-modification
+                 neural perception re-use across dynamic target vectors, a
+                 decoupled Companion AI Layer (CompanionPresenter) driving
+                 real-time AI followers at configurable player offsets, and a
+                 dual Pygame visualizer pipeline featuring a 3x3 candidate
+                 replay window (AppWindow) and a full-canvas 1280x720 endless
+                 world window (EndlessAppWindow) with toggleable diagnostic
+                 overlays (SHOW_FPS_COUNTER and SHOW_TARGET_INDICATOR).
 Primary Goal   : Train autonomous 2D AI agents to navigate procedural
                  labyrinths and infinite terrain from randomized start tiles
                  to targets using a multi-ray visual fan, orientation
@@ -426,7 +431,8 @@ Data-Driven YAML: System configurations are decoupled into dedicated profile
                  - profiles/player.yaml   : Defines human player profiles
                    (DEFAULT, TANK, CAR), steering mechanics (DIRECT_VECTOR,
                    TANK, CAR), translation speed, turn speed, body
-                   diameter_ratio, min_spawn_speed, and skin profile binding.
+                   diameter_ratio, min_spawn_speed, companion_offset target
+                   coordinates [X, Y] in tiles, and skin profile binding.
                  - profiles/skin.yaml     : Defines avatar skins, camera_zoom,
                    color_body, color_text, color_vision_arc, color_vision_rays,
                    ASCII facial expressions, heading lines, status ring
@@ -456,14 +462,16 @@ Master Selectors: Global config (config.py) contains active profile selectors
                  ACTIVE_MAP_PROFILE, and ACTIVE_ENDLESS_MAP_PROFILE), master
                  toggles (USE_ENDLESS_MODE), Live Mode defaults
                  (LIVE_RUNNER_MAX_STEPS, LIVE_RUNNER_AUTO_RESET), UI layout
-                 bounds, safety limits (MAX_TEMP_CACHE_SIZE_MB), and theme
+                 bounds, safety limits (MAX_TEMP_CACHE_SIZE_MB), diagnostic
+                 toggles (SHOW_FPS_COUNTER, SHOW_TARGET_INDICATOR), and theme
                  colors.
 Fail-Fast      : Dedicated registry modules under entities/ and world/ parse
                  YAML files and validate required parameters at boot with clear
                  CLI error messages.
 Player Registry: Managed by entities/player_profile_registry.py. Loads
                  profiles/player.yaml and resolves immutable player profiles
-                 (ResolvedPlayerProfile). Operates as an isolated registry,
+                 (ResolvedPlayerProfile) including companion_offset target
+                 tracking rules. Operates as an isolated registry,
                  ensuring zero coupling or interference with the MLP agent
                  neuroevolution pipelines.
 Lighting Registry: Managed by entities/lighting_profile_registry.py. Loads
@@ -559,6 +567,29 @@ Player Controller: Managed by entities/player_controller.py (PlayerController).
                  steering style (DIRECT_VECTOR 8-directional, TANK in-place,
                  or CAR motion-scaled), delegating physical step execution
                  to EndlessKinematics.
+Companion AI   : Managed by visualization/companion_presenter.py
+                 (CompanionPresenter) and world/endless_facade.py. Enables AI
+                 agents to serve as real-time companion followers in Endless
+                 World Mode:
+                 - Dynamic Target Tracking: Computes dynamic target coordinates
+                   T(t) = P_player + Rotate(companion_offset, theta_p) on
+                   every frame tick, where companion_offset is configured in
+                   profiles/player.yaml.
+                 - Endless Adapter Facades: EndlessMapDataFacade and
+                   EndlessPathfinderFacade wrap ChunkManager and target T(t)
+                   into standard MapData and BFSPathfinder interfaces,
+                   allowing the AI's 20+ neural perception channels to
+                   operate on dynamic targets without modifying the core
+                   perception pipeline.
+                 - Target Vector Indicator: When SHOW_TARGET_INDICATOR is
+                   enabled in config.py, the presenter renders a thin vector
+                   line connecting the companion AI to a target marker ring
+                   at T(t), providing instant diagnostic visual feedback.
+                 Plain Explanation: Instead of giving the AI a fixed exit
+                 tile to find in a maze, the engine calculates a moving
+                 spot right behind the human player. The AI uses its existing
+                 sensory radar to chase this moving target, dodging hills and
+                 mountains while staying close to the player.
 Wall Physics   : Both kinematics engines execute robust Circle-to-AABB wall
                  collision checks with zero-distance AABB tile ejection.
                  Entities slide smoothly along walls and corners without
@@ -790,6 +821,8 @@ Endless World Human Player Controls (USE_ENDLESS_MODE = True):
   - Steering Mode: DIRECT_VECTOR (8-directional auto-facing), TANK (in-place
                    differential turning), or CAR (motion-scaled turning) as
                    configured in profiles/player.yaml.
+  - SHOW_FPS_COUNTER: Toggleable HUD box rendering live FPS in top-left corner.
+  - SHOW_TARGET_INDICATOR: Toggleable vector line and ring marker at T(t).
   - ESCAPE       : Exit Endless World Application.
 
 [8.0 COMPLETE MODULAR CODEBASE STRUCTURE]
@@ -825,6 +858,7 @@ PyNevo/
 │   ├── bitmask_encoder.py          # PyBiwis 64-bit uint64 chunk encoder
 │   ├── chunk.py                    # 16x16 chunk container & corner-smoothing
 │   ├── chunk_manager.py            # Spatial chunk manager & circular loader
+│   ├── endless_facade.py           # Adapter facades for endless perception
 │   ├── tile_registry.py            # O(1) tile property & color registry
 │   ├── spawn_solver.py             # Multi-tile safe spawn solver
 │   ├── generation/                 # Endless Procedural Generation
@@ -912,6 +946,7 @@ PyNevo/
     ├── map_renderer.py             # Static tilemap surface pre-renderer
     ├── camera_projection.py        # Viewport zoom & camera coordinate math
     ├── vision_renderer.py          # Vision fan & heading line renderer
+    ├── companion_presenter.py      # Companion AI state, target & rendering
     ├── help_overlay.py             # Interactive replay shortcut cheat-sheet
     ├── live_help_overlay.py        # Dedicated live solver cheat-sheet overlay
     ├── live_view_presenter.py      # Live winner view presenter

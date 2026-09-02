@@ -4,7 +4,7 @@ Parses profiles/player.yaml and resolves immutable player profiles.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import sys
 
 try:
@@ -26,6 +26,7 @@ class ResolvedPlayerProfile:
     turn_speed: float
     diameter_ratio: float
     min_spawn_speed: float = 0.1
+    companion_offset: Tuple[float, float] = (-2.0, 0.0)
 
     @property
     def radius_ratio(self) -> float:
@@ -129,6 +130,10 @@ class PlayerProfileRegistry:
         )
         min_sp: float = float(p_dict.get("min_spawn_speed", 0.1))
 
+        raw_offset = p_dict.get("companion_offset", [-2.0, 0.0])
+        off_x: float = float(raw_offset[0])
+        off_y: float = float(raw_offset[1])
+
         return ResolvedPlayerProfile(
             profile_name=p_name,
             skin_profile=skin_key,
@@ -136,7 +141,8 @@ class PlayerProfileRegistry:
             move_speed=move_sp,
             turn_speed=turn_sp,
             diameter_ratio=diam_ratio,
-            min_spawn_speed=min_sp
+            min_spawn_speed=min_sp,
+            companion_offset=(off_x, off_y)
         )
 
     def _get_required_val(

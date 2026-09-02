@@ -1,5 +1,14 @@
 profiles:
 
+  TEST:
+    skin_profile: "DEV"
+    profile_style: "DIRECT_VECTOR"
+    move_speed: 0.5
+    turn_speed: 540.0
+    diameter_ratio: 1.0
+    min_spawn_speed: 0.1
+    companion_offset: [2.0, 5.0]
+
   DEFAULT:
     skin_profile: "DEV"
     profile_style: "DIRECT_VECTOR"
@@ -7,6 +16,7 @@ profiles:
     turn_speed: 540.0
     diameter_ratio: 5.0
     min_spawn_speed: 0.1
+    companion_offset: [2.0, 5.0]
 
   TANK:
     skin_profile: "DEV"
@@ -15,6 +25,7 @@ profiles:
     turn_speed: 540.0
     diameter_ratio: 5.0
     min_spawn_speed: 0.1
+    companion_offset: [2.0, 5.0]
 
   CAR:
     skin_profile: "DEV"
@@ -23,6 +34,7 @@ profiles:
     turn_speed: 540.0
     diameter_ratio: 5.0
     min_spawn_speed: 0.1
+    companion_offset: [2.0, 5.0]
 
 
 # ============================================================================
@@ -35,4 +47,5 @@ profiles:
 # turn_speed:       Maximum rotational velocity scale (degrees/sec).
 # diameter_ratio:   Hit-box diameter scale relative to full tile width.
 # min_spawn_speed:  Minimum terrain speed multiplier required for safe spawn.
+# companion_offset: Follower target offset relative to player facing [X, Y] (tiles).
 # ============================================================================

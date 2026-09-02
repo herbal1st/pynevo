@@ -23,10 +23,14 @@ ACTIVE_TRAINING_PROFILE: str = "DEFAULT"  # profile
 ACTIVE_MAP_PROFILE: str = "DEFAULT"  # profile
 
 # ------ Active Endless Profile Selectors ------
-USE_ENDLESS_MODE: bool = True
+USE_ENDLESS_MODE: bool = True  # toggle
 ACTIVE_PLAYER_PROFILE: str = "DEFAULT"  # profile
 ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX_MIXED"  # profile
-ACTIVE_LIGHTING_PROFILE: str = "TEST"  # profile
+ACTIVE_LIGHTING_PROFILE: str = "DEFAULT"  # profile
+
+# ------ Endless Debug & Diagnostic Overlays ------
+SHOW_FPS_COUNTER: bool = True  # toggle
+SHOW_TARGET_INDICATOR: bool = True  # toggle
 
 # ------ Live Winner Mode Defaults ------
 LIVE_RUNNER_MAX_STEPS: int = 1000  # steps

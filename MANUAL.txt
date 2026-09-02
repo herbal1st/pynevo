@@ -1,12 +1,12 @@
- ____           __  __
-/\  _`\        /\ \/\ \
-\ \ \L\ \__  __\ \ `\\ \     __   __  __    ___
- \ \ ,__/\ \/\ \\ \ , ` \  /'__`\/\ \/\ \  / __`\
-  \ \ \/\ \ \_\ \\ \ \`\ \/\  __/\ \ \_/ |/\ \L\ \
-   \ \_\ \/`____ \\ \_\ \_\ \____\\ \___/ \ \____/
-    \/_/  `/___/> \\/_/\/_/\/____/ \/__/   \/___/
-             /\___/
-             \/__/
+ ____           __  __                                              
+/\  _`\        /\ \/\ \                                             
+\ \ \L\ \__  __\ \ `\\ \     __   __  __    ___                     
+ \ \ ,__/\ \/\ \\ \ , ` \  /'__`\/\ \/\ \  / __`\                   
+  \ \ \/\ \ \_\ \\ \ \`\ \/\  __/\ \ \_/ |/\ \L\ \                  
+   \ \_\ \/`____ \\ \_\ \_\ \____\\ \___/ \ \____/                  
+    \/_/  `/___/> \\/_/\/_/\/____/ \/__/   \/___/                   
+             /\___/                                                 
+             \/__/                                                  
 ===============================================================================
                      CONFIGURATION MANUAL & FIELD GUIDE
 ===============================================================================
@@ -92,6 +92,17 @@ ACTIVE_LIGHTING_PROFILE       : Active lighting profile key to load from
                                 profiles/lighting.yaml (defines day/night
                                 cycle duration, keyframes, and opacity).
                                 Metric: Profile ID string (str).
+
+
+[ENDLESS DEBUG & DIAGNOSTIC OVERLAYS]
+-------------------------------------------------------------------------------
+SHOW_FPS_COUNTER              : Displays a high-contrast FPS counter box in
+                                the top-left corner of the endless screen.
+                                Metric: Toggle boolean (bool).
+
+SHOW_TARGET_INDICATOR         : Displays a red vector line and ring marker
+                                connecting the companion AI to its target.
+                                Metric: Toggle boolean (bool).
 
 
 [LIVE WINNER MODE DEFAULTS]
