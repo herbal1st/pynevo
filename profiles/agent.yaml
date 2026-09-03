@@ -1,0 +1,48 @@
+# ==============================================================================
+# PyNevo - Autonomous Odometry & Side-LiDAR Blind Explorer
+# ==============================================================================
+
+profiles:
+  TANK_1:
+    skin_profile: "DEFAULT"
+
+    kinematics:
+      profile_style: "TANK"
+      use_linear_speed_output: false
+      move_speed: 0.20
+      turn_speed: 2400.0
+      agent_diameter_ratio: 0.35
+      health_coll_dmg_per_frame: 0.005
+      health_idle_dmg_per_frame: 0.008
+      health_spin_dmg_per_frame: 0.001
+      idle_damage_speed_threshold: 0.10
+      heal_speed_threshold: 0.80
+      move_heal_per_frame: 0.002
+      path_heal_per_frame: 0.000
+
+    perception:
+      vision_rays: 11                       # 7 forward rays + 2 side flank rays (-90° / +90°)
+      vision_arc_angle: 210.0
+      vision_max_dist: 7.0
+
+      # ALL BEACONS AND ORACLES DISABLED
+      activate_exit_compass: false
+      exit_compass_los_gating: true
+      range_exit_compass: 0.0
+      activate_gps_compass: false
+      use_binocular_gps_compasses: false
+      range_gps_compass: 0.0
+      use_bfs_spawn_heading: false
+
+      # IMU Magnetic Compass
+      activate_north_compass: true
+      activate_cardinal_compass: true
+
+      target_compasses_offset_angle: 22.5
+      focus_field_of_view: 180.0
+      periphere_field_of_view: 360.0
+
+    neural:
+      memory_frames: 2
+      hidden_layers: 2
+      neurons: 32                           # 32 neurons for spatial odometry integration

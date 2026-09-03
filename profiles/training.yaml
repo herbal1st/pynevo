@@ -1,0 +1,64 @@
+profiles:
+  DEFAULT:
+    population_size: 1024
+    elitism_ratio: 0.05
+    dist_to_time_bonus_ratio: 0.4
+    lost_hp_score_impact_ratio: 0.1
+
+    curriculum:
+      # Stage 1: Wall-Following Sprints
+      # Gate: Must achieve 100% DONE + at least 5 simultaneous exits for 3 rounds
+      - name: "STAGE 1: FAST WALL-FOLLOWING"
+        generations: 100
+        map_width: 18
+        map_height: 14
+        wall_density: 0.35
+        max_simulation_steps: 450
+        mutation_rate: 0.25
+        mutation_scale: 0.125
+        min_mandatory_generations: 40
+        consecutive_rounds_needed: 3
+        min_done_pct: 100
+        min_exits: 5
+        min_cntr_pct: 60
+        min_effc_pct: 70
+        min_pace_pct: 80
+        min_expl_pct: 15
+
+      # Stage 2: Rapid Backtracking & Branching
+      # Gate: Must achieve 100% DONE + at least 5 simultaneous exits + 75% Centering
+      - name: "STAGE 2: RAPID BACKTRACKING"
+        generations: 150
+        map_width: 26
+        map_height: 18
+        wall_density: 0.65
+        max_simulation_steps: 1500
+        mutation_rate: 0.20
+        mutation_scale: 0.100
+        min_mandatory_generations: 60
+        consecutive_rounds_needed: 3
+        min_done_pct: 100
+        min_exits: 5
+        min_cntr_pct: 75
+        min_effc_pct: 75
+        min_pace_pct: 85
+        min_expl_pct: 20
+
+      # Stage 3: Full 40x30 Labyrinth (6,000 Steps Runway for Deep Exploration!)
+      # Gate: Must achieve 100% DONE + at least 3 exits + 85% Centering on full maze
+      - name: "STAGE 3: FULL LABYRINTH"
+        generations: 200
+        map_width: 40
+        map_height: 30
+        wall_density: 1.00
+        max_simulation_steps: 6000           # Full 6,000 steps runway for complete exploration!
+        mutation_rate: 0.12
+        mutation_scale: 0.050
+        min_mandatory_generations: 100
+        consecutive_rounds_needed: 3
+        min_done_pct: 100
+        min_exits: 3
+        min_cntr_pct: 85
+        min_effc_pct: 75
+        min_pace_pct: 85
+        min_expl_pct: 25

@@ -1,0 +1,85 @@
+profiles:
+
+  DEFAULT:
+    map_type: "BRANCHING_WALLS"
+    map_width: 40
+    map_height: 30
+    tile_size: 50
+    wall_density: 1.0
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
+
+  EMPTY:
+    map_type: "BRANCHING_WALLS"
+    map_width: 40
+    map_height: 30
+    tile_size: 50
+    wall_density: 0.0
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
+
+  LARGE:
+    map_type: "BRANCHING_WALLS"
+    map_width: 60
+    map_height: 45
+    tile_size: 50
+    wall_density: 1.0
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
+
+  SMALL:
+    map_type: "BRANCHING_WALLS"
+    map_width: 20
+    map_height: 15
+    tile_size: 50
+    wall_density: 1.0
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
+
+  DEFAULT_ANCHOR:
+    map_type: "BRANCHING_WALLS_6_ANCHOR"
+    map_width: 40
+    map_height: 30
+    tile_size: 50
+    wall_density: 1.0
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
+
+  RANDOM:
+    map_type: "RANDOM"
+    map_width: 40
+    map_height: 30
+    tile_size: 50
+    wall_density: 0.65
+
+  PACMAN:
+    map_type: "PACMAN"
+    map_width: 40
+    map_height: 30
+    tile_size: 50
+    wall_density: 0.65
+
+  PACMAN_ANCHOR:
+    map_type: "PACMAN_25_ANCHOR"
+    map_width: 40
+    map_height: 30
+    tile_size: 50
+    wall_density: 0.65
+
+
+# ============================================================================
+# MAP PROFILE CONFIGURATION LEGEND
+# ============================================================================
+#
+# map_type:                   Procedural maze strategy ("BRANCHING_WALLS",
+#                             "BRANCHING_WALLS_[N]_ANCHOR", "RANDOM",
+#                             "PACMAN", "PACMAN_[N]_ANCHOR).
+# map_width:                  Total horizontal tile grid dimension (tiles).
+# map_height:                 Total vertical tile grid dimension (tiles).
+# tile_size:                  Rendered pixel size of an individual tile.
+# wall_density:               Target density ratio of placeable walls [0-1].
+# stem_early_termination_rate: Probability per step a growing wall stem stubs.
+#                             (BRANCHING_WALLS stem crawler strategies only.)
+# min_straight_start_steps:   Straight steps before a new stem makes 90° turns.
+#                             (BRANCHING_WALLS stem crawler strategies only.)
+# ============================================================================

@@ -1,0 +1,273 @@
+ ____           __  __                                              
+/\  _`\        /\ \/\ \                                             
+\ \ \L\ \__  __\ \ `\\ \     __   __  __    ___                     
+ \ \ ,__/\ \/\ \\ \ , ` \  /'__`\/\ \/\ \  / __`\                   
+  \ \ \/\ \ \_\ \\ \ \`\ \/\  __/\ \ \_/ |/\ \L\ \                  
+   \ \_\ \/`____ \\ \_\ \_\ \____\\ \___/ \ \____/                  
+    \/_/  `/___/> \\/_/\/_/\/____/ \/__/   \/___/                   
+             /\___/                                                 
+             \/__/                                                  
+===============================================================================
+                     CONFIGURATION MANUAL & FIELD GUIDE
+===============================================================================
+
+[DISPLAY & RESOLUTION SETTINGS]
+-------------------------------------------------------------------------------
+SCREEN_WIDTH                  : Horizontal pixel width of the window on your
+                                computer desktop screen.
+                                Metric: Pixels (int).
+
+SCREEN_HEIGHT                 : Vertical pixel height of the window on your
+                                computer desktop screen.
+                                Metric: Pixels (int).
+
+VIRTUAL_WIDTH                 : Internal base canvas width (1280). Graphics
+                                draw to this fixed canvas first, then scale
+                                cleanly to fit any monitor screen size.
+                                Metric: Pixels (int).
+
+VIRTUAL_HEIGHT                : Internal base canvas height (720). Graphics
+                                draw to this fixed canvas first, then scale
+                                cleanly to fit any monitor screen size.
+                                Metric: Pixels (int).
+
+FPS                           : Target frame rate cap controlling animation
+                                smoothness and simulation refresh speed.
+                                Metric: Hertz / Frames per second (int).
+
+USE_RESIZABLE_WINDOW          : Allows dragging desktop window borders while
+                                keeping proper 16:9 display proportions.
+                                Metric: Toggle boolean (bool).
+
+MAX_TEMP_CACHE_SIZE_MB        : Safety memory cap limiting temporary disk
+                                archive files (.npz) created during training.
+                                Metric: Megabytes (int).
+
+
+[MULTI-CANDIDATE VIEWPORT GRID]
+-------------------------------------------------------------------------------
+GRID_ROWS                     : Number of vertical rows in the multi-agent
+                                candidate replay grid (e.g. 3 rows).
+                                Metric: Count (int).
+
+GRID_COLS                     : Number of horizontal columns in the multi-
+                                agent candidate replay grid (e.g. 3 columns).
+                                Metric: Count (int).
+
+
+[ACTIVE PROFILE SELECTORS]
+-------------------------------------------------------------------------------
+ACTIVE_AGENT_PROFILE          : Agent profile key to load from profiles/
+                                agent.yaml (defines AI neural topology and
+                                driving physics rules).
+                                Metric: Profile ID string (str).
+
+ACTIVE_TRAINING_PROFILE       : Training profile key to load from profiles/
+                                training.yaml (defines evolutionary rules).
+                                Metric: Profile ID string (str).
+
+ACTIVE_MAP_PROFILE            : Level map profile key to load from profiles/
+                                map.yaml (defines procedural maze strategy).
+                                Metric: Profile ID string (str).
+
+
+[ACTIVE ENDLESS PROFILE SELECTORS]
+-------------------------------------------------------------------------------
+USE_ENDLESS_MODE              : Master toggle switching between bounded maze
+                                training/replay modes and the full-screen
+                                procedural infinite world.
+                                Metric: Toggle boolean (bool).
+
+ACTIVE_PLAYER_PROFILE         : Player profile key to load from profiles/
+                                player.yaml (defines human player steering,
+                                speed, diameter ratio, and visual skin).
+                                Metric: Profile ID string (str).
+
+ACTIVE_ENDLESS_MAP_PROFILE    : Endless world profile key to load from
+                                profiles/map_endless.yaml (defines noise
+                                algorithm and terrain strata layers).
+                                Metric: Profile ID string (str).
+
+ACTIVE_LIGHTING_PROFILE       : Active lighting profile key to load from
+                                profiles/lighting.yaml (defines day/night
+                                cycle duration, keyframes, and opacity).
+                                Metric: Profile ID string (str).
+
+
+[ENDLESS DEBUG & DIAGNOSTIC OVERLAYS]
+-------------------------------------------------------------------------------
+SHOW_FPS_COUNTER              : Displays a high-contrast FPS counter box in
+                                the top-left corner of the endless screen.
+                                Metric: Toggle boolean (bool).
+
+SHOW_TARGET_INDICATOR         : Displays a red vector line and ring marker
+                                connecting the companion AI to its target.
+                                Metric: Toggle boolean (bool).
+
+
+[LIVE WINNER MODE DEFAULTS]
+-------------------------------------------------------------------------------
+LIVE_RUNNER_MAX_STEPS         : Maximum step ticks allowed per live maze run.
+                                Runs compute upfront for timeline scrubbing.
+                                Metric: Step count (int).
+
+LIVE_RUNNER_AUTO_RESET        : Automatically generates a brand new maze
+                                when the live agent solves, dies, or times out.
+                                Metric: Toggle boolean (bool).
+
+
+[INTERACTIVE SCRUBBER & TIMELINE NAVIGATION]
+-------------------------------------------------------------------------------
+DEFAULT_PLAYBACK_SPEED        : Initial playback speed multiplier on boot.
+                                Speed steps linearly from 1/10x to 10x.
+                                Metric: Speed multiplier (float).
+
+TIMELINE_FRAME_JUMP_RATIO     : Step jump size ratio relative to total frames
+                                when pressing Left/Right arrow keys.
+                                Metric: Ratio [0.0 - 1.0] (float).
+
+TIMELINE_KEY_REPEAT_DELAY_MS  : Delay in milliseconds before a held arrow key
+                                starts repeating continuous steps.
+                                Metric: Milliseconds (int).
+
+TIMELINE_KEY_REPEAT_INTERVAL_MS: Interval in milliseconds between consecutive
+                                jumps while holding a navigation key.
+                                Metric: Milliseconds (int).
+
+TIMELINE_UNSELECTED_TICK_ALPHA: Opacity [0 - 255] for exit solve tick marks
+                                belonging to unselected viewport agents.
+                                Metric: Alpha opacity [0 - 255] (int).
+
+TIMELINE_BLOCK_GENERATION_BAR : Renders generation solver density as solid
+                                color-coded blocks instead of thin lines.
+                                Metric: Toggle boolean (bool).
+
+
+[GUI ELEMENT LAYOUT RECTANGLES]
+-------------------------------------------------------------------------------
+LAYOUT_GRID_RECT              : Screen bounding box (X, Y, Width, Height)
+                                allocated for the candidate viewport grid.
+                                Metric: Bounding rect tuple (int x 4).
+
+LAYOUT_PANEL_RECT             : Screen bounding box (X, Y, Width, Height)
+                                allocated for the top-right telemetry HUD.
+                                Metric: Bounding rect tuple (int x 4).
+
+LAYOUT_GRAPH_RECT             : Screen bounding box (X, Y, Width, Height)
+                                allocated for neural heatmaps & help overlay.
+                                Metric: Bounding rect tuple (int x 4).
+
+LAYOUT_SCRUBBER_RECT          : Screen bounding box (X, Y, Width, Height)
+                                allocated for transport scrubber controls.
+                                Metric: Bounding rect tuple (int x 4).
+
+
+[HUD TYPOGRAPHY & ELEMENT SIZING]
+-------------------------------------------------------------------------------
+HUD_PANEL_TITLE_FONT_SIZE     : Font point size for telemetry panel headers.
+                                Metric: Font points (int).
+
+HUD_PANEL_BODY_FONT_SIZE      : Font point size for dashboard telemetry text.
+                                Metric: Font points (int).
+
+HUD_HELP_TITLE_FONT_SIZE      : Font point size for help cheat-sheet headers.
+                                Metric: Font points (int).
+
+HUD_HELP_BODY_FONT_SIZE       : Font point size for help cheat-sheet entries.
+                                Metric: Font points (int).
+
+HUD_SCRUBBER_BUTTON_HEIGHT    : Pixel height of transport scrubber buttons.
+                                Metric: Pixels (int).
+
+HUD_SCRUBBER_BUTTON_FONT_SIZE : Font point size for transport button labels.
+                                Metric: Font points (int).
+
+HUD_SCRUBBER_MARKER_FONT_SIZE : Font point size for scrubber position tags.
+                                Metric: Font points (int).
+
+HUD_SCRUBBER_BAR_HEIGHT       : Pixel height of timeline progress tracks.
+                                Metric: Pixels (int).
+
+HUD_SCRUBBER_MARKER_WIDTH     : Pixel width of scrubber handle markers.
+                                Metric: Pixels (int).
+
+HUD_SCRUBBER_MARKER_HEIGHT    : Pixel height of scrubber handle markers.
+                                Metric: Pixels (int).
+
+HUD_GRAPH_SPACING             : Pixel gap between node heatmap columns.
+                                Metric: Pixels (int).
+
+HUD_GRAPH_TEXT_SCALE          : Readability multiplier applied when fitting
+                                text labels into graph column slots.
+                                Metric: Ratio [1.0 - 2.0] (float).
+
+
+[VISUAL THEME & PALETTE COLORS]
+-------------------------------------------------------------------------------
+COLOR_BG                      : Background color for canvas and panel frames.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_WALL                    : Fill color for solid maze wall tiles.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_WALL_BORDER             : Border color for wall tiles and viewports.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_FLOOR                   : Fill color for open floor maze tiles.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_FLOOR_BORDER            : Border color for walkable grid lines.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_START                   : Highlight color for start tile and headers.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_EXIT                    : Highlight color for exit tile and solvers.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_VIEWPORT_HIGHLIGHT      : Color for selected candidate borders and
+                                active text label callouts.
+                                Metric: RGB color tuple (int, int, int).
+
+
+[HEALTH BAR & STATUS FRAME COLORS]
+-------------------------------------------------------------------------------
+COLOR_HEALTH_FULL             : Health bar color when stamina > 50%.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_HEALTH_MID              : Health bar color when stamina is 20%-50%.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_HEALTH_LOW              : Health bar color when stamina < 20%.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_FRAME_SOLVED            : Viewport border color for exit solvers.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_FRAME_DEAD              : Viewport border color for dead candidates.
+                                Metric: RGB color tuple (int, int, int).
+
+
+[HUD & ACTIVATION GRAPH COLORS]
+-------------------------------------------------------------------------------
+COLOR_NODE_INACTIVE           : Node heatmap color for zero activation.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_NODE_ACTIVE             : Node heatmap color for peak activation.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_TIMELINE_BAR            : Fill color for scrubber track backgrounds.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_MARKER                  : Color for timeline scrubber handle markers.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_BUTTON                  : Default background color for transport buttons.
+                                Metric: RGB color tuple (int, int, int).
+
+COLOR_BUTTON_ACTIVE           : Active background color for toggled buttons.
+                                Metric: RGB color tuple (int, int, int).
+
+===============================================================================
+[!] END OF MANUAL | MAINTAIN ALIGNMENT WITH MASTER SETTINGS AND PROFILE FILES
+===============================================================================

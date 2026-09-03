@@ -1,0 +1,396 @@
+profiles:
+
+  MUD:
+    id: 0
+    name: "MUD"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [70, 45, 25]
+    border_color: [70, 45, 25]
+    border_width_ratio: 0.0
+
+  WATER_DEEP:
+    id: 1
+    name: "WATER_DEEP"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.5
+    color: [10, 45, 120]
+    border_color: [10, 45, 120]
+    border_width_ratio: 0.0
+
+  WATER:
+    id: 2
+    name: "WATER"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.6
+    color: [30, 100, 200]
+    border_color: [20, 80, 175]
+    border_width_ratio: 0.0
+
+  WATER_SHALLOW:
+    id: 3
+    name: "WATER_SHALLOW"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.7
+    color: [60, 150, 225]
+    border_color: [45, 125, 200]
+    border_width_ratio: 0.0
+
+  SAND_WET:
+    id: 4
+    name: "SAND_WET"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.8
+    color: [170, 140, 95]
+    border_color: [150, 120, 80]
+    border_width_ratio: 0.0
+
+  SAND:
+    id: 5
+    name: "SAND"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.9
+    color: [220, 190, 130]
+    border_color: [200, 175, 115]
+    border_width_ratio: 0.0
+
+  STEPPE:
+    id: 6
+    name: "STEPPE"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.95
+    color: [105, 140, 55]
+    border_color: [175, 160, 90]
+    border_width_ratio: 0.0
+
+  GRASS:
+    id: 7
+    name: "GRASS"
+    solid: false
+    indestructible: false
+    speed_multiplier: 1.05
+    color: [75, 145, 55]
+    border_color: [65, 124, 40]
+    border_width_ratio: 0.0
+
+  THICKET:
+    id: 8
+    name: "THICKET"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.9
+    color: [40, 90, 10]
+    border_color: [55, 110, 20]
+    border_width_ratio: 0.0
+
+  FOREST:
+    id: 9
+    name: "FOREST"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.8
+    color: [30, 75, 5]
+    border_color: [40, 90, 10]
+    border_width_ratio: 0.0
+
+  FOREST_DARK:
+    id: 10
+    name: "FOREST_DARK"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.7
+    color: [20, 55, 5]
+    border_color: [20, 55, 10]
+    border_width_ratio: 0.0
+
+  BEDROCK:
+    id: 11
+    name: "BEDROCK"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [40, 40, 40]
+    border_color: [40, 40, 40]
+    border_width_ratio: 0.0
+
+  ROCK:
+    id: 12
+    name: "ROCK"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [70, 70, 70]
+    border_color: [70, 70, 70]
+    border_width_ratio: 0.0
+
+  SNOW_LOW:
+    id: 13
+    name: "SNOW_LOW"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [95, 105, 105]
+    border_color: [95, 105, 105]
+    border_width_ratio: 0.0
+
+  SNOW_MID:
+    id: 14
+    name: "SNOW_MID"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [140, 160, 155]
+    border_color: [125, 135, 140]
+    border_width_ratio: 0.0
+
+  SNOW_HIGH:
+    id: 15
+    name: "SNOW_HIGH"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [180, 200, 195]
+    border_color: [180, 200, 195]
+    border_width_ratio: 0.0
+
+  SNOW_TOP:
+    id: 16
+    name: "SNOW_TOP"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [245, 252, 250]
+    border_color: [245, 255, 250]
+    border_width_ratio: 0.0
+
+  MUD_BORDERED:
+    id: 20
+    name: "MUD_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [70, 45, 25]
+    border_color: [55, 35, 15]
+    border_width_ratio: 0.5
+
+  WATER_DEEP_BORDERED:
+    id: 21
+    name: "WATER_DEEP_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.5
+    color: [15, 60, 150]
+    border_color: [10, 45, 120]
+    border_width_ratio: 0.5
+
+  WATER_BORDERED:
+    id: 22
+    name: "WATER_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.6
+    color: [30, 100, 200]
+    border_color: [20, 80, 175]
+    border_width_ratio: 0.5
+
+  WATER_SHALLOW_BORDERED:
+    id: 23
+    name: "WATER_SHALLOW_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.7
+    color: [60, 150, 225]
+    border_color: [45, 125, 200]
+    border_width_ratio: 0.5
+
+  SAND_WET_BORDERED:
+    id: 24
+    name: "SAND_WET_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.8
+    color: [170, 140, 95]
+    border_color: [150, 120, 80]
+    border_width_ratio: 0.5
+
+  SAND_BORDERED:
+    id: 25
+    name: "SAND_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.9
+    color: [220, 190, 130]
+    border_color: [200, 175, 115]
+    border_width_ratio: 0.5
+
+  STEPPE_BORDERED:
+    id: 26
+    name: "STEPPE_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.95
+    color: [85, 140, 55]
+    border_color: [175, 160, 90]
+    border_width_ratio: 0.5
+
+  GRASS_BORDERED:
+    id: 27
+    name: "GRASS_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 1.0
+    color: [75, 145, 55]
+    border_color: [65, 124, 40]
+    border_width_ratio: 0.5
+
+  THICKET_BORDERED:
+    id: 28
+    name: "THICKET_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.9
+    color: [40, 90, 10]
+    border_color: [55, 110, 20]
+    border_width_ratio: 0.5
+
+  FOREST_BORDERED:
+    id: 29
+    name: "FOREST_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.8
+    color: [30, 75, 5]
+    border_color: [40, 90, 10]
+    border_width_ratio: 0.5
+
+  FOREST_STONE_BORDERED:
+    id: 30
+    name: "FOREST_STONE_BORDERED"
+    solid: false
+    indestructible: false
+    speed_multiplier: 0.7
+    color: [30, 75, 5]
+    border_color: [40, 40, 40]
+    border_width_ratio: 0.5
+
+  BEDROCK_BORDERED:
+    id: 31
+    name: "BEDROCK_BORDERED"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [70, 70, 70]
+    border_color: [40, 40, 40]
+    border_width_ratio: 0.75
+
+  ROCK_BORDERED:
+    id: 32
+    name: "ROCK_BORDERED"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [40, 40, 40]
+    border_color: [70, 70, 70]
+    border_width_ratio: 0.75
+
+  SNOW_LOW_BORDERED:
+    id: 33
+    name: "SNOW_LOW_BORDERED"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [70, 70, 70]
+    border_color: [95, 105, 105]
+    border_width_ratio: 0.75
+
+  SNOW_MID_BORDERED:
+    id: 34
+    name: "SNOW_MID_BORDERED"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [95, 105, 105]
+    border_color: [125, 135, 140]
+    border_width_ratio: 0.75
+
+  SNOW_HIGH_BORDERED:
+    id: 35
+    name: "SNOW_HIGH_BORDERED"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [125, 135, 140]
+    border_color: [175, 195, 190]
+    border_width_ratio: 0.75
+
+  SNOW_TOP_BORDERED:
+    id: 36
+    name: "SNOW_TOP_BORDERED"
+    solid: true
+    indestructible: true
+    speed_multiplier: 0.0
+    color: [225, 235, 230]
+    border_color: [245, 255, 250]
+    border_width_ratio: 0.75
+
+  FLOOR:
+    id: 50
+    name: "FLOOR"
+    solid: false
+    indestructible: false
+    speed_multiplier: 1.0
+    color: [45, 30, 65]
+    border_color: [35, 35, 45]
+    border_width_ratio: 0.0
+
+  WALL:
+    id: 51
+    name: "WALL"
+    solid: true
+    indestructible: false
+    speed_multiplier: 0.0
+    color: [45, 45, 55]
+    border_color: [70, 70, 85]
+    border_width_ratio: 0.0
+
+  START:
+    id: 100
+    name: "START"
+    solid: false
+    indestructible: true
+    speed_multiplier: 1.0
+    color: [40, 160, 220]
+    border_color: [80, 200, 255]
+    border_width_ratio: 0.0
+
+  EXIT:
+    id: 101
+    name: "EXIT"
+    solid: false
+    indestructible: true
+    speed_multiplier: 1.0
+    color: [50, 200, 100]
+    border_color: [100, 240, 150]
+    border_width_ratio: 0.0
+
+
+# ============================================================================
+# TILE LIBRARY CONFIGURATION LEGEND
+# ============================================================================
+#
+# id:                 Unique integer tile identifier index [0 - 255].
+# name:               Human-readable tile name string.
+# solid:              Collision toggle: true = blocks movement, false = open.
+# indestructible:     Protection toggle: true = immune to destruction.
+# speed_multiplier:   Kinematic surface speed ratio modifier (1.0 = normal).
+# color:              RGB fill color tuple [R, G, B] (0 - 255).
+# border_color:       RGB outline stroke color tuple [R, G, B] (0 - 255).
+# border_width_ratio: Normalized border inset ratio relative to tile size [0-1].
+# ============================================================================
