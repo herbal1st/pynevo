@@ -1,48 +1,207 @@
-# ==============================================================================
-# PyNevo - Autonomous Odometry & Side-LiDAR Blind Explorer
-# ==============================================================================
-
 profiles:
+
   TANK_1:
     skin_profile: "DEFAULT"
-
     kinematics:
       profile_style: "TANK"
-      use_linear_speed_output: false
-      move_speed: 0.20
-      turn_speed: 2400.0
-      agent_diameter_ratio: 0.35
+      use_linear_speed_output: true
+      move_speed: 0.25
+      endless_move_speed: 4.0
+      turn_speed: 1800.0
+      agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
       health_coll_dmg_per_frame: 0.005
-      health_idle_dmg_per_frame: 0.008
       health_spin_dmg_per_frame: 0.001
-      idle_damage_speed_threshold: 0.10
-      heal_speed_threshold: 0.80
-      move_heal_per_frame: 0.002
-      path_heal_per_frame: 0.000
-
+      idle_damage_speed_threshold: 0.2
+      health_idle_dmg_per_frame: 0.001
+      heal_speed_threshold: 0.8
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
     perception:
-      vision_rays: 11                       # 7 forward rays + 2 side flank rays (-90° / +90°)
+      vision_rays: 15
       vision_arc_angle: 210.0
-      vision_max_dist: 7.0
-
-      # ALL BEACONS AND ORACLES DISABLED
-      activate_exit_compass: false
-      exit_compass_los_gating: true
-      range_exit_compass: 0.0
-      activate_gps_compass: false
-      use_binocular_gps_compasses: false
-      range_gps_compass: 0.0
-      use_bfs_spawn_heading: false
-
-      # IMU Magnetic Compass
-      activate_north_compass: true
+      vision_max_dist: 2.0
+      use_bfs_spawn_heading: true
+      activate_gps_compass: true
+      use_binocular_gps_compasses: true
+      range_gps_compass: 1.0
       activate_cardinal_compass: true
-
-      target_compasses_offset_angle: 22.5
+      activate_north_compass: true
+      activate_exit_compass: true
+      exit_compass_los_gating: true
+      range_exit_compass: 40.0
+      target_compasses_offset_angle: 30.0
       focus_field_of_view: 180.0
       periphere_field_of_view: 360.0
-
     neural:
       memory_frames: 2
-      hidden_layers: 2
-      neurons: 32                           # 32 neurons for spatial odometry integration
+      hidden_layers: 3
+      neurons: 40
+
+  TANK_2:
+    skin_profile: "DEFAULT"
+    kinematics:
+      profile_style: "TANK"
+      use_linear_speed_output: true
+      move_speed: 0.25
+      endless_move_speed: 4.0
+      turn_speed: 1800.0
+      agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
+      health_coll_dmg_per_frame: 0.005
+      health_spin_dmg_per_frame: 0.001
+      idle_damage_speed_threshold: 0.2
+      health_idle_dmg_per_frame: 0.001
+      heal_speed_threshold: 0.8
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
+    perception:
+      vision_rays: 15
+      vision_arc_angle: 210.0
+      vision_max_dist: 2.0
+      use_bfs_spawn_heading: true
+      activate_gps_compass: true
+      use_binocular_gps_compasses: false
+      range_gps_compass: 1.0
+      activate_cardinal_compass: true
+      activate_north_compass: true
+      activate_exit_compass: true
+      exit_compass_los_gating: true
+      range_exit_compass: 40.0
+      target_compasses_offset_angle: 30.0
+      focus_field_of_view: 180.0
+      periphere_field_of_view: 360.0
+    neural:
+      memory_frames: 2
+      hidden_layers: 3
+      neurons: 40
+
+  CAR_1:
+    skin_profile: "DEFAULT"
+    kinematics:
+      profile_style: "CAR"
+      use_linear_speed_output: true
+      move_speed: 0.25
+      endless_move_speed: 4.0
+      turn_speed: 1800.0
+      agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
+      health_coll_dmg_per_frame: 0.005
+      health_spin_dmg_per_frame: 0.001
+      idle_damage_speed_threshold: 0.2
+      health_idle_dmg_per_frame: 0.001
+      heal_speed_threshold: 0.8
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
+    perception:
+      vision_rays: 15
+      vision_arc_angle: 210.0
+      vision_max_dist: 2.0
+      use_bfs_spawn_heading: true
+      activate_gps_compass: true
+      use_binocular_gps_compasses: true
+      range_gps_compass: 1.0
+      activate_cardinal_compass: true
+      activate_north_compass: true
+      activate_exit_compass: true
+      exit_compass_los_gating: true
+      range_exit_compass: 40.0
+      target_compasses_offset_angle: 30.0
+      focus_field_of_view: 180.0
+      periphere_field_of_view: 360.0
+    neural:
+      memory_frames: 2
+      hidden_layers: 3
+      neurons: 40
+
+  CAR_2:
+    skin_profile: "DEFAULT"
+    kinematics:
+      profile_style: "CAR"
+      use_linear_speed_output: true
+      move_speed: 0.25
+      endless_move_speed: 4.0
+      turn_speed: 1800.0
+      agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
+      health_coll_dmg_per_frame: 0.005
+      health_spin_dmg_per_frame: 0.001
+      idle_damage_speed_threshold: 0.2
+      health_idle_dmg_per_frame: 0.001
+      heal_speed_threshold: 0.8
+      move_heal_per_frame: 0.001
+      path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
+    perception:
+      vision_rays: 15
+      vision_arc_angle: 210.0
+      vision_max_dist: 2.0
+      use_bfs_spawn_heading: true
+      activate_gps_compass: true
+      use_binocular_gps_compasses: false
+      range_gps_compass: 1.0
+      activate_cardinal_compass: true
+      activate_north_compass: true
+      activate_exit_compass: true
+      exit_compass_los_gating: true
+      range_exit_compass: 40.0
+      target_compasses_offset_angle: 30.0
+      focus_field_of_view: 180.0
+      periphere_field_of_view: 360.0
+    neural:
+      memory_frames: 2
+      hidden_layers: 3
+      neurons: 40
+
+
+# ============================================================================
+# AGENT LIBRARY CONFIGURATION LEGEND
+# ============================================================================
+#
+# KINEMATICS (Driving Physics & Damage Rates):
+# profile_style:              Driving steering mode ("TANK" or "CAR").
+# use_linear_speed_output:     Toggle: true = Task-Space, false = Direct.
+# move_speed:                 Maximum forward velocity in maze mode.
+# endless_move_speed:         Maximum forward velocity in endless mode.
+# turn_speed:                 Maximum rotational velocity (degrees/sec).
+# agent_diameter_ratio:       Hit-box diameter ratio in bounded maze mode.
+# endless_agent_diameter_ratio: Hit-box diameter ratio in endless mode.
+# target_hold_distance_threshold: Distance radius (tiles) to hold target.
+# target_hold_heal_per_frame: Stamina restored per frame in target hold zone.
+# health_coll_dmg_per_frame:  Health damage deducted per collision frame.
+# health_spin_dmg_per_frame:  Health damage deducted per physical spin frame.
+# idle_damage_speed_threshold: Speed ratio threshold for idle damage.
+# health_idle_dmg_per_frame:  Health damage deducted per stationary frame.
+# heal_speed_threshold:       Speed ratio threshold for kinetic heal.
+# move_heal_per_frame:        Health restored per frame during high speed.
+# path_heal_per_frame:        Health restored per frame during path progress.
+#
+# PERCEPTION (Sensory Range & Orientation Toggles):
+# vision_rays:                Number of probe rays cast across vision fan.
+# vision_arc_angle:           Field of view angle spread in degrees.
+# vision_max_dist:            Maximum ray reach distance in tiles.
+# use_bfs_spawn_heading:      Toggle BFS aligned or random spawn heading.
+# activate_gps_compass:       Master toggle for GPS path progress triggers.
+# use_binocular_gps_compasses: Toggle: true = Stereo (4ch), false = Mono (2ch).
+# range_gps_compass:          Ratio threshold [0.0-1.0] for GPS triggers.
+# activate_cardinal_compass:  Toggle for 4-needle compass (C-N,C-E,C-S,C-W).
+# activate_north_compass:     Master toggle for North compass (N_L/N_R).
+# activate_exit_compass:      Master toggle for Exit compass (TG-L/TG-R).
+# exit_compass_los_gating:    Toggle LOS wall blocking for exit radar.
+# range_exit_compass:         Max effective distance for exit compass.
+# target_compasses_offset_angle: Stereo eye offset angle relative to heading.
+# focus_field_of_view:        Narrow focus eye FOV angle in degrees.
+# periphere_field_of_view:    Wide peripheral eye FOV angle in degrees.
+#
+# NEURAL (Multi-Layer Perceptron Topology):
+# memory_frames:              Stacked observation frame history count.
+# hidden_layers:              Number of dense hidden layers in network.
+# neurons:                    Number of artificial neurons per hidden layer.
+# ============================================================================

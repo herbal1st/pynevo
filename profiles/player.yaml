@@ -14,7 +14,7 @@ profiles:
     profile_style: "DIRECT_VECTOR"
     move_speed: 4.0
     turn_speed: 540.0
-    diameter_ratio: 5.0
+    diameter_ratio: 6.0
     min_spawn_speed: 0.1
     companion_offset: [2.0, 5.0]
 
@@ -23,7 +23,7 @@ profiles:
     profile_style: "TANK"
     move_speed: 4.0
     turn_speed: 540.0
-    diameter_ratio: 5.0
+    diameter_ratio: 6.0
     min_spawn_speed: 0.1
     companion_offset: [2.0, 5.0]
 
@@ -32,7 +32,7 @@ profiles:
     profile_style: "CAR"
     move_speed: 4.0
     turn_speed: 540.0
-    diameter_ratio: 5.0
+    diameter_ratio: 6.0
     min_spawn_speed: 0.1
     companion_offset: [2.0, 5.0]
 

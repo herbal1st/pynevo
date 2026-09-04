@@ -61,6 +61,7 @@ class LiveHelpOverlay:
             ("KEY", "LEFT / RIGHT", "Jump Frame (- / +)"),
             ("KEY", "UP / DOWN", "Cycle Saved Brains"),
             ("KEY", "R", "Regenerate Fresh Maze"),
+            ("KEY", "T", "Toggle Scrubber (R/C)"),
             ("HEADER", "CAMERA & VIEWPORT", ""),
             ("KEY", "TAB / R-CLICK", "Toggle Tracking Mode"),
             ("HEADER", "SIMULATION SPEED", ""),
@@ -83,7 +84,7 @@ class LiveHelpOverlay:
             if row_type == "HEADER":
                 curr_y += 4
                 hdr_surf = bold_body_font.render(
-                    f"-- {key_str} --", True, config.COLOR_PLAYER_HIGHLIGHT
+                    f"-- {key_str} --", True, config.COLOR_VIEWPORT_HIGHLIGHT
                 )
                 surface.blit(hdr_surf, (col1_x, curr_y))
                 curr_y += line_h

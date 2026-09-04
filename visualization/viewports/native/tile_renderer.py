@@ -55,6 +55,8 @@ class ViewportTileRenderer:
         rows: int,
         cols: int,
         camera_zoom: Optional[float] = None,
+        target_override: Optional[Tuple[int, int]] = None,
+        checkpoint_override: Optional[Tuple[int, int]] = None
     ) -> Tuple[float, Tuple[int, int]]:
         """
         Renders tile background and returns (tile_size, origin_pixel).
@@ -65,6 +67,15 @@ class ViewportTileRenderer:
             else self.skin_profile.camera_zoom
         )
 
+        active_target: Tuple[int, int] = (
+            target_override if target_override is not None
+            else map_data.exit_pos
+        )
+        active_checkpoint: Tuple[int, int] = (
+            checkpoint_override if checkpoint_override is not None
+            else map_data.start_pos
+        )
+
         if is_camera_centered:
             tile_size: float = (
                 float(self.map_profile.tile_size) * zoom_val
@@ -72,7 +83,8 @@ class ViewportTileRenderer:
             center_px: float = float(rx) + (float(rw) / 2.0)
             center_py: float = float(ry) + (float(rh) / 2.0)
             self._draw_camera_centered_tiles(
-                surface, rect, map_data, cx, cy, tile_size
+                surface, rect, map_data, cx, cy, tile_size,
+                active_target, active_checkpoint
             )
             origin_pixel = (int(round(center_px)), int(round(center_py)))
         else:
@@ -84,6 +96,27 @@ class ViewportTileRenderer:
                 map_data, gen_idx, rw, rh
             )
             surface.blit(bg_surf, (rx, ry))
+
+            # Paint active checkpoint tile (COLOR_START blue)
+            sx, sy = active_checkpoint
+            s_rect = (
+                int(rx + (sx * tile_size)),
+                int(ry + (sy * tile_size)),
+                int(tile_size) + 1,
+                int(tile_size) + 1
+            )
+            pygame.draw.rect(surface, config.COLOR_START, s_rect)
+
+            # Paint active target tile (COLOR_EXIT green)
+            tx, ty = active_target
+            t_rect = (
+                int(rx + (tx * tile_size)),
+                int(ry + (ty * tile_size)),
+                int(tile_size) + 1,
+                int(tile_size) + 1
+            )
+            pygame.draw.rect(surface, config.COLOR_EXIT, t_rect)
+
             origin_pixel = (
                 int(rx + (cx * tile_size)),
                 int(ry + (cy * tile_size)),
@@ -179,6 +212,8 @@ class ViewportTileRenderer:
         cx: float,
         cy: float,
         tile_size: float,
+        active_target: Tuple[int, int],
+        active_checkpoint: Tuple[int, int]
     ) -> None:
         """
         Renders visible tiles dynamically centered around focal position.
@@ -205,9 +240,9 @@ class ViewportTileRenderer:
                 ):
                     continue
 
-                if (x, y) == map_data.start_pos:
+                if (x, y) == active_checkpoint:
                     pygame.draw.rect(surface, config.COLOR_START, t_rect)
-                elif (x, y) == map_data.exit_pos:
+                elif (x, y) == active_target:
                     pygame.draw.rect(surface, config.COLOR_EXIT, t_rect)
                 elif map_data.is_wall(x, y):
                     pygame.draw.rect(surface, config.COLOR_WALL, t_rect)

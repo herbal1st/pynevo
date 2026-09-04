@@ -4,7 +4,7 @@ Extracts frame telemetry and derives physical candidate states.
 
 from dataclasses import dataclass
 import math
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple, List
 import numpy as np
 
 from entities.agent_profile_registry import (
@@ -40,6 +40,9 @@ class ViewportFrameState:
     score_val: int
     radius_ratio: float = 0.25
     skin: Optional[ResolvedSkinProfile] = None
+    target_pos: Tuple[int, int] = (0, 0)
+    checkpoint_pos: Tuple[int, int] = (0, 0)
+    stage_idx: int = 0
 
 
 class ViewportStateResolver:
@@ -116,6 +119,22 @@ class ViewportStateResolver:
         good_score: float = 1.0 if is_healing else 0.0
         net_delta: float = bad_score - good_score
 
+        t_seq = gen_data.get(
+            "target_sequence",
+            [gen_data.get("exit_pos", (0, 0))]
+        )
+        curr_stage, safe_target = self._resolve_active_target_for_step(
+            c_idx, f_idx, telemetry, t_seq
+        )
+
+        if curr_stage == 0:
+            checkpoint_target = gen_data.get("start_pos", (0, 0))
+        else:
+            prev_stage_idx: int = min(
+                curr_stage - 1, len(t_seq) - 1
+            )
+            checkpoint_target = t_seq[prev_stage_idx]
+
         return ViewportFrameState(
             cand_idx=c_idx,
             frame_idx=f_idx,
@@ -135,7 +154,59 @@ class ViewportStateResolver:
             score_val=score_val,
             radius_ratio=self.profile.agent_radius_ratio,
             skin=self.profile.skin,
+            target_pos=safe_target,
+            checkpoint_pos=checkpoint_target,
+            stage_idx=curr_stage
         )
+
+    def _resolve_active_target_for_step(
+        self,
+        cand_idx: int,
+        frame_idx: int,
+        telemetry: np.ndarray,
+        target_sequence: List[Tuple[int, int]]
+    ) -> Tuple[int, Tuple[int, int]]:
+        """
+        Calculates active target stage and coordinates for candidate step.
+        """
+        if not target_sequence:
+            return 0, (0, 0)
+
+        hold_thresh: float = (
+            self.profile.target_hold_distance_threshold
+            if self.profile is not None else 0.25
+        )
+        hold_thresh_sq: float = hold_thresh * hold_thresh
+        target_hold_frames: int = 15
+
+        curr_stage: int = 0
+        hold_count: int = 0
+
+        for s in range(frame_idx + 1):
+            if curr_stage >= len(target_sequence):
+                break
+
+            tx, ty = target_sequence[curr_stage]
+            tc_x: float = float(tx) + 0.5
+            tc_y: float = float(ty) + 0.5
+
+            cx: float = float(telemetry[s, cand_idx, 0])
+            cy: float = float(telemetry[s, cand_idx, 1])
+
+            dx: float = cx - tc_x
+            dy: float = cy - tc_y
+            dist_sq: float = (dx * dx) + (dy * dy)
+
+            if dist_sq <= hold_thresh_sq:
+                hold_count += 1
+                if hold_count >= target_hold_frames:
+                    curr_stage += 1
+                    hold_count = 0
+            else:
+                hold_count = 0
+
+        safe_stage: int = min(curr_stage, len(target_sequence) - 1)
+        return safe_stage, target_sequence[safe_stage]
 
     def _calculate_speed_ratio(
         self,

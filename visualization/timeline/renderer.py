@@ -24,9 +24,13 @@ class ScrubberRenderer:
 
     def __init__(self, font_manager: FontManager) -> None:
         """
-        Initializes track renderer with shared font manager.
+        Initializes track renderer and pre-computed solver index cache.
         """
         self.font_manager: FontManager = font_manager
+        self._solver_cache: Dict[
+            Tuple[int, str],
+            Tuple[int, List[Tuple[int, int]]]
+        ] = {}
 
     def draw_buttons(
         self,
@@ -34,7 +38,7 @@ class ScrubberRenderer:
         scrubber: "TimelineScrubber"
     ) -> None:
         """
-        Renders Play/Pause, Repeat Mode, and Speed transport buttons.
+        Renders Play/Pause, Repeat Mode, Speed, and Scrubber Mode buttons.
         """
         font_btn = self.font_manager.get_font(
             config.HUD_SCRUBBER_BUTTON_FONT_SIZE
@@ -79,6 +83,21 @@ class ScrubberRenderer:
         )
         surface.blit(
             sp_lbl, sp_lbl.get_rect(center=scrubber.btn_speed_rect.center)
+        )
+
+        m_color = (
+            config.COLOR_BUTTON_ACTIVE if scrubber.scrubber_mode == "C"
+            else config.COLOR_BUTTON
+        )
+        pygame.draw.rect(surface, m_color, scrubber.btn_mode_rect)
+        pygame.draw.rect(
+            surface, config.COLOR_WALL_BORDER, scrubber.btn_mode_rect, 1
+        )
+        m_lbl = font_btn.render(
+            scrubber.scrubber_mode, True, (255, 255, 255)
+        )
+        surface.blit(
+            m_lbl, m_lbl.get_rect(center=scrubber.btn_mode_rect.center)
         )
 
     def draw_tracks(
@@ -127,6 +146,62 @@ class ScrubberRenderer:
             total_frames, is_block_mode, font_marker
         )
 
+    def _get_generation_solver_data(
+        self,
+        g_data: Dict[str, Any],
+        is_solve_mode: bool,
+        target_hold_frames: int = 15
+    ) -> Tuple[int, List[Tuple[int, int]]]:
+        """
+        Pre-computes or retrieves cached solver count and step indices.
+        """
+        gen_idx: int = int(g_data.get("generation", 0))
+        mode_str: str = "C" if is_solve_mode else "R"
+        cache_key: Tuple[int, str] = (gen_idx, mode_str)
+
+        if cache_key in self._solver_cache:
+            return self._solver_cache[cache_key]
+
+        telemetry = g_data.get("telemetry", None)
+        solvers_info: List[Tuple[int, int]] = []
+        solve_cnt: int = 0
+
+        if telemetry is not None:
+            pop_s: int = int(telemetry.shape[1])
+            for c_idx in range(pop_s):
+                arr = telemetry[:, c_idx, 7]
+                if not is_solve_mode:
+                    match_indices = np.where(arr > 0.5)[0]
+                else:
+                    if len(arr) < target_hold_frames:
+                        match_indices = np.array([], dtype=int)
+                    else:
+                        conv = np.convolve(
+                            arr,
+                            np.ones(target_hold_frames, dtype=np.float32),
+                            mode="valid"
+                        )
+                        match_raw = np.where(
+                            conv >= float(target_hold_frames) - 0.01
+                        )[0]
+                        match_indices = match_raw + (target_hold_frames - 1)
+
+                if len(match_indices) > 0:
+                    solve_cnt += 1
+                    solvers_info.append((c_idx, int(match_indices[0])))
+        else:
+            c_list = g_data.get("candidate_frames", [])
+            for c_idx, cf in enumerate(c_list):
+                for step_idx, f_dict in enumerate(cf):
+                    if f_dict.get("reached_exit", False):
+                        solve_cnt += 1
+                        solvers_info.append((c_idx, step_idx))
+                        break
+
+        result = (solve_cnt, solvers_info)
+        self._solver_cache[cache_key] = result
+        return result
+
     def _draw_generation_track(
         self,
         surface: pygame.Surface,
@@ -140,17 +215,15 @@ class ScrubberRenderer:
         """
         Renders generation solver density blocks or lines with zero gaps.
         """
+        is_solve_mode: bool = (
+            getattr(scrubber, "scrubber_mode", "R") == "C"
+        )
         session_solver_counts: List[int] = []
+
         for g_data in gen_history:
-            telemetry = g_data.get("telemetry", None)
-            if telemetry is not None:
-                cnt = int(np.sum(telemetry[-1, :, 7] > 0.5))
-            else:
-                c_list = g_data.get("candidate_frames", [])
-                cnt = sum(
-                    1 for cf in c_list
-                    if cf and cf[-1].get("reached_exit", False)
-                )
+            cnt, _ = self._get_generation_solver_data(
+                g_data, is_solve_mode
+            )
             session_solver_counts.append(cnt)
 
         max_solvers: int = max(max(session_solver_counts, default=1), 1)
@@ -230,23 +303,13 @@ class ScrubberRenderer:
         """
         Renders rank-color-graded exit solve tick marks for active frame.
         """
+        is_solve_mode: bool = (
+            getattr(scrubber, "scrubber_mode", "R") == "C"
+        )
         active_g_data = gen_history[active_gen]
-        telemetry = active_g_data.get("telemetry", None)
-        solvers_info: List[Tuple[int, int]] = []
-
-        if telemetry is not None:
-            pop_s: int = telemetry.shape[1]
-            for c_idx in range(pop_s):
-                exit_indices = np.where(telemetry[:, c_idx, 7] > 0.5)[0]
-                if len(exit_indices) > 0:
-                    solvers_info.append((c_idx, int(exit_indices[0])))
-        else:
-            c_frames_list = active_g_data.get("candidate_frames", [])
-            for c_idx, cf in enumerate(c_frames_list):
-                for step_idx, f_dict in enumerate(cf):
-                    if f_dict.get("reached_exit", False):
-                        solvers_info.append((c_idx, step_idx))
-                        break
+        _, solvers_info = self._get_generation_solver_data(
+            active_g_data, is_solve_mode
+        )
 
         solvers_info.sort(key=lambda item: item[1])
         num_solvers: int = len(solvers_info)

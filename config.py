@@ -11,29 +11,29 @@ VIRTUAL_WIDTH: int = 1280  # pixels
 VIRTUAL_HEIGHT: int = 720  # pixels
 FPS: int = 60  # hertz
 USE_RESIZABLE_WINDOW: bool = True  # toggle
-MAX_TEMP_CACHE_SIZE_MB: int = 4000  # 4 GB cache buffer for 6,000-step sessions
+MAX_TEMP_CACHE_SIZE_MB: int = 500  # megabytes limit
 
 # ------ Multi-Candidate Viewport Grid ------
-GRID_ROWS: int = 1  # count
-GRID_COLS: int = 1  # count
+GRID_ROWS: int = 3  # count
+GRID_COLS: int = 3  # count
 
 # ------ Active Profile Selectors ------
 ACTIVE_AGENT_PROFILE: str = "TANK_1"  # profile
-ACTIVE_TRAINING_PROFILE: str = "DEFAULT"  # profile
-ACTIVE_MAP_PROFILE: str = "DEFAULT"  # profile
+ACTIVE_TRAINING_PROFILE: str = "TEST"  # profile
+ACTIVE_MAP_PROFILE: str = "TINY"  # profile
+
+# ------ Endless Settings & Debug Overlays ------
+USE_ENDLESS_MODE: bool = False  # toggle
+SHOW_TARGET_INDICATOR: bool = True  # toggle
+SHOW_FPS_COUNTER: bool = True  # toggle
 
 # ------ Active Endless Profile Selectors ------
-USE_ENDLESS_MODE: bool = False  # toggle
 ACTIVE_PLAYER_PROFILE: str = "DEFAULT"  # profile
 ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX_MIXED"  # profile
 ACTIVE_LIGHTING_PROFILE: str = "DEFAULT"  # profile
 
-# ------ Endless Debug & Diagnostic Overlays ------
-SHOW_FPS_COUNTER: bool = True  # toggle
-SHOW_TARGET_INDICATOR: bool = True  # toggle
-
 # ------ Live Winner Mode Defaults ------
-LIVE_RUNNER_MAX_STEPS: int = 6000  # 6,000 steps matching Stage 3 full exploration
+LIVE_RUNNER_MAX_STEPS: int = 1000  # steps
 LIVE_RUNNER_AUTO_RESET: bool = False  # toggle
 
 # ------ Interactive Scrubber & Playback Defaults ------
@@ -53,8 +53,8 @@ LAYOUT_SCRUBBER_RECT: Tuple[int, int, int, int] = (20, 650, 1240, 60)  # rect
 # ------ HUD Typography & Element Sizing ------
 HUD_PANEL_TITLE_FONT_SIZE: int = 18  # pt
 HUD_PANEL_BODY_FONT_SIZE: int = 15  # pt
-HUD_HELP_TITLE_FONT_SIZE: int = 18  # pt
-HUD_HELP_BODY_FONT_SIZE: int = 15  # pt
+HUD_HELP_TITLE_FONT_SIZE: int = 16  # pt
+HUD_HELP_BODY_FONT_SIZE: int = 14  # pt
 HUD_SCRUBBER_BUTTON_HEIGHT: int = 36  # pixels
 HUD_SCRUBBER_BUTTON_FONT_SIZE: int = 13  # pt
 HUD_SCRUBBER_MARKER_FONT_SIZE: int = 15  # pt

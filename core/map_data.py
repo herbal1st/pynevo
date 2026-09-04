@@ -3,15 +3,15 @@ Data structures for 2D map grids and compact PyBiwis bitmask encoding.
 """
 
 import math
+import random
 from typing import List, Tuple, Optional
-import numpy as np
 
 from core.bitmask_encoder import BitmaskEncoder
 
 
 class MapData:
     """
-    Stores 2D tile layout data with PyBiwis 64-bit bitmask packing and LOS cache.
+    Stores 2D tile layout data with PyBiwis 64-bit packing & target sequences.
     """
 
     def __init__(
@@ -22,7 +22,7 @@ class MapData:
         exit_pos: Tuple[int, int]
     ) -> None:
         """
-        Initializes map layout grids, entry/exit coordinates, and LOS cache.
+        Initializes map layout grids, entry/exit coordinates, and target pool.
         """
         self.width: int = width
         self.height: int = height
@@ -31,11 +31,47 @@ class MapData:
         self.grid: List[List[int]] = [
             [0 for _ in range(width)] for _ in range(height)
         ]
-        self.numpy_grid: np.ndarray = np.zeros(
-            (height, width), dtype=np.uint8
-        )
         self.bitmask_chunks: List[int] = []
         self.los_cache: Optional[List[List[bool]]] = None
+        self.target_sequence: List[Tuple[int, int]] = [exit_pos]
+
+    def get_target_pos(self, stage_idx: int) -> Tuple[int, int]:
+        """
+        Retrieves target coordinates for specified stage index.
+        """
+        if not self.target_sequence:
+            return self.exit_pos
+        if 0 <= stage_idx < len(self.target_sequence):
+            return self.target_sequence[stage_idx]
+        return self.target_sequence[-1]
+
+    def append_next_target(
+        self,
+        seed_offset: int = 0
+    ) -> Tuple[int, int]:
+        """
+        Appends a new solvable walkable target tile to target sequence.
+        """
+        if not self.target_sequence:
+            self.target_sequence = [self.exit_pos]
+
+        curr_target = self.target_sequence[-1]
+        open_tiles: List[Tuple[int, int]] = [
+            (x, y) for y in range(1, self.height - 1)
+            for x in range(1, self.width - 1)
+            if self.is_walkable(x, y) and (x, y) != curr_target
+        ]
+
+        if not open_tiles:
+            return curr_target
+
+        rng = random.Random(
+            self.width * 1000 + self.height * 100 + seed_offset
+            + len(self.target_sequence)
+        )
+        next_target = rng.choice(open_tiles)
+        self.target_sequence.append(next_target)
+        return next_target
 
     def set_wall(self, x: int, y: int, is_wall: bool = True) -> None:
         """
@@ -43,7 +79,6 @@ class MapData:
         """
         val: int = 1 if is_wall else 0
         self.grid[y][x] = val
-        self.numpy_grid[y, x] = np.uint8(val)
 
     def is_wall(self, x: int, y: int) -> bool:
         """
@@ -77,7 +112,6 @@ class MapData:
         BitmaskEncoder.decode_chunks_to_grid(
             chunks, self.grid, self.width, self.height
         )
-        self.numpy_grid = np.array(self.grid, dtype=np.uint8)
 
     def compute_exit_los_cache(self) -> None:
         """

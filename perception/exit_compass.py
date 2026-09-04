@@ -3,7 +3,7 @@ Stereo binocular target compass sensor with profile-driven bounds.
 """
 
 import math
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional
 
 from core.map_data import MapData
 from entities.agent_profile_registry import ResolvedAgentProfile
@@ -24,7 +24,8 @@ class ExitCompass:
         candidate_y: float,
         heading_rad: float,
         map_data: MapData,
-        profile: Optional[ResolvedAgentProfile] = None
+        profile: Optional[ResolvedAgentProfile] = None,
+        stage_idx: int = 0
     ) -> Tuple[float, float, float, float]:
         """
         Calculates Exit eye intensities [0.0, 1.0] across focus & periphere.
@@ -32,7 +33,11 @@ class ExitCompass:
         if profile is not None and not profile.activate_exit_compass:
             return 0.0, 0.0, 0.0, 0.0
 
-        ex_tile, ey_tile = map_data.exit_pos
+        if hasattr(map_data, "get_target_pos"):
+            ex_tile, ey_tile = map_data.get_target_pos(stage_idx)
+        else:
+            ex_tile, ey_tile = map_data.exit_pos
+
         ex_center: float = float(ex_tile) + 0.5
         ey_center: float = float(ey_tile) + 0.5
 

@@ -4,7 +4,6 @@ Candidate continuous movement physics and Circle-to-AABB wall collisions.
 
 import math
 from typing import Tuple, Optional
-import numpy as np
 
 import config
 from core.map_data import MapData
@@ -14,7 +13,6 @@ from core.kinematics.profiles import (
     TankProfile
 )
 from entities.map_profile_registry import MapProfileRegistry
-from core.accelerated import resolve_circle_aabb_jit
 
 
 class CandidateKinematics:
@@ -106,17 +104,79 @@ class CandidateKinematics:
         passes: int = 2
     ) -> Tuple[float, float, bool]:
         """
-        Resolves circle penetration against surrounding wall tile AABBs via Numba.
+        Resolves circle penetration against surrounding wall tile AABBs.
         """
-        if not hasattr(map_data, "numpy_grid") or map_data.numpy_grid is None:
-            map_data.numpy_grid = np.array(map_data.grid, dtype=np.uint8)
+        r: float = self.radius
+        has_collided: bool = False
 
-        return resolve_circle_aabb_jit(
-            px,
-            py,
-            self.radius,
-            map_data.numpy_grid,
-            map_data.width,
-            map_data.height,
-            passes
-        )
+        min_x: float = r
+        max_x: float = float(map_data.width) - r
+        min_y: float = r
+        max_y: float = float(map_data.height) - r
+
+        if px < min_x or px > max_x or py < min_y or py > max_y:
+            has_collided = True
+            px = max(min_x, min(max_x, px))
+            py = max(min_y, min(max_y, py))
+
+        for _ in range(passes):
+            min_tx: int = max(0, int(math.floor(px - r)))
+            max_tx: int = min(
+                map_data.width - 1, int(math.floor(px + r))
+            )
+            min_ty: int = max(0, int(math.floor(py - r)))
+            max_ty: int = min(
+                map_data.height - 1, int(math.floor(py + r))
+            )
+
+            for ty in range(min_ty, max_ty + 1):
+                for tx in range(min_tx, max_tx + 1):
+                    if not map_data.is_wall(tx, ty):
+                        continue
+
+                    cx: float = max(
+                        float(tx), min(px, float(tx) + 1.0)
+                    )
+                    cy: float = max(
+                        float(ty), min(py, float(ty) + 1.0)
+                    )
+
+                    dx: float = px - cx
+                    dy: float = py - cy
+                    dist_sq: float = (dx * dx) + (dy * dy)
+
+                    if dist_sq < (r * r):
+                        has_collided = True
+                        dist: float = math.sqrt(dist_sq)
+
+                        if dist > 1e-6:
+                            overlap: float = r - dist
+                            nx_dir: float = dx / dist
+                            ny_dir: float = dy / dist
+                            px += nx_dir * overlap
+                            py += ny_dir * overlap
+                        else:
+                            tile_cx: float = float(tx) + 0.5
+                            tile_cy: float = float(ty) + 0.5
+                            push_x: float = (
+                                1.0 if px >= tile_cx else -1.0
+                            )
+                            push_y: float = (
+                                1.0 if py >= tile_cy else -1.0
+                            )
+
+                            if abs(px - tile_cx) < abs(py - tile_cy):
+                                py = (
+                                    float(ty + 1) + r if push_y > 0.0
+                                    else float(ty) - r
+                                )
+                            else:
+                                px = (
+                                    float(tx + 1) + r if push_x > 0.0
+                                    else float(tx) - r
+                                )
+
+        px = max(min_x, min(max_x, px))
+        py = max(min_y, min(max_y, py))
+
+        return px, py, has_collided

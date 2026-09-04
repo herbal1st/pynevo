@@ -17,8 +17,12 @@ class ResolvedAgentProfile:
     profile_style: str
     use_linear_speed_output: bool
     move_speed: float
+    endless_move_speed: float
     turn_speed: float
     agent_diameter_ratio: float
+    endless_agent_diameter_ratio: float
+    target_hold_distance_threshold: float
+    target_hold_heal_per_frame: float
     health_coll_dmg_per_frame: float
     health_idle_dmg_per_frame: float
     health_spin_dmg_per_frame: float
@@ -65,6 +69,13 @@ class ResolvedAgentProfile:
         Returns true physical body radius ratio (0.5 * diameter).
         """
         return 0.5 * self.agent_diameter_ratio
+
+    @property
+    def endless_agent_radius_ratio(self) -> float:
+        """
+        Returns endless physical body radius ratio (0.5 * endless_diameter).
+        """
+        return 0.5 * self.endless_agent_diameter_ratio
 
     @property
     def activate_bfs_way(self) -> bool:

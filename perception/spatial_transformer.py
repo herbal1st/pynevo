@@ -108,7 +108,8 @@ class SpatialTransformer:
         is_collided: bool = False,
         is_idle: bool = False,
         is_healing: bool = False,
-        rot_ratio: float = 0.0
+        rot_ratio: float = 0.0,
+        stage_idx: int = 0
     ) -> NDArray[np.float32]:
         """
         Compiles single-frame base vector for active or historical step.
@@ -128,7 +129,8 @@ class SpatialTransformer:
             is_collided=is_collided,
             is_idle=is_idle,
             is_healing=is_healing,
-            rot_ratio=rot_ratio
+            rot_ratio=rot_ratio,
+            stage_idx=stage_idx
         )
 
     def compile_feature_vector(
@@ -144,7 +146,8 @@ class SpatialTransformer:
         is_collided: bool = False,
         is_idle: bool = False,
         is_healing: bool = False,
-        rot_ratio: float = 0.0
+        rot_ratio: float = 0.0,
+        stage_idx: int = 0
     ) -> NDArray[np.float32]:
         """
         Samples active frame and stacks past memory_frames observations.
@@ -161,7 +164,8 @@ class SpatialTransformer:
             is_collided=is_collided,
             is_idle=is_idle,
             is_healing=is_healing,
-            rot_ratio=rot_ratio
+            rot_ratio=rot_ratio,
+            stage_idx=stage_idx
         )
 
         mem_k: int = (

@@ -8,7 +8,6 @@ import numpy as np
 from numpy.typing import NDArray
 
 from core.map_data import MapData
-from core.accelerated import cast_single_ray_jit
 
 
 class VisionArcSampler:
@@ -68,17 +67,54 @@ class VisionArcSampler:
         map_data: MapData
     ) -> Tuple[float, float]:
         """
-        Amanatides-Woo fast grid traversal raycast to wall boundary via Numba.
+        Amanatides-Woo fast grid traversal raycast to wall boundary.
         """
-        if not hasattr(map_data, "numpy_grid") or map_data.numpy_grid is None:
-            map_data.numpy_grid = np.array(map_data.grid, dtype=np.uint8)
+        dir_x: float = math.cos(angle_rad)
+        dir_y: float = math.sin(angle_rad)
 
-        return cast_single_ray_jit(
-            ox,
-            oy,
-            angle_rad,
-            map_data.numpy_grid,
-            map_data.width,
-            map_data.height,
-            self.max_dist
-        )
+        eps: float = 1e-9
+        if abs(dir_x) < eps:
+            dir_x = eps if dir_x >= 0.0 else -eps
+        if abs(dir_y) < eps:
+            dir_y = eps if dir_y >= 0.0 else -eps
+
+        tx: int = int(math.floor(ox))
+        ty: int = int(math.floor(oy))
+
+        if map_data.is_wall(tx, ty):
+            return 1.0, 0.0
+
+        step_x: int = 1 if dir_x > 0.0 else -1
+        step_y: int = 1 if dir_y > 0.0 else -1
+
+        t_delta_x: float = abs(1.0 / dir_x)
+        t_delta_y: float = abs(1.0 / dir_y)
+
+        if dir_x > 0.0:
+            t_max_x: float = (float(tx + 1) - ox) * t_delta_x
+        else:
+            t_max_x = (ox - float(tx)) * t_delta_x
+
+        if dir_y > 0.0:
+            t_max_y: float = (float(ty + 1) - oy) * t_delta_y
+        else:
+            t_max_y = (oy - float(ty)) * t_delta_y
+
+        current_dist: float = 0.0
+
+        while current_dist < self.max_dist:
+            if t_max_x < t_max_y:
+                current_dist = t_max_x
+                t_max_x += t_delta_x
+                tx += step_x
+            else:
+                current_dist = t_max_y
+                t_max_y += t_delta_y
+                ty += step_y
+
+            if map_data.is_wall(tx, ty):
+                hit_dist: float = min(current_dist, self.max_dist)
+                wall_prox: float = 1.0 - (hit_dist / self.max_dist)
+                return max(0.0, float(wall_prox)), float(hit_dist)
+
+        return 0.0, float(self.max_dist)

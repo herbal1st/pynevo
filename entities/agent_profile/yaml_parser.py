@@ -120,6 +120,15 @@ class AgentProfileParser:
                 kin, "move_speed", "kinematics", p_name, file_name
             )
         )
+        endless_move_sp: float = float(
+            AgentProfileParser._get_required_val(
+                kin,
+                "endless_move_speed",
+                "kinematics",
+                p_name,
+                file_name
+            )
+        )
         turn_speed: float = float(
             AgentProfileParser._get_required_val(
                 kin, "turn_speed", "kinematics", p_name, file_name
@@ -128,6 +137,33 @@ class AgentProfileParser:
         diam_ratio: float = float(
             AgentProfileParser._get_required_val(
                 kin, "agent_diameter_ratio", "kinematics", p_name, file_name
+            )
+        )
+        endless_diam_ratio: float = float(
+            AgentProfileParser._get_required_val(
+                kin,
+                "endless_agent_diameter_ratio",
+                "kinematics",
+                p_name,
+                file_name
+            )
+        )
+        hold_dist_thresh: float = float(
+            AgentProfileParser._get_required_val(
+                kin,
+                "target_hold_distance_threshold",
+                "kinematics",
+                p_name,
+                file_name
+            )
+        )
+        hold_heal_rate: float = float(
+            AgentProfileParser._get_required_val(
+                kin,
+                "target_hold_heal_per_frame",
+                "kinematics",
+                p_name,
+                file_name
             )
         )
         coll_dmg: float = float(
@@ -285,8 +321,12 @@ class AgentProfileParser:
             profile_style=style,
             use_linear_speed_output=use_linear,
             move_speed=move_speed,
+            endless_move_speed=endless_move_sp,
             turn_speed=turn_speed,
             agent_diameter_ratio=diam_ratio,
+            endless_agent_diameter_ratio=endless_diam_ratio,
+            target_hold_distance_threshold=hold_dist_thresh,
+            target_hold_heal_per_frame=hold_heal_rate,
             health_coll_dmg_per_frame=coll_dmg,
             health_idle_dmg_per_frame=idle_dmg,
             health_spin_dmg_per_frame=spin_dmg,

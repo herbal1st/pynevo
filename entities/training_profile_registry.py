@@ -1,10 +1,10 @@
 """
-Parses profiles/training.yaml with programmable multi-metric curriculum mastery gates.
+Parses profiles/training.yaml and resolves immutable training profiles.
 """
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple, List
+from typing import Dict, Any, Optional
 import sys
 
 try:
@@ -14,46 +14,33 @@ except ImportError:
 
 
 @dataclass(frozen=True, slots=True)
-class CurriculumStage:
-    """
-    Specification for a curriculum stage with programmable multi-metric gate conditions.
-    """
-    name: str
-    generations: int
-    map_width: int
-    map_height: int
-    wall_density: float
-    max_simulation_steps: int
-    mutation_rate: float
-    mutation_scale: float
-    min_mandatory_generations: int
-    consecutive_rounds_needed: int
-    min_done_pct: int
-    min_exits: int
-    min_cntr_pct: int
-    min_effc_pct: int
-    min_pace_pct: int
-    min_expl_pct: int
-
-
-@dataclass(frozen=True, slots=True)
 class ResolvedTrainingProfile:
+    """
+    Immutable container holding training hyperparameters and GA settings.
+    """
+
     profile_name: str
     min_path_difficulty_ratio: float
     max_path_difficulty_ratio: float
     learning_generations: int
     population_size: int
     max_simulation_steps: int
+    target_hold_frames: int
     elitism_ratio: float
     mutation_rate: float
     mutation_scale: float
-    dist_to_time_bonus_ratio: float
     lost_hp_score_impact_ratio: float
-    curriculum: Tuple[CurriculumStage, ...]
 
 
 class TrainingProfileRegistry:
+    """
+    Parses profiles/training.yaml and provides training profile resolution.
+    """
+
     def __init__(self, library_path: Optional[Path] = None) -> None:
+        """
+        Initializes registry and loads training library from YAML.
+        """
         self._profiles: Dict[str, ResolvedTrainingProfile] = {}
         root_dir: Path = Path(__file__).resolve().parents[1]
         self.library_path: Path = library_path or (
@@ -62,6 +49,9 @@ class TrainingProfileRegistry:
         self.load_library()
 
     def get_profile(self, profile_name: str) -> ResolvedTrainingProfile:
+        """
+        Retrieves resolved training profile or fails fast with clear error.
+        """
         if profile_name not in self._profiles:
             print(
                 f"[Error] Training profile '{profile_name}' is not defined "
@@ -72,8 +62,21 @@ class TrainingProfileRegistry:
         return self._profiles[profile_name]
 
     def load_library(self) -> None:
+        """
+        Parses YAML configuration file and caches resolved training profiles.
+        """
         if not self.library_path.exists():
-            print(f"[Error] Training library YAML missing: {self.library_path}")
+            print(
+                f"[Error] Training library YAML file missing: "
+                f"{self.library_path}"
+            )
+            sys.exit(1)
+
+        if yaml is None:
+            print(
+                "[Error] PyYAML library is not installed. Please install "
+                "via 'pip install pyyaml'."
+            )
             sys.exit(1)
 
         try:
@@ -81,7 +84,9 @@ class TrainingProfileRegistry:
                 data = yaml.safe_load(f) or {}
                 raw_profiles: Dict[str, Any] = data.get("profiles", {})
         except Exception as e:
-            print(f"[Error] Failed to parse {self.library_path.name}: {e}")
+            print(
+                f"[Error] Failed to parse {self.library_path.name}: {e}"
+            )
             sys.exit(1)
 
         self._profiles.clear()
@@ -89,60 +94,107 @@ class TrainingProfileRegistry:
             resolved = self._parse_profile_dict(p_name, p_dict)
             self._profiles[p_name] = resolved
 
-    def _parse_profile_dict(self, p_name: str, p_dict: Dict[str, Any]) -> ResolvedTrainingProfile:
+    def _parse_profile_dict(
+        self,
+        p_name: str,
+        p_dict: Dict[str, Any]
+    ) -> ResolvedTrainingProfile:
+        """
+        Extracts hyperparameter fields and builds ResolvedTrainingProfile.
+        """
         file_name: str = self.library_path.name
 
-        pop_sz = int(p_dict.get("population_size", 1024))
-        elitism = float(p_dict.get("elitism_ratio", 0.05))
-        dist_bonus = float(p_dict.get("dist_to_time_bonus_ratio", 0.4))
-        hp_impact = float(p_dict.get("lost_hp_score_impact_ratio", 0.1))
+        raw_min_diff: float = float(
+            self._get_required_val(
+                p_dict, "min_path_difficulty_ratio", p_name, file_name
+            )
+        )
+        raw_max_diff: float = float(
+            self._get_required_val(
+                p_dict, "max_path_difficulty_ratio", p_name, file_name
+            )
+        )
 
-        raw_curriculum = p_dict.get("curriculum", [])
-        parsed_stages: List[CurriculumStage] = []
+        min_diff: float = max(0.0, min(1.0, raw_min_diff))
+        max_diff: float = max(0.0, min(1.0, raw_max_diff))
 
-        if raw_curriculum:
-            for s in raw_curriculum:
-                stage = CurriculumStage(
-                    name=str(s.get("name", "STAGE")),
-                    generations=int(s.get("generations", 50)),
-                    map_width=int(s.get("map_width", 24)),
-                    map_height=int(s.get("map_height", 18)),
-                    wall_density=float(s.get("wall_density", 0.5)),
-                    max_simulation_steps=int(s.get("max_simulation_steps", 2000)),
-                    mutation_rate=float(s.get("mutation_rate", 0.25)),
-                    mutation_scale=float(s.get("mutation_scale", 0.125)),
-                    min_mandatory_generations=int(s.get("min_mandatory_generations", 30)),
-                    consecutive_rounds_needed=int(s.get("consecutive_rounds_needed", 3)),
-                    min_done_pct=int(s.get("min_done_pct", 100)),
-                    min_exits=int(s.get("min_exits", 1)),
-                    min_cntr_pct=int(s.get("min_cntr_pct", 0)),
-                    min_effc_pct=int(s.get("min_effc_pct", 0)),
-                    min_pace_pct=int(s.get("min_pace_pct", 0)),
-                    min_expl_pct=int(s.get("min_expl_pct", 0))
-                )
-                parsed_stages.append(stage)
+        if min_diff > max_diff:
+            print(
+                f"[Error] Profile '{p_name}' in profiles/{file_name} has "
+                f"min_path_difficulty_ratio ({min_diff}) greater than "
+                f"max_path_difficulty_ratio ({max_diff})."
+            )
+            sys.exit(1)
 
-            total_gens = sum(st.generations for st in parsed_stages)
-            max_steps = max(st.max_simulation_steps for st in parsed_stages)
-            mut_rate = parsed_stages[0].mutation_rate
-            mut_scale = parsed_stages[0].mutation_scale
-        else:
-            total_gens = int(p_dict.get("learning_generations", 100))
-            max_steps = int(p_dict.get("max_simulation_steps", 1000))
-            mut_rate = float(p_dict.get("mutation_rate", 0.25))
-            mut_scale = float(p_dict.get("mutation_scale", 0.125))
+        learn_gens: int = int(
+            self._get_required_val(
+                p_dict, "learning_generations", p_name, file_name
+            )
+        )
+        pop_sz: int = int(
+            self._get_required_val(
+                p_dict, "population_size", p_name, file_name
+            )
+        )
+        max_steps: int = int(
+            self._get_required_val(
+                p_dict, "max_simulation_steps", p_name, file_name
+            )
+        )
+        hold_frames: int = int(
+            self._get_required_val(
+                p_dict, "target_hold_frames", p_name, file_name
+            )
+        )
+        elitism: float = float(
+            self._get_required_val(
+                p_dict, "elitism_ratio", p_name, file_name
+            )
+        )
+        mut_rate: float = float(
+            self._get_required_val(
+                p_dict, "mutation_rate", p_name, file_name
+            )
+        )
+        mut_scale: float = float(
+            self._get_required_val(
+                p_dict, "mutation_scale", p_name, file_name
+            )
+        )
+        hp_impact: float = float(
+            self._get_required_val(
+                p_dict, "lost_hp_score_impact_ratio", p_name, file_name
+            )
+        )
 
         return ResolvedTrainingProfile(
             profile_name=p_name,
-            min_path_difficulty_ratio=0.7,
-            max_path_difficulty_ratio=1.0,
-            learning_generations=total_gens,
+            min_path_difficulty_ratio=min_diff,
+            max_path_difficulty_ratio=max_diff,
+            learning_generations=learn_gens,
             population_size=pop_sz,
             max_simulation_steps=max_steps,
+            target_hold_frames=hold_frames,
             elitism_ratio=elitism,
             mutation_rate=mut_rate,
             mutation_scale=mut_scale,
-            dist_to_time_bonus_ratio=dist_bonus,
-            lost_hp_score_impact_ratio=hp_impact,
-            curriculum=tuple(parsed_stages)
+            lost_hp_score_impact_ratio=hp_impact
         )
+
+    def _get_required_val(
+        self,
+        d: Dict[str, Any],
+        key_name: str,
+        profile_name: str,
+        file_name: str
+    ) -> Any:
+        """
+        Enforces key existence in dict or fails fast with an explicit error.
+        """
+        if key_name not in d:
+            print(
+                f"[Error] Profile '{profile_name}' in profiles/{file_name} "
+                f"is missing required key '{key_name}'."
+            )
+            sys.exit(1)
+        return d[key_name]

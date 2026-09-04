@@ -27,6 +27,7 @@ class TimelineScrubber:
         self.repeat_all: bool = True
         self.is_dragging_frame: bool = False
         self.is_dragging_gen: bool = False
+        self.scrubber_mode: str = "R"
         self.playback_speed: float = float(config.DEFAULT_PLAYBACK_SPEED)
 
         self.speed_options: List[float] = [
@@ -61,9 +62,12 @@ class TimelineScrubber:
         self.btn_speed_rect: pygame.Rect = pygame.Rect(
             self.x + 150, self.y, 50, btn_h
         )
+        self.btn_mode_rect: pygame.Rect = pygame.Rect(
+            self.x + 205, self.y, 32, btn_h
+        )
 
-        bar_x: int = self.x + 210
-        bar_w: int = self.w - 210
+        bar_x: int = self.x + 242
+        bar_w: int = self.w - 242
         bar_h: int = config.HUD_SCRUBBER_BAR_HEIGHT
 
         self.frame_bar_rect: pygame.Rect = pygame.Rect(
@@ -77,6 +81,15 @@ class TimelineScrubber:
         self.renderer: ScrubberRenderer = ScrubberRenderer(
             self.font_manager
         )
+
+    def toggle_scrubber_mode(self) -> None:
+        """
+        Toggles scrubber mode between R (Reached) and C (Cleared) modes.
+        """
+        if self.scrubber_mode == "R":
+            self.scrubber_mode = "C"
+        else:
+            self.scrubber_mode = "R"
 
     def get_formatted_speed_text(self) -> str:
         """
@@ -173,6 +186,10 @@ class TimelineScrubber:
                 self.step_speed_down()
             else:
                 self.step_speed_up()
+            return None, None
+
+        if self.btn_mode_rect.collidepoint(cx, cy):
+            self.toggle_scrubber_mode()
             return None, None
 
         new_frame: Optional[int] = None

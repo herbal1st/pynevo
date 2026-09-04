@@ -1,39 +1,38 @@
 """
-Label resolution module for neural network observation channels with Cul-de-sac & Optical LOS detectors.
+Label resolution module for neural network observation channels and outputs.
 """
 
 from typing import List, Optional
+
 from entities.agent_profile_registry import ResolvedAgentProfile
 
 
 class GraphLabelResolver:
-    def get_base_shorthand_list(self, profile: ResolvedAgentProfile) -> List[str]:
+    """
+    Resolves shorthand observation channel labels and semantic output labels.
+    """
+
+    def get_base_shorthand_list(
+        self,
+        profile: ResolvedAgentProfile
+    ) -> List[str]:
+        """
+        Generates shorthand labels for single-frame observation channels.
+        """
         labels: List[str] = []
         num_rays: int = profile.vision_rays
         half_arc: float = profile.vision_arc_angle / 2.0
 
-        # 1. Wall Distance Rays
         if num_rays > 1:
             step: float = (2.0 * half_arc) / float(num_rays - 1)
             for ray_idx in range(num_rays):
                 deg: int = int(round(-half_arc + (ray_idx * step)))
-                labels.append(f"W{deg:+d}°")
+                labels.append(f"{deg:+d}°")
         else:
-            labels.append("W0°")
+            labels.append("0°")
 
-        # 2. SLAM Breadcrumb Scent Memory Rays
-        if num_rays > 1:
-            step = (2.0 * half_arc) / float(num_rays - 1)
-            for ray_idx in range(num_rays):
-                deg = int(round(-half_arc + (ray_idx * step)))
-                labels.append(f"T{deg:+d}°")
-        else:
-            labels.append("T0°")
+        labels.extend(["SPD", "HP", "DMG-C", "DMG-I", "DMG-S", "HEAL"])
 
-        # 3. Proprioception & Cul-de-sac Pocket Detection
-        labels.extend(["SPD", "HP", "CUL_DE_SAC", "OPEN_FWD", "EXIT_LOS", "CNTR"])
-
-        # 4. Compasses
         use_binocular: bool = profile.use_binocular_gps_compasses
         if not use_binocular:
             labels.extend(["BFS-", "BFS+"])
@@ -51,4 +50,24 @@ class GraphLabelResolver:
         output_count: int,
         profile: Optional[ResolvedAgentProfile] = None
     ) -> List[str]:
-        return ["L-FWD", "L-BWD", "R-FWD", "R-BWD"]
+        """
+        Generates semantic output labels matching active actuation mode.
+        """
+        use_linear: bool = (
+            profile.use_linear_speed_output
+            if profile is not None else False
+        )
+
+        if use_linear:
+            base_labels: List[str] = ["FWD", "BWD", "S-L", "S-R"]
+        else:
+            base_labels = ["L-FWD", "L-BWD", "R-FWD", "R-BWD"]
+
+        labels: List[str] = []
+        for output_idx in range(max(1, output_count)):
+            if output_idx < len(base_labels):
+                labels.append(base_labels[output_idx])
+            else:
+                labels.append(f"OUT-{output_idx + 1}")
+
+        return labels
