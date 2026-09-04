@@ -109,7 +109,10 @@ class HeadlessTrainer:
         )
 
         self.cli_presenter.print_start_banner(
-            profile_name=self.active_profile_name
+            agent_profile=self.active_profile_name,
+            training_profile=self.training_profile.profile_name,
+            map_profile=self.map_profile.profile_name,
+            hold_frames=self.training_profile.target_hold_frames
         )
         for w_str in AgentProfileRegistry.get_clamped_warning_strings():
             print(w_str)
@@ -128,23 +131,17 @@ class HeadlessTrainer:
                 min_difficulty_ratio=min_diff_ratio,
                 max_difficulty_ratio=max_diff_ratio
             )
+            map_data.target_sequence = [map_data.exit_pos]
+
             pathfinder = BFSPathfinder(map_data)
-            pathfinder.compute_distance_matrix()
+            pathfinder.clear_cache()
+            pathfinder.compute_distance_matrix_for_target(
+                map_data.exit_pos, stage_idx=0
+            )
 
             start_x, start_y = map_data.start_pos
             initial_bfs_dist: int = pathfinder.get_step_distance(
-                start_x, start_y
-            )
-            num_turns: int = pathfinder.count_shortest_path_turns()
-
-            theoretical_max: float = (
-                FitnessEvaluator.calculate_theoretical_max_score(
-                    initial_bfs_dist,
-                    self.max_steps,
-                    move_speed=self.factory.profile.move_speed,
-                    dist_ratio=self.training_profile.dist_to_time_bonus_ratio,
-                    num_turns=num_turns
-                )
+                start_x, start_y, stage_idx=0
             )
 
             candidate_states: List[AgentState] = [
@@ -168,7 +165,7 @@ class HeadlessTrainer:
                     state = candidate_states[idx]
                     net = self.population.networks[idx]
 
-                    if state.has_reached_exit or not state.is_alive:
+                    if not state.is_alive:
                         if (
                             step_idx > 0 and
                             self.recorder.telemetry_bundler is not None and
@@ -182,6 +179,16 @@ class HeadlessTrainer:
                         continue
 
                     active_count += 1
+
+                    if state.active_target_idx >= len(map_data.target_sequence):
+                        next_pos = map_data.append_next_target(
+                            seed_offset=step_idx
+                        )
+                        next_stage: int = len(map_data.target_sequence) - 1
+                        pathfinder.compute_distance_matrix_for_target(
+                            next_pos, stage_idx=next_stage
+                        )
+
                     self.step_pipeline.execute_step(
                         step_idx,
                         state,
@@ -189,7 +196,10 @@ class HeadlessTrainer:
                         map_data,
                         pathfinder,
                         self.recorder,
-                        candidate_idx=idx
+                        candidate_idx=idx,
+                        target_hold_frames=(
+                            self.training_profile.target_hold_frames
+                        )
                     )
 
                 actual_steps = step
@@ -200,21 +210,11 @@ class HeadlessTrainer:
                 FitnessEvaluator.calculate_raw_score(
                     c_state,
                     initial_bfs_dist,
-                    self.max_steps,
-                    move_speed=self.factory.profile.move_speed,
-                    dist_ratio=self.training_profile.dist_to_time_bonus_ratio,
                     lost_hp_impact=(
                         self.training_profile.lost_hp_score_impact_ratio
                     )
                 )
                 for c_state in candidate_states
-            ]
-
-            scaled_scores: List[float] = [
-                FitnessEvaluator.calculate_scaled_score(
-                    score, theoretical_max
-                )
-                for score in raw_scores
             ]
 
             norm_scores: List[float] = FitnessEvaluator.normalize_scores(
@@ -224,36 +224,24 @@ class HeadlessTrainer:
             self.recorder.finalize_generation(
                 gen_idx,
                 map_data,
-                scaled_scores,
+                raw_scores,
                 norm_scores,
                 actual_steps,
                 pop_networks=self.population.networks
             )
 
-            winner_idx: int = int(np.argmax(norm_scores))
-            winner_state = candidate_states[winner_idx]
-            dist_reduced = max(
-                0.0, float(initial_bfs_dist - winner_state.best_step_dist)
-            )
-            done_pct = int(
-                round((dist_reduced / max(1e-6, initial_bfs_dist)) * 100)
-            )
-            if winner_state.has_reached_exit:
-                done_pct = 100
-
             elapsed_sec: float = time.perf_counter() - gen_start_time
 
             self.cli_presenter.print_generation_row(
                 gen_idx,
-                scaled_scores,
-                initial_bfs_dist,
+                raw_scores,
                 norm_scores,
                 candidate_states,
-                elapsed_sec,
-                done_pct
+                elapsed_sec
             )
 
             if gen_idx == gens_count - 1:
+                winner_idx: int = int(np.argmax(norm_scores))
                 winner_net = self.population.networks[winner_idx]
                 self.persistence.save_brain(
                     self.active_profile_name,

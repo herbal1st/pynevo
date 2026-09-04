@@ -79,6 +79,9 @@ class NativeMazeViewport(IViewportAdapter):
             map_w, map_h, gen_data["start_pos"], gen_data["exit_pos"]
         )
         map_data.decode_bitmask(gen_data["bitmask_chunks"])
+        map_data.target_sequence = list(
+            gen_data.get("target_sequence", [gen_data["exit_pos"]])
+        )
 
         clip_rect = pygame.Rect(rx, ry, rw, rh)
         surface.set_clip(clip_rect)
@@ -104,6 +107,8 @@ class NativeMazeViewport(IViewportAdapter):
             rows,
             cols,
             camera_zoom=self.tile_renderer.skin_profile.camera_zoom,
+            target_override=frame_state.target_pos,
+            checkpoint_override=frame_state.checkpoint_pos
         )
 
         self.vision_renderer.draw_vision_arc(

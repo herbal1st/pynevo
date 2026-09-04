@@ -6,10 +6,10 @@ profiles:
     learning_generations: 100
     population_size: 25
     max_simulation_steps: 1000
+    target_hold_frames: 15
     elitism_ratio: 0.15
     mutation_rate: 0.25
     mutation_scale: 0.125
-    dist_to_time_bonus_ratio: 0.6
     lost_hp_score_impact_ratio: 0.1
 
   HALF:
@@ -18,10 +18,10 @@ profiles:
     learning_generations: 50
     population_size: 25
     max_simulation_steps: 1000
+    target_hold_frames: 15
     elitism_ratio: 0.15
     mutation_rate: 0.25
     mutation_scale: 0.125
-    dist_to_time_bonus_ratio: 0.6
     lost_hp_score_impact_ratio: 0.1
 
   SHORT:
@@ -30,22 +30,22 @@ profiles:
     learning_generations: 10
     population_size: 25
     max_simulation_steps: 1000
+    target_hold_frames: 15
     elitism_ratio: 0.15
     mutation_rate: 0.25
     mutation_scale: 0.125
-    dist_to_time_bonus_ratio: 0.6
     lost_hp_score_impact_ratio: 0.1
 
   TEST:
     min_path_difficulty_ratio: 0.4
     max_path_difficulty_ratio: 0.6
     learning_generations: 5
-    population_size: 10
+    population_size: 12
     max_simulation_steps: 500
+    target_hold_frames: 15
     elitism_ratio: 0.15
     mutation_rate: 0.25
     mutation_scale: 0.125
-    dist_to_time_bonus_ratio: 0.6
     lost_hp_score_impact_ratio: 0.1
 
 
@@ -58,9 +58,9 @@ profiles:
 # learning_generations:       Generations count simulated during pre-training.
 # population_size:            AI candidates evaluated per generation.
 # max_simulation_steps:       Maximum step ticks allowed per candidate run.
+# target_hold_frames:         Hold frames required inside target to clear.
 # elitism_ratio:              Top-scoring candidates ratio copied unchanged.
 # mutation_rate:              Offspring mutation probability [0.0 - 1.0].
 # mutation_scale:             Noise scale factor added during mutation.
-# dist_to_time_bonus_ratio:   Weight balancing progress vs time saved [0-1].
 # lost_hp_score_impact_ratio: Health loss score penalty factor [0.0 - 1.0].
 # ============================================================================

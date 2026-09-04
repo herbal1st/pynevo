@@ -15,43 +15,22 @@ class FitnessEvaluator:
     @staticmethod
     def calculate_raw_score(
         state: AgentState,
-        initial_bfs_dist: int,
-        max_steps: int = 1000,
-        move_speed: float = 0.15,
-        dist_ratio: float = 0.6,
-        lost_hp_impact: float = 0.1
+        initial_bfs_dist: int = 0,
+        lost_hp_impact: float = 0.1,
+        stage_bonus: float = 20.0
     ) -> float:
         """
-        Computes path progress plus time bonus weighted by health.
+        Computes unconstrained cumulative lifetime progress distance score.
         """
-        clamped_r: float = max(0.0, min(1.0, dist_ratio))
-        w_dist: float = 1000.0 * clamped_r
-        w_time: float = 1000.0 * (1.0 - clamped_r)
-
-        total_path_len: float = float(initial_bfs_dist)
-
-        dist_reduced: float = max(
-            0.0, float(initial_bfs_dist - state.best_step_dist)
-        )
-        prog_ratio: float = max(
-            0.0, min(1.0, dist_reduced / max(1e-6, total_path_len))
-        )
-        score_dist: float = w_dist * prog_ratio
-
-        if state.has_reached_exit:
-            min_frames: float = total_path_len / max(1e-6, move_speed)
-            max_saved: float = max(1.0, float(max_steps) - min_frames)
-            actual_saved: float = max(
-                0.0, float(max_steps - state.frames_survived)
+        progress_score: float = state.total_lifetime_progress
+        if progress_score <= 0.0 and initial_bfs_dist > 0:
+            dist_reduced: float = max(
+                0.0, float(initial_bfs_dist - state.best_step_dist)
             )
-            time_ratio: float = max(
-                0.0, min(1.0, actual_saved / max_saved)
-            )
-            score_time: float = w_time * time_ratio
-        else:
-            score_time = 0.0
+            progress_score = dist_reduced
 
-        raw_total: float = score_dist + score_time
+        clear_bonus: float = float(state.stages_cleared) * stage_bonus
+        raw_total: float = progress_score + clear_bonus
 
         clamped_hp: float = max(0.0, min(1.0, state.health))
         hp_factor: float = (1.0 - lost_hp_impact) + (
@@ -59,34 +38,6 @@ class FitnessEvaluator:
         )
 
         return raw_total * hp_factor
-
-    @staticmethod
-    def calculate_theoretical_max_score(
-        initial_bfs_dist: int,
-        max_steps: int = 1000,
-        move_speed: float = 0.15,
-        dist_ratio: float = 0.6,
-        num_turns: int = 0,
-        corner_savings_per_turn: float = 0.586
-    ) -> float:
-        """
-        Returns theoretical max score (normalized peak 1000.0).
-        """
-        return 1000.0
-
-    @staticmethod
-    def calculate_scaled_score(
-        raw_score: float,
-        theoretical_max: float
-    ) -> float:
-        """
-        Normalizes raw score to [0.0, 1000.0] range.
-        """
-        if theoretical_max < 1e-6:
-            return 0.0
-
-        ratio: float = max(0.0, raw_score / theoretical_max)
-        return min(1000.0, ratio * 1000.0)
 
     @staticmethod
     def normalize_scores(raw_scores: List[float]) -> List[float]:

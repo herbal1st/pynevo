@@ -5,8 +5,8 @@ profiles:
     start_time_ratio: 0.00
     start_light_angle_deg: 60.0
     terrain_steepness: 80.0
-    shadow_intensity: 140
-    highlight_intensity: 70
+    shadow_intensity: 150
+    highlight_intensity: 110
     ambient_keyframes:
       - [0.00, 255, 255, 255]  # day
       - [1.00, 255, 255, 255]  # day
@@ -16,8 +16,8 @@ profiles:
     start_time_ratio: 0.25
     start_light_angle_deg: 300.0
     terrain_steepness: 80.0
-    shadow_intensity: 140
-    highlight_intensity: 70
+    shadow_intensity: 150
+    highlight_intensity: 110
     ambient_keyframes:
       - [0.00, 70, 100, 130]   # night
       - [0.20, 80, 110, 150]   # night

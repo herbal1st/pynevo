@@ -25,10 +25,10 @@ class ResolvedTrainingProfile:
     learning_generations: int
     population_size: int
     max_simulation_steps: int
+    target_hold_frames: int
     elitism_ratio: float
     mutation_rate: float
     mutation_scale: float
-    dist_to_time_bonus_ratio: float
     lost_hp_score_impact_ratio: float
 
 
@@ -141,6 +141,11 @@ class TrainingProfileRegistry:
                 p_dict, "max_simulation_steps", p_name, file_name
             )
         )
+        hold_frames: int = int(
+            self._get_required_val(
+                p_dict, "target_hold_frames", p_name, file_name
+            )
+        )
         elitism: float = float(
             self._get_required_val(
                 p_dict, "elitism_ratio", p_name, file_name
@@ -156,11 +161,6 @@ class TrainingProfileRegistry:
                 p_dict, "mutation_scale", p_name, file_name
             )
         )
-        dist_bonus: float = float(
-            self._get_required_val(
-                p_dict, "dist_to_time_bonus_ratio", p_name, file_name
-            )
-        )
         hp_impact: float = float(
             self._get_required_val(
                 p_dict, "lost_hp_score_impact_ratio", p_name, file_name
@@ -174,10 +174,10 @@ class TrainingProfileRegistry:
             learning_generations=learn_gens,
             population_size=pop_sz,
             max_simulation_steps=max_steps,
+            target_hold_frames=hold_frames,
             elitism_ratio=elitism,
             mutation_rate=mut_rate,
             mutation_scale=mut_scale,
-            dist_to_time_bonus_ratio=dist_bonus,
             lost_hp_score_impact_ratio=hp_impact
         )
 

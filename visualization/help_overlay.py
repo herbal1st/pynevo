@@ -60,6 +60,7 @@ class HelpOverlay:
             ("KEY", "LEFT / RIGHT", "Jump Frame (- / +)"),
             ("KEY", "UP / DOWN", "Switch Generation (+ / -)"),
             ("KEY", "0 / NUMPAD 0", "Toggle Repeat Mode"),
+            ("KEY", "T", "Toggle Scrubber (R/C)"),
             ("KEY", "PGUP/DN, +/-", "Playback Speed (1/10x..10x)"),
             ("KEY", "WHEEL SCROLL", "Step Speed Up / Down"),
             ("KEY", "PERIOD (.)", "Reset Speed to 1x"),
@@ -87,7 +88,7 @@ class HelpOverlay:
             if row_type == "HEADER":
                 curr_y += 4
                 hdr_surf = bold_body_font.render(
-                    f"-- {key_str} --", True, config.COLOR_PLAYER_HIGHLIGHT
+                    f"-- {key_str} --", True, config.COLOR_VIEWPORT_HIGHLIGHT
                 )
                 surface.blit(hdr_surf, (col1_x, curr_y))
                 curr_y += line_h

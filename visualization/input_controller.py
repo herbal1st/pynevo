@@ -220,6 +220,9 @@ class InputController:
         if key == pygame.K_h:
             self.show_help_overlay = not self.show_help_overlay
 
+        elif key == pygame.K_t:
+            timeline_scrubber.toggle_scrubber_mode()
+
         elif key == pygame.K_r:
             viewport_grid.refresh_middle_candidates()
 

@@ -68,6 +68,10 @@ class ArchiveBridge:
             archive_dict[pfx + "exit"] = np.array(
                 g_data["exit_pos"], dtype=np.int64
             )
+            archive_dict[pfx + "target_seq"] = np.array(
+                g_data.get("target_sequence", [g_data["exit_pos"]]),
+                dtype=np.int64
+            )
             archive_dict[pfx + "width"] = np.array(
                 g_data["map_width"], dtype=np.int64
             )
@@ -152,11 +156,21 @@ class ArchiveBridge:
             start_raw = archive[pfx + "start"].astype(int)
             exit_raw = archive[pfx + "exit"].astype(int)
 
+            if (pfx + "target_seq") in archive:
+                seq_raw = archive[pfx + "target_seq"].astype(int)
+                t_seq = [
+                    (int(seq_raw[i][0]), int(seq_raw[i][1]))
+                    for i in range(len(seq_raw))
+                ]
+            else:
+                t_seq = [(int(exit_raw[0]), int(exit_raw[1]))]
+
             g_data: Dict[str, Any] = {
                 "generation": idx,
                 "bitmask_chunks": chunks_list,
                 "start_pos": (int(start_raw[0]), int(start_raw[1])),
                 "exit_pos": (int(exit_raw[0]), int(exit_raw[1])),
+                "target_sequence": t_seq,
                 "map_width": int(archive[pfx + "width"]),
                 "map_height": int(archive[pfx + "height"]),
                 "telemetry": t_arr,

@@ -19,18 +19,18 @@ GRID_COLS: int = 3  # count
 
 # ------ Active Profile Selectors ------
 ACTIVE_AGENT_PROFILE: str = "TANK_1"  # profile
-ACTIVE_TRAINING_PROFILE: str = "DEFAULT"  # profile
-ACTIVE_MAP_PROFILE: str = "DEFAULT"  # profile
+ACTIVE_TRAINING_PROFILE: str = "TEST"  # profile
+ACTIVE_MAP_PROFILE: str = "TINY"  # profile
+
+# ------ Endless Settings & Debug Overlays ------
+USE_ENDLESS_MODE: bool = False  # toggle
+SHOW_TARGET_INDICATOR: bool = True  # toggle
+SHOW_FPS_COUNTER: bool = True  # toggle
 
 # ------ Active Endless Profile Selectors ------
-USE_ENDLESS_MODE: bool = True  # toggle
 ACTIVE_PLAYER_PROFILE: str = "DEFAULT"  # profile
 ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX_MIXED"  # profile
 ACTIVE_LIGHTING_PROFILE: str = "DEFAULT"  # profile
-
-# ------ Endless Debug & Diagnostic Overlays ------
-SHOW_FPS_COUNTER: bool = True  # toggle
-SHOW_TARGET_INDICATOR: bool = True  # toggle
 
 # ------ Live Winner Mode Defaults ------
 LIVE_RUNNER_MAX_STEPS: int = 1000  # steps
@@ -53,8 +53,8 @@ LAYOUT_SCRUBBER_RECT: Tuple[int, int, int, int] = (20, 650, 1240, 60)  # rect
 # ------ HUD Typography & Element Sizing ------
 HUD_PANEL_TITLE_FONT_SIZE: int = 18  # pt
 HUD_PANEL_BODY_FONT_SIZE: int = 15  # pt
-HUD_HELP_TITLE_FONT_SIZE: int = 18  # pt
-HUD_HELP_BODY_FONT_SIZE: int = 15  # pt
+HUD_HELP_TITLE_FONT_SIZE: int = 16  # pt
+HUD_HELP_BODY_FONT_SIZE: int = 14  # pt
 HUD_SCRUBBER_BUTTON_HEIGHT: int = 36  # pixels
 HUD_SCRUBBER_BUTTON_FONT_SIZE: int = 13  # pt
 HUD_SCRUBBER_MARKER_FONT_SIZE: int = 15  # pt

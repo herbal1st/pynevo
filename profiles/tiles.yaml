@@ -56,8 +56,8 @@ profiles:
     solid: false
     indestructible: false
     speed_multiplier: 0.9
-    color: [220, 190, 130]
-    border_color: [200, 175, 115]
+    color: [190, 165, 105]
+    border_color: [190, 165, 105]
     border_width_ratio: 0.0
 
   STEPPE:
@@ -226,8 +226,8 @@ profiles:
     solid: false
     indestructible: false
     speed_multiplier: 0.9
-    color: [220, 190, 130]
-    border_color: [200, 175, 115]
+    color: [190, 165, 105]
+    border_color: [170, 150, 95]
     border_width_ratio: 0.5
 
   STEPPE_BORDERED:
@@ -368,7 +368,7 @@ profiles:
     speed_multiplier: 1.0
     color: [40, 160, 220]
     border_color: [80, 200, 255]
-    border_width_ratio: 0.0
+    border_width_ratio: 0.4
 
   EXIT:
     id: 101
@@ -378,7 +378,7 @@ profiles:
     speed_multiplier: 1.0
     color: [50, 200, 100]
     border_color: [100, 240, 150]
-    border_width_ratio: 0.0
+    border_width_ratio: 0.4
 
 
 # ============================================================================

@@ -60,7 +60,8 @@ class TopologicalGPSSensor:
         candidate_idx: int = 0,
         prev_x: Optional[float] = None,
         prev_y: Optional[float] = None,
-        prev_heading: Optional[float] = None
+        prev_heading: Optional[float] = None,
+        stage_idx: int = 0
     ) -> Tuple[float, ...]:
         """
         Computes frame-to-frame topological BFS GPS progress channels.
@@ -79,8 +80,31 @@ class TopologicalGPSSensor:
             self.last_gps_channels = res
             return res
 
+        if hasattr(map_data, "get_target_pos"):
+            ex_t, ey_t = map_data.get_target_pos(stage_idx)
+        else:
+            ex_t, ey_t = map_data.exit_pos
+
+        t_cx: float = float(ex_t) + 0.5
+        t_cy: float = float(ey_t) + 0.5
+        dx_t: float = cx - t_cx
+        dy_t: float = cy - t_cy
+        dist_to_t: float = math.sqrt((dx_t * dx_t) + (dy_t * dy_t))
+
+        hold_thresh: float = (
+            self.profile.target_hold_distance_threshold
+            if self.profile is not None else 0.25
+        )
+
+        if dist_to_t <= hold_thresh:
+            res = (1.0, 1.0, 0.0, 0.0) if use_binocular else (1.0, 0.0)
+            self.last_gps_channels = res
+            return res
+
         sx, sy = map_data.start_pos
-        initial_dist: int = pathfinder.get_step_distance(sx, sy)
+        initial_dist: int = pathfinder.get_step_distance(
+            sx, sy, stage_idx=stage_idx
+        )
         if initial_dist >= 9999 or initial_dist == 0:
             res = (0.0, 0.0, 0.0, 0.0) if use_binocular else (0.0, 0.0)
             self.last_gps_channels = res
@@ -96,14 +120,17 @@ class TopologicalGPSSensor:
         else:
             max_active_dist = float(initial_dist) * range_ratio
 
-        move_speed: float = (
-            self.profile.move_speed if self.profile is not None else 0.125
-        )
-        rad_ratio: float = (
-            self.profile.agent_radius_ratio
-            if self.profile is not None
-            else 0.45
-        )
+        is_endless: bool = hasattr(map_data, "chunk_manager")
+        if is_endless and self.profile is not None:
+            move_speed: float = self.profile.endless_move_speed
+            rad_ratio: float = self.profile.endless_agent_radius_ratio
+        elif self.profile is not None:
+            move_speed = self.profile.move_speed
+            rad_ratio = self.profile.agent_radius_ratio
+        else:
+            move_speed = 0.125
+            rad_ratio = 0.45
+
         r_body: float = 0.5 * rad_ratio
 
         is_stateless: bool = (
@@ -126,7 +153,8 @@ class TopologicalGPSSensor:
                 max_active_dist,
                 move_speed,
                 r_body,
-                is_stateless
+                is_stateless,
+                stage_idx
             )
             self.last_gps_channels = res
             return res
@@ -144,7 +172,8 @@ class TopologicalGPSSensor:
             max_active_dist,
             move_speed,
             r_body,
-            is_stateless
+            is_stateless,
+            stage_idx
         )
         self.last_gps_channels = res
         return res
@@ -156,7 +185,8 @@ class TopologicalGPSSensor:
         map_data: MapData,
         pathfinder: BFSPathfinder,
         cand_x: Optional[float] = None,
-        cand_y: Optional[float] = None
+        cand_y: Optional[float] = None,
+        stage_idx: int = 0
     ) -> float:
         """
         Bilinearly interpolates continuous distance from BFS distance grid.
@@ -180,14 +210,18 @@ class TopologicalGPSSensor:
             fallback_tile_y = int(math.floor(cy))
 
         fallback_d: float = float(
-            pathfinder.get_step_distance(fallback_tile_x, fallback_tile_y)
+            pathfinder.get_step_distance(
+                fallback_tile_x, fallback_tile_y, stage_idx=stage_idx
+            )
         )
 
         if fallback_d >= 9999.0:
             return 9999.0
 
         def sample_d(tx: int, ty: int) -> float:
-            d: int = pathfinder.get_step_distance(tx, ty)
+            d: int = pathfinder.get_step_distance(
+                tx, ty, stage_idx=stage_idx
+            )
             if d >= 9999:
                 return fallback_d
             return float(d)
@@ -220,7 +254,8 @@ class TopologicalGPSSensor:
         max_active_dist: float,
         move_speed: float,
         r_body: float,
-        is_stateless: bool
+        is_stateless: bool,
+        stage_idx: int
     ) -> Tuple[float, float]:
         """
         Computes 2 mono GPS progress channels (BFS-, BFS+).
@@ -229,7 +264,7 @@ class TopologicalGPSSensor:
         nose_y: float = cy + (r_body * math.sin(heading_rad))
 
         curr_dist_val = self.get_bilinear_bfs_distance(
-            nose_x, nose_y, map_data, pathfinder, cx, cy
+            nose_x, nose_y, map_data, pathfinder, cx, cy, stage_idx
         )
 
         if curr_dist_val > max_active_dist:
@@ -252,7 +287,8 @@ class TopologicalGPSSensor:
                 map_data,
                 pathfinder,
                 prev_x,
-                prev_y
+                prev_y,
+                stage_idx
             )
         else:
             self._ensure_capacity(candidate_idx)
@@ -289,7 +325,8 @@ class TopologicalGPSSensor:
         max_active_dist: float,
         move_speed: float,
         r_body: float,
-        is_stateless: bool
+        is_stateless: bool,
+        stage_idx: int
     ) -> Tuple[float, float, float, float]:
         """
         Computes 4 stereo GPS channels (BFSL-, BFSR-, BFSL+, BFSR+).
@@ -310,10 +347,10 @@ class TopologicalGPSSensor:
         ry: float = cy + (r_body * math.sin(right_heading))
 
         dist_left = self.get_bilinear_bfs_distance(
-            lx, ly, map_data, pathfinder, cx, cy
+            lx, ly, map_data, pathfinder, cx, cy, stage_idx
         )
         dist_right = self.get_bilinear_bfs_distance(
-            rx, ry, map_data, pathfinder, cx, cy
+            rx, ry, map_data, pathfinder, cx, cy, stage_idx
         )
 
         min_curr_dist: float = min(dist_left, dist_right)
@@ -341,7 +378,8 @@ class TopologicalGPSSensor:
                 map_data,
                 pathfinder,
                 prev_x,
-                prev_y
+                prev_y,
+                stage_idx
             )
             prev_right = self.get_bilinear_bfs_distance(
                 prx,
@@ -349,7 +387,8 @@ class TopologicalGPSSensor:
                 map_data,
                 pathfinder,
                 prev_x,
-                prev_y
+                prev_y,
+                stage_idx
             )
         else:
             self._ensure_capacity(candidate_idx)

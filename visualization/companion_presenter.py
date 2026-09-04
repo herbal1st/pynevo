@@ -86,7 +86,9 @@ class CompanionPresenter:
             generator,
             center_x=player_x - 2.0,
             center_y=player_y,
-            diameter_ratio=self.agent_profile.agent_diameter_ratio,
+            diameter_ratio=(
+                self.agent_profile.endless_agent_diameter_ratio
+            ),
             min_speed_mult=0.1
         )
 
@@ -175,8 +177,8 @@ class CompanionPresenter:
                 c_state.y,
                 c_state.heading,
                 move_eff,
-                self.agent_profile.move_speed,
-                self.agent_profile.agent_diameter_ratio,
+                self.agent_profile.endless_move_speed,
+                self.agent_profile.endless_agent_diameter_ratio,
                 chunk_manager,
                 tile_registry=generator.tile_registry,
                 generator=generator
@@ -231,7 +233,7 @@ class CompanionPresenter:
             effective_tile_sz,
             is_camera_centered=True,
             map_data=map_facade,
-            radius_ratio=self.agent_profile.agent_radius_ratio
+            radius_ratio=self.agent_profile.endless_agent_radius_ratio
         )
 
         comp_frame_state = ViewportFrameState(
@@ -251,7 +253,7 @@ class CompanionPresenter:
             net_delta=0.0,
             face_str=self.agent_profile.skin.face_walk,
             score_val=0,
-            radius_ratio=self.agent_profile.agent_radius_ratio,
+            radius_ratio=self.agent_profile.endless_agent_radius_ratio,
             skin=self.agent_profile.skin
         )
 
@@ -265,7 +267,6 @@ class CompanionPresenter:
             active_step=0
         )
 
-        # Target Indicator Line and Circle Marker
         if getattr(config, "SHOW_TARGET_INDICATOR", True):
             target_screen_x: int = int(
                 round(center_px + (target_x - focus_x) * effective_tile_sz)
@@ -274,7 +275,6 @@ class CompanionPresenter:
                 round(center_py + (target_y - focus_y) * effective_tile_sz)
             )
 
-            # Target Vector Line
             pygame.draw.line(
                 surface,
                 (255, 60, 60, 180),
@@ -283,7 +283,6 @@ class CompanionPresenter:
                 2
             )
 
-            # Target Ring Marker
             target_r: int = max(3, int(round(effective_tile_sz * 0.3)))
             pygame.draw.circle(
                 surface,

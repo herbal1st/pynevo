@@ -3,7 +3,7 @@ Data presenter formatting recorded playback timelines into UI view models.
 """
 
 import math
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
 
 import config
@@ -58,6 +58,9 @@ class PlaybackPresenter:
         m_data = MapData(map_w, map_h, start_pos, exit_pos)
         m_data.decode_bitmask(self.gen_data["bitmask_chunks"])
         m_data.compute_exit_los_cache()
+        m_data.target_sequence = list(
+            self.gen_data.get("target_sequence", [exit_pos])
+        )
 
         p_finder = BFSPathfinder(m_data)
         p_finder.compute_distance_matrix()
@@ -189,6 +192,14 @@ class PlaybackPresenter:
         is_alive: bool = bool(row[6] > 0.5)
         reached_exit: bool = bool(row[7] > 0.5)
 
+        t_seq = self.gen_data.get(
+            "target_sequence",
+            [self._map_data.exit_pos if self._map_data else (0, 0)]
+        )
+        curr_stage, target_pos = self._resolve_active_target_for_step(
+            safe_cand, frame_idx, telemetry, t_seq
+        )
+
         face_str: str = EntityExpress.resolve_face(
             reached_exit, hit_wall, is_alive, profile=self.profile
         )
@@ -212,8 +223,59 @@ class PlaybackPresenter:
             "is_alive": is_alive,
             "reached_exit": reached_exit,
             "dist": c_dist,
+            "stage_idx": curr_stage,
+            "target_pos": target_pos,
             "activations": structured_activations
         }
+
+    def _resolve_active_target_for_step(
+        self,
+        cand_idx: int,
+        frame_idx: int,
+        telemetry: np.ndarray,
+        target_sequence: List[Tuple[int, int]]
+    ) -> Tuple[int, Tuple[int, int]]:
+        """
+        Calculates active target stage and coordinates for candidate step.
+        """
+        if not target_sequence:
+            return 0, (0, 0)
+
+        hold_thresh: float = (
+            self.profile.target_hold_distance_threshold
+            if self.profile is not None else 0.25
+        )
+        hold_thresh_sq: float = hold_thresh * hold_thresh
+        target_hold_frames: int = 15
+
+        curr_stage: int = 0
+        hold_count: int = 0
+
+        for s in range(frame_idx + 1):
+            if curr_stage >= len(target_sequence):
+                break
+
+            tx, ty = target_sequence[curr_stage]
+            tc_x: float = float(tx) + 0.5
+            tc_y: float = float(ty) + 0.5
+
+            cx: float = float(telemetry[s, cand_idx, 0])
+            cy: float = float(telemetry[s, cand_idx, 1])
+
+            dx: float = cx - tc_x
+            dy: float = cy - tc_y
+            dist_sq: float = (dx * dx) + (dy * dy)
+
+            if dist_sq <= hold_thresh_sq:
+                hold_count += 1
+                if hold_count >= target_hold_frames:
+                    curr_stage += 1
+                    hold_count = 0
+            else:
+                hold_count = 0
+
+        safe_stage: int = min(curr_stage, len(target_sequence) - 1)
+        return safe_stage, target_sequence[safe_stage]
 
     def _compute_live_activations(
         self,

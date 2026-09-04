@@ -59,11 +59,46 @@ class AgentState(EntityState):
 
     def __init__(self, start_x: float, start_y: float) -> None:
         """
-        Initializes candidate state with path distance and exit flags.
+        Initializes candidate state with path distance and stage metrics.
         """
         super().__init__(start_x, start_y)
         self.best_step_dist: int = 9999
-        self.has_reached_exit: bool = False
+        self.touched_exit: bool = False
+        self.exit_solved: bool = False
+        self.stages_cleared: int = 0
+        self.active_target_idx: int = 0
+        self.hold_frame_counter: int = 0
+        self.first_touch_step: int = -1
+        self.first_hold_clear_step: int = -1
+        self.total_lifetime_progress: float = 0.0
+
+    @property
+    def has_reached_exit(self) -> bool:
+        """
+        Backward compatibility alias for touched_exit.
+        """
+        return self.touched_exit
+
+    @has_reached_exit.setter
+    def has_reached_exit(self, value: bool) -> None:
+        """
+        Backward compatibility setter for touched_exit.
+        """
+        self.touched_exit = value
+
+    @property
+    def targets_cleared(self) -> int:
+        """
+        Backward compatibility alias for stages_cleared.
+        """
+        return self.stages_cleared
+
+    @targets_cleared.setter
+    def targets_cleared(self, value: int) -> None:
+        """
+        Backward compatibility setter for stages_cleared.
+        """
+        self.stages_cleared = value
 
     def reset(self, start_x: float, start_y: float) -> None:
         """
@@ -71,4 +106,11 @@ class AgentState(EntityState):
         """
         super().reset(start_x, start_y)
         self.best_step_dist = 9999
-        self.has_reached_exit = False
+        self.touched_exit = False
+        self.exit_solved = False
+        self.stages_cleared = 0
+        self.active_target_idx = 0
+        self.hold_frame_counter = 0
+        self.first_touch_step = -1
+        self.first_hold_clear_step = -1
+        self.total_lifetime_progress = 0.0

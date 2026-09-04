@@ -325,6 +325,9 @@ class LiveViewPresenter:
             map_w, map_h, gen_data["start_pos"], gen_data["exit_pos"]
         )
         map_data.decode_bitmask(gen_data["bitmask_chunks"])
+        map_data.target_sequence = list(
+            gen_data.get("target_sequence", [gen_data["exit_pos"]])
+        )
 
         clip_rect = pygame.Rect(rx, ry, rw, rh)
         surface.set_clip(clip_rect)
@@ -332,11 +335,21 @@ class LiveViewPresenter:
 
         rows: int = config.GRID_ROWS
         cols: int = config.GRID_COLS
-        base_sub_w: float = float(surface.get_width()) / float(cols)
-        ui_scale: float = (float(rw) / base_sub_w) * 0.5
 
-        tile_size, origin_pixel = self._draw_live_tiles(
-            surface, rect, map_data, frame_state.x, frame_state.y, rows, cols
+        tile_size, origin_pixel = self.tile_renderer.draw_tiles(
+            surface,
+            rect,
+            map_data,
+            gen_idx=-1,
+            cx=frame_state.x,
+            cy=frame_state.y,
+            is_camera_centered=self.is_camera_centered,
+            is_zoomed=False,
+            rows=rows,
+            cols=cols,
+            camera_zoom=self.tile_renderer.skin_profile.camera_zoom,
+            target_override=frame_state.target_pos,
+            checkpoint_override=frame_state.checkpoint_pos
         )
 
         self.vision_renderer.draw_vision_arc(
@@ -360,7 +373,7 @@ class LiveViewPresenter:
             tile_size,
             frame_state,
             is_selected=True,
-            ui_scale=ui_scale,
+            ui_scale=1.0,
             active_step=active_step,
         )
 
@@ -368,7 +381,7 @@ class LiveViewPresenter:
             surface,
             rect,
             frame_state,
-            ui_scale,
+            ui_scale=1.0,
             show_scorecard=True,
         )
 
@@ -376,46 +389,3 @@ class LiveViewPresenter:
         self.hud_renderer.draw_viewport_borders(
             surface, rect, frame_state, is_selected=True
         )
-
-    def _draw_live_tiles(
-        self,
-        surface: pygame.Surface,
-        rect: Tuple[int, int, int, int],
-        map_data: MapData,
-        cx: float,
-        cy: float,
-        rows: int,
-        cols: int,
-    ) -> Tuple[float, Tuple[int, int]]:
-        """
-        Renders live background tiles and returns (tile_size, origin_pixel).
-        """
-        rx, ry, rw, rh = rect
-        tile_size: float = self.tile_renderer.map_profile.tile_size
-
-        if self.is_camera_centered:
-            tile_size = (
-                float(tile_size) *
-                self.tile_renderer.skin_profile.camera_zoom
-            )
-            center_px: float = float(rx) + (float(rw) / 2.0)
-            center_py: float = float(ry) + (float(rh) / 2.0)
-            self.tile_renderer._draw_camera_centered_tiles(
-                surface, rect, map_data, cx, cy, tile_size
-            )
-            origin_pixel = (int(round(center_px)), int(round(center_py)))
-        else:
-            tile_size = min(
-                float(rw) / float(map_data.width),
-                float(rh) / float(map_data.height),
-            )
-            bg_surf = self.map_renderer.get_rendered_map_surface(
-                map_data, gen_idx=-1, rw=rw, rh=rh
-            )
-            surface.blit(bg_surf, (rx, ry))
-            origin_pixel = (
-                int(rx + (cx * tile_size)),
-                int(ry + (cy * tile_size)),
-            )
-
-        return tile_size, origin_pixel

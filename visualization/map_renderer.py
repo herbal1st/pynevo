@@ -50,11 +50,7 @@ class MapRenderer:
                     t_x, t_y, int(tile_size) + 1, int(tile_size) + 1
                 )
 
-                if (x, y) == map_data.start_pos:
-                    pygame.draw.rect(map_surf, config.COLOR_START, t_rect)
-                elif (x, y) == map_data.exit_pos:
-                    pygame.draw.rect(map_surf, config.COLOR_EXIT, t_rect)
-                elif map_data.is_wall(x, y):
+                if map_data.is_wall(x, y):
                     pygame.draw.rect(map_surf, config.COLOR_WALL, t_rect)
                     pygame.draw.rect(
                         map_surf, config.COLOR_WALL_BORDER, t_rect, 1

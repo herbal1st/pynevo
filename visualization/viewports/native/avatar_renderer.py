@@ -115,12 +115,6 @@ class ViewportAvatarRenderer:
             1, int(float(p_radius) * skin.status_ring_ratio)
         )
 
-        if reached_exit:
-            self._draw_solved_counter_rotating_arcs(
-                surface, px, py, p_radius, line_w, active_step, active_skin=skin
-            )
-            return
-
         ring_color: Tuple[int, int, int] = (
             config.COLOR_FRAME_DEAD[:3]
             if not is_alive
@@ -130,6 +124,11 @@ class ViewportAvatarRenderer:
         pygame.draw.circle(
             surface, ring_color, (px, py), p_radius, line_w
         )
+
+        if reached_exit:
+            self._draw_solved_counter_rotating_arcs(
+                surface, px, py, p_radius, line_w, active_step, active_skin=skin
+            )
 
     def _draw_solved_counter_rotating_arcs(
         self,
@@ -142,7 +141,7 @@ class ViewportAvatarRenderer:
         active_skin: Optional[ResolvedSkinProfile] = None,
     ) -> None:
         """
-        Renders concentric counter-rotating arcs for exit solvers.
+        Renders concentric counter-rotating arcs for exit solvers on top.
         """
         skin: ResolvedSkinProfile = (
             active_skin if active_skin is not None else self.profile.skin

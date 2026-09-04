@@ -155,17 +155,13 @@ class ViewportHUDOverlayRenderer:
         is_alive: bool,
     ) -> None:
         """
-        Renders translucent terminal score card when dead or solved.
+        Renders translucent terminal score card only when candidate is dead.
         """
-        if is_alive and not reached_exit:
+        if is_alive:
             return
 
         rx, ry, rw, rh = rect
-        text_color: Tuple[int, int, int] = (
-            config.COLOR_EXIT[:3]
-            if reached_exit
-            else config.COLOR_FRAME_DEAD[:3]
-        )
+        text_color: Tuple[int, int, int] = config.COLOR_FRAME_DEAD[:3]
 
         target_font_size: int = max(14, int(rh * 0.22))
         font = self.font_manager.get_font(target_font_size, bold=True)

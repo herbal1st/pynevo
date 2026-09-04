@@ -6,8 +6,10 @@ profiles:
       profile_style: "TANK"
       use_linear_speed_output: true
       move_speed: 0.25
+      endless_move_speed: 4.0
       turn_speed: 1800.0
       agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -15,6 +17,8 @@ profiles:
       heal_speed_threshold: 0.8
       move_heal_per_frame: 0.001
       path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
@@ -42,8 +46,10 @@ profiles:
       profile_style: "TANK"
       use_linear_speed_output: true
       move_speed: 0.25
+      endless_move_speed: 4.0
       turn_speed: 1800.0
       agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -51,6 +57,8 @@ profiles:
       heal_speed_threshold: 0.8
       move_heal_per_frame: 0.001
       path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
@@ -78,8 +86,10 @@ profiles:
       profile_style: "CAR"
       use_linear_speed_output: true
       move_speed: 0.25
+      endless_move_speed: 4.0
       turn_speed: 1800.0
       agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -87,6 +97,8 @@ profiles:
       heal_speed_threshold: 0.8
       move_heal_per_frame: 0.001
       path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
@@ -114,8 +126,10 @@ profiles:
       profile_style: "CAR"
       use_linear_speed_output: true
       move_speed: 0.25
+      endless_move_speed: 4.0
       turn_speed: 1800.0
       agent_diameter_ratio: 0.5
+      endless_agent_diameter_ratio: 4.0
       health_coll_dmg_per_frame: 0.005
       health_spin_dmg_per_frame: 0.001
       idle_damage_speed_threshold: 0.2
@@ -123,6 +137,8 @@ profiles:
       heal_speed_threshold: 0.8
       move_heal_per_frame: 0.001
       path_heal_per_frame: 0.003
+      target_hold_distance_threshold: 0.25
+      target_hold_heal_per_frame: 0.003
     perception:
       vision_rays: 15
       vision_arc_angle: 210.0
@@ -151,23 +167,27 @@ profiles:
 #
 # KINEMATICS (Driving Physics & Damage Rates):
 # profile_style:              Driving steering mode ("TANK" or "CAR").
-# use_linear_speed_output:     Toggle: true = Task-Space, false = Direct Wheels.
-# move_speed:                 Maximum forward translation speed (tiles/tick).
+# use_linear_speed_output:     Toggle: true = Task-Space, false = Direct.
+# move_speed:                 Maximum forward velocity in maze mode.
+# endless_move_speed:         Maximum forward velocity in endless mode.
 # turn_speed:                 Maximum rotational velocity (degrees/sec).
-# agent_diameter_ratio:       Hit-box diameter scale relative to tile size.
-# health_coll_dmg_per_frame:  Health damage deducted per wall impact frame.
+# agent_diameter_ratio:       Hit-box diameter ratio in bounded maze mode.
+# endless_agent_diameter_ratio: Hit-box diameter ratio in endless mode.
+# target_hold_distance_threshold: Distance radius (tiles) to hold target.
+# target_hold_heal_per_frame: Stamina restored per frame in target hold zone.
+# health_coll_dmg_per_frame:  Health damage deducted per collision frame.
 # health_spin_dmg_per_frame:  Health damage deducted per physical spin frame.
-# idle_damage_speed_threshold: Physical speed ratio threshold for idle damage.
+# idle_damage_speed_threshold: Speed ratio threshold for idle damage.
 # health_idle_dmg_per_frame:  Health damage deducted per stationary frame.
-# heal_speed_threshold:       Physical speed ratio threshold for kinetic heal.
-# move_heal_per_frame:        Health restored per frame during high-speed cruise.
+# heal_speed_threshold:       Speed ratio threshold for kinetic heal.
+# move_heal_per_frame:        Health restored per frame during high speed.
 # path_heal_per_frame:        Health restored per frame during path progress.
 #
 # PERCEPTION (Sensory Range & Orientation Toggles):
 # vision_rays:                Number of probe rays cast across vision fan.
 # vision_arc_angle:           Field of view angle spread in degrees.
 # vision_max_dist:            Maximum ray reach distance in tiles.
-# use_bfs_spawn_heading:      Toggle between BFS aligned or random Spawn heading.
+# use_bfs_spawn_heading:      Toggle BFS aligned or random spawn heading.
 # activate_gps_compass:       Master toggle for GPS path progress triggers.
 # use_binocular_gps_compasses: Toggle: true = Stereo (4ch), false = Mono (2ch).
 # range_gps_compass:          Ratio threshold [0.0-1.0] for GPS triggers.

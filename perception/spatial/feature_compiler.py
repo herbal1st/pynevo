@@ -68,7 +68,8 @@ class SingleFrameFeatureCompiler:
         is_collided: bool = False,
         is_idle: bool = False,
         is_healing: bool = False,
-        rot_ratio: float = 0.0
+        rot_ratio: float = 0.0,
+        stage_idx: int = 0
     ) -> NDArray[np.float32]:
         """
         Compiles single-frame base vector for active or historical step.
@@ -96,7 +97,8 @@ class SingleFrameFeatureCompiler:
                 candidate_y,
                 heading_rad,
                 map_data,
-                self.profile
+                self.profile,
+                stage_idx=stage_idx
             )
         else:
             exit_channels = (0.0, 0.0, 0.0, 0.0)
@@ -110,7 +112,8 @@ class SingleFrameFeatureCompiler:
             gps_channels = self.gps_sensor.compute_gps_channels(
                 candidate_x, candidate_y, heading_rad,
                 map_data, pathfinder, candidate_idx,
-                prev_x, prev_y, prev_heading
+                prev_x, prev_y, prev_heading,
+                stage_idx=stage_idx
             )
         else:
             gps_channels = (

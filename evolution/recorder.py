@@ -110,6 +110,7 @@ class FrameRecorder:
             "bitmask_chunks": map_data.bitmask_chunks,
             "start_pos": map_data.start_pos,
             "exit_pos": map_data.exit_pos,
+            "target_sequence": list(map_data.target_sequence),
             "map_width": map_data.width,
             "map_height": map_data.height,
             "raw_scores": raw_scores,

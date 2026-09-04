@@ -36,6 +36,15 @@ profiles:
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
 
+  TINY:
+    map_type: "BRANCHING_WALLS"
+    map_width: 12
+    map_height: 9
+    tile_size: 50
+    wall_density: 1.0
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
+
   DEFAULT_ANCHOR:
     map_type: "BRANCHING_WALLS_6_ANCHOR"
     map_width: 40
