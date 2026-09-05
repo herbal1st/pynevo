@@ -5,6 +5,8 @@ Data structures for 2D map grids and compact PyBiwis bitmask encoding.
 import math
 import random
 from typing import List, Tuple, Optional
+import numpy as np
+from numpy.typing import NDArray
 
 from core.bitmask_encoder import BitmaskEncoder
 
@@ -22,7 +24,7 @@ class MapData:
         exit_pos: Tuple[int, int]
     ) -> None:
         """
-        Initializes map layout grids, entry/exit coordinates, and target pool.
+        Initializes map layout grids, entry/exit coordinates, and contiguous grid array.
         """
         self.width: int = width
         self.height: int = height
@@ -31,6 +33,9 @@ class MapData:
         self.grid: List[List[int]] = [
             [0 for _ in range(width)] for _ in range(height)
         ]
+        self.grid_array: NDArray[np.uint8] = np.zeros(
+            (height, width), dtype=np.uint8
+        )
         self.bitmask_chunks: List[int] = []
         self.los_cache: Optional[List[List[bool]]] = None
         self.target_sequence: List[Tuple[int, int]] = [exit_pos]
@@ -75,10 +80,11 @@ class MapData:
 
     def set_wall(self, x: int, y: int, is_wall: bool = True) -> None:
         """
-        Sets wall state at the designated tile coordinate.
+        Sets wall state at the designated tile coordinate and updates grid_array.
         """
         val: int = 1 if is_wall else 0
         self.grid[y][x] = val
+        self.grid_array[y, x] = np.uint8(val)
 
     def is_wall(self, x: int, y: int) -> bool:
         """
@@ -86,7 +92,7 @@ class MapData:
         """
         if x < 0 or x >= self.width or y < 0 or y >= self.height:
             return True
-        return self.grid[y][x] == 1
+        return self.grid_array[y, x] == 1
 
     def is_walkable(self, x: int, y: int) -> bool:
         """
@@ -106,12 +112,15 @@ class MapData:
 
     def decode_bitmask(self, chunks: List[int]) -> None:
         """
-        Unpacks 64-bit PyBiwis integer chunks into grid via BitmaskEncoder.
+        Unpacks 64-bit PyBiwis integer chunks into grid and synchronizes grid_array.
         """
         self.bitmask_chunks = chunks
         BitmaskEncoder.decode_chunks_to_grid(
             chunks, self.grid, self.width, self.height
         )
+        for y in range(self.height):
+            for x in range(self.width):
+                self.grid_array[y, x] = np.uint8(self.grid[y][x])
 
     def compute_exit_los_cache(self) -> None:
         """

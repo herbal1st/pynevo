@@ -3,17 +3,18 @@ Sequential multi-layer perceptron (MLP) architecture builder.
 """
 
 import sys
-from typing import List, Any, Optional
+from typing import List, Any, Optional, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
 from neural.layers import NeuralDenseLayer
 from neural.activations import ActivationReLU, ActivationSigmoid
+from neural.weight_initializer import WeightInitializer
 
 
 class NeuralNetwork:
     """
-    Manages sequential data flow through dense layers and activation modules.
+    Manages sequential data flow with a contiguous master parameter buffer.
     """
 
     def __init__(
@@ -24,20 +25,45 @@ class NeuralNetwork:
         output_size: int = 4,
     ) -> None:
         """
-        Constructs sequential multi-layer MLP topology with 4 motor outputs.
+        Constructs sequential MLP with layer weights referencing a single 1D buffer.
         """
         self.layers: List[NeuralDenseLayer] = []
         self.activations: List[Any] = []
 
-        self.layers.append(NeuralDenseLayer(input_size, neurons))
-        self.activations.append(ActivationReLU())
-
+        layer_specs: List[Tuple[int, int]] = [(input_size, neurons)]
         for _ in range(hidden_layers - 1):
-            self.layers.append(NeuralDenseLayer(neurons, neurons))
-            self.activations.append(ActivationReLU())
+            layer_specs.append((neurons, neurons))
+        layer_specs.append((neurons, output_size))
 
-        self.layers.append(NeuralDenseLayer(neurons, output_size))
-        self.activations.append(None)
+        total_params: int = sum((in_c * out_c) + out_c for in_c, out_c in layer_specs)
+        self.param_buffer: NDArray[np.float64] = np.zeros(
+            total_params, dtype=np.float64
+        )
+
+        offset: int = 0
+        for idx, (in_c, out_c) in enumerate(layer_specs):
+            w_size: int = in_c * out_c
+            b_size: int = out_c
+
+            w_init, b_init = WeightInitializer.initialize_layer_weights(in_c, out_c)
+            self.param_buffer[offset : offset + w_size] = w_init.flatten()
+            self.param_buffer[offset + w_size : offset + w_size + b_size] = b_init.flatten()
+
+            w_view = self.param_buffer[offset : offset + w_size].reshape((in_c, out_c))
+            b_view = self.param_buffer[offset + w_size : offset + w_size + b_size].reshape((1, out_c))
+
+            self.layers.append(
+                NeuralDenseLayer(
+                    in_c, out_c, weights_buffer=w_view, biases_buffer=b_view
+                )
+            )
+
+            if idx < len(layer_specs) - 1:
+                self.activations.append(ActivationReLU())
+            else:
+                self.activations.append(None)
+
+            offset += w_size + b_size
 
         self.out_sigmoid: ActivationSigmoid = ActivationSigmoid()
         self.last_input_features: Optional[NDArray[np.float32]] = None
@@ -45,54 +71,46 @@ class NeuralNetwork:
     @property
     def param_count(self) -> int:
         """
-        Returns total number of scalar parameters across all dense layers.
+        Returns total number of scalar parameters in master parameter buffer.
         """
-        return sum(layer.param_count for layer in self.layers)
+        return int(self.param_buffer.size)
 
     def copy_weights_from(self, source_net: "NeuralNetwork") -> None:
         """
-        Copies weight and bias matrices in-place from source network.
+        Copies all weights and biases in a single vectorized buffer copy.
         """
-        for i in range(len(self.layers)):
-            np.copyto(self.layers[i].weights, source_net.layers[i].weights)
-            np.copyto(self.layers[i].biases, source_net.layers[i].biases)
+        np.copyto(self.param_buffer, source_net.param_buffer)
 
     def export_flat_weights(self) -> NDArray[np.float16]:
         """
-        Exports all network layer parameters as a single 1D float16 vector.
+        Exports all network parameters directly as a contiguous 1D float16 vector.
         """
-        layer_vectors: List[NDArray[np.float16]] = [
-            layer.export_flat_weights() for layer in self.layers
-        ]
-        return np.concatenate(layer_vectors)
+        return np.ascontiguousarray(self.param_buffer, dtype=np.float16)
 
     def import_flat_weights(self, flat_data: NDArray) -> None:
         """
-        Imports a 1D float16 parameter vector in-place with shape check.
+        Imports 1D parameter vector in-place in a single operation.
         """
         if flat_data.size != self.param_count:
             print(
                 f"[Error] Parameter count mismatch in import_flat_weights! "
-                f"Expected {self.param_count} parameters, got {flat_data.size}."
+                f"Expected {self.param_count}, got {flat_data.size}."
             )
             sys.exit(1)
 
-        offset: int = 0
-        for layer in self.layers:
-            layer_params: int = layer.param_count
-            layer_slice = flat_data[offset : offset + layer_params]
-            layer.import_flat_weights(layer_slice)
-            offset += layer_params
+        np.copyto(self.param_buffer, flat_data.astype(np.float64))
 
     def forward(self, input_data: NDArray) -> NDArray[np.float64]:
         """
         Forward pass returning 4 wheel outputs (L-FWD, L-BWD, R-FWD, R-BWD).
         """
-        self.last_input_features = input_data.flatten().astype(np.float32)
+        self.last_input_features = np.ascontiguousarray(
+            input_data.flatten(), dtype=np.float32
+        )
         curr: NDArray[np.float64] = (
-            input_data.astype(np.float64)
+            np.ascontiguousarray(input_data, dtype=np.float64)
             if input_data.ndim == 2
-            else input_data[np.newaxis, :].astype(np.float64)
+            else np.ascontiguousarray(input_data[np.newaxis, :], dtype=np.float64)
         )
 
         for i in range(len(self.layers)):

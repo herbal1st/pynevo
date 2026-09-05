@@ -3,8 +3,6 @@ Uniform crossover operator combining parent neural network weight matrices.
 """
 
 import numpy as np
-from numpy.typing import NDArray
-
 from neural.network import NeuralNetwork
 
 
@@ -20,23 +18,10 @@ class UniformCrossover:
         child_net: NeuralNetwork
     ) -> None:
         """
-        Combines parent weights and biases in-place into child network.
+        Combines parent weights and biases in-place using a vectorized array mask.
         """
-        for i in range(len(parent_a.layers)):
-            wa = parent_a.layers[i].weights
-            wb = parent_b.layers[i].weights
-            ba = parent_a.layers[i].biases
-            bb = parent_b.layers[i].biases
-
-            cw = child_net.layers[i].weights
-            cb = child_net.layers[i].biases
-
-            mask_w: NDArray[np.bool_] = (
-                np.random.rand(*wa.shape) < 0.5
-            )
-            mask_b: NDArray[np.bool_] = (
-                np.random.rand(*ba.shape) < 0.5
-            )
-
-            np.copyto(cw, np.where(mask_w, wa, wb))
-            np.copyto(cb, np.where(mask_b, ba, bb))
+        mask = np.random.random(child_net.param_buffer.shape) < 0.5
+        np.copyto(
+            child_net.param_buffer,
+            np.where(mask, parent_a.param_buffer, parent_b.param_buffer)
+        )

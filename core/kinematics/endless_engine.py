@@ -4,10 +4,63 @@ Endless chunk-aware kinematics engine with Circle-to-AABB collision math.
 
 import math
 from typing import Tuple, Any
+import numpy as np
+from numpy.typing import NDArray
+from numba import njit
 
 from world.tile_registry import TileRegistry
 from world.chunk_manager import ChunkManager
 from utils.math_utils import normalize_angle_2pi
+
+
+@njit(fastmath=True, cache=True)
+def resolve_endless_circle_aabb_jit(
+    px: float,
+    py: float,
+    r: float,
+    solid_tx: NDArray[np.int32],
+    solid_ty: NDArray[np.int32],
+    passes: int = 2
+) -> Tuple[float, float, bool]:
+    """
+    JIT-compiled non-GIL C routine resolving continuous circle overlap against solid tiles.
+    """
+    has_collided = False
+    r_sq = r * r
+    n = len(solid_tx)
+
+    for _ in range(passes):
+        for i in range(n):
+            tx = solid_tx[i]
+            ty = solid_ty[i]
+
+            cx = max(float(tx), min(px, float(tx) + 1.0))
+            cy = max(float(ty), min(py, float(ty) + 1.0))
+
+            dx = px - cx
+            dy = py - cy
+            dist_sq = (dx * dx) + (dy * dy)
+
+            if dist_sq < r_sq:
+                has_collided = True
+                dist = math.sqrt(dist_sq)
+
+                if dist > 1e-6:
+                    overlap = r - dist
+                    px += (dx / dist) * overlap
+                    py += (dy / dist) * overlap
+                else:
+                    tile_cx = float(tx) + 0.5
+                    tile_cy = float(ty) + 0.5
+                    push_x = 1.0 if px >= tile_cx else -1.0
+                    push_y = 1.0 if py >= tile_cy else -1.0
+
+                    if abs(px - tile_cx) < abs(py - tile_cy):
+                        py = (float(ty + 1) + r) if push_y > 0.0 else (float(ty) - r)
+                    else:
+                        px = (float(tx + 1) + r) if push_x > 0.0 else (float(tx) - r)
+
+    return px, py, has_collided
 
 
 class EndlessKinematics:
@@ -89,11 +142,11 @@ class EndlessKinematics:
         )
         sub_dist: float = total_dist / float(num_sub_steps)
 
-        dx_sub: float = math.cos(heading_rad) * sub_dist  # tiles
-        dy_sub: float = math.sin(heading_rad) * sub_dist  # tiles
+        dx_sub: float = math.cos(heading_rad) * sub_dist
+        dy_sub: float = math.sin(heading_rad) * sub_dist
 
-        curr_x: float = cx  # tiles
-        curr_y: float = cy  # tiles
+        curr_x: float = cx
+        curr_y: float = cy
         has_any_collision: bool = False
 
         for _ in range(num_sub_steps):
@@ -126,65 +179,37 @@ class EndlessKinematics:
         passes: int = 2
     ) -> Tuple[float, float, bool]:
         """
-        Resolves circle penetration against surrounding solid tile AABBs.
+        Resolves circle penetration against surrounding solid tile AABBs via JIT.
         """
         r: float = max(0.01, 0.5 * float(diameter_ratio))
-        has_collided: bool = False
+        min_tx: int = math.floor(px - r)
+        max_tx: int = math.floor(px + r)
+        min_ty: int = math.floor(py - r)
+        max_ty: int = math.floor(py + r)
 
-        for _ in range(passes):
-            min_tx: int = math.floor(px - r)
-            max_tx: int = math.floor(px + r)
-            min_ty: int = math.floor(py - r)
-            max_ty: int = math.floor(py + r)
+        solid_tx_list = []
+        solid_ty_list = []
 
-            for ty in range(min_ty, max_ty + 1):
-                for tx in range(min_tx, max_tx + 1):
-                    cls._ensure_chunk_loaded(
-                        tx, ty, chunk_manager, tile_registry, generator
-                    )
-                    tile_id: int = chunk_manager.get_tile(tx, ty)
-                    tile_prof = tile_registry.get_tile(tile_id)
+        for ty in range(min_ty, max_ty + 1):
+            for tx in range(min_tx, max_tx + 1):
+                cls._ensure_chunk_loaded(
+                    tx, ty, chunk_manager, tile_registry, generator
+                )
+                tile_id: int = chunk_manager.get_tile(tx, ty)
+                tile_prof = tile_registry.get_tile(tile_id)
+                if tile_prof.solid:
+                    solid_tx_list.append(tx)
+                    solid_ty_list.append(ty)
 
-                    if not tile_prof.solid:
-                        continue
+        if not solid_tx_list:
+            return px, py, False
 
-                    cx: float = max(float(tx), min(px, float(tx) + 1.0))
-                    cy: float = max(float(ty), min(py, float(ty) + 1.0))
+        stx_arr = np.array(solid_tx_list, dtype=np.int32)
+        sty_arr = np.array(solid_ty_list, dtype=np.int32)
 
-                    dx: float = px - cx
-                    dy: float = py - cy
-                    dist_sq: float = (dx * dx) + (dy * dy)
-
-                    if dist_sq < (r * r):
-                        has_collided = True
-                        dist: float = math.sqrt(dist_sq)
-
-                        if dist > 1e-6:
-                            overlap: float = r - dist
-                            px += (dx / dist) * overlap
-                            py += (dy / dist) * overlap
-                        else:
-                            tile_cx: float = float(tx) + 0.5
-                            tile_cy: float = float(ty) + 0.5
-                            push_x: float = (
-                                1.0 if px >= tile_cx else -1.0
-                            )
-                            push_y: float = (
-                                1.0 if py >= tile_cy else -1.0
-                            )
-
-                            if abs(px - tile_cx) < abs(py - tile_cy):
-                                py = (
-                                    float(ty + 1) + r if push_y > 0.0
-                                    else float(ty) - r
-                                )
-                            else:
-                                px = (
-                                    float(tx + 1) + r if push_x > 0.0
-                                    else float(tx) - r
-                                )
-
-        return px, py, has_collided
+        return resolve_endless_circle_aabb_jit(
+            px, py, r, stx_arr, sty_arr, passes=passes
+        )
 
     @classmethod
     def _ensure_chunk_loaded(

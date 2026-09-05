@@ -4,7 +4,6 @@ Gaussian noise mutation operator for neural network weight perturbation.
 
 import random
 import numpy as np
-
 from neural.network import NeuralNetwork
 
 
@@ -20,21 +19,12 @@ class GaussianMutation:
         mutation_scale: float
     ) -> None:
         """
-        Applies Gaussian noise in-place to weights based on mutation rate.
+        Applies Gaussian noise in-place to the contiguous parameter buffer.
         """
         if random.random() >= mutation_rate:
             return
 
-        for i in range(len(child_net.layers)):
-            cw = child_net.layers[i].weights
-            cb = child_net.layers[i].biases
-
-            noise_w = np.random.normal(
-                0.0, mutation_scale, size=cw.shape
-            )
-            noise_b = np.random.normal(
-                0.0, mutation_scale, size=cb.shape
-            )
-
-            np.add(cw, noise_w, out=cw)
-            np.add(cb, noise_b, out=cb)
+        noise = np.random.normal(
+            0.0, mutation_scale, size=child_net.param_buffer.shape
+        )
+        np.add(child_net.param_buffer, noise, out=child_net.param_buffer)
