@@ -7,8 +7,52 @@ from typing import List, Tuple, Optional, Dict
 import numpy as np
 from numpy.typing import NDArray
 
+try:
+    from numba import njit
+except ImportError:
+    def njit(*args, **kwargs):
+        if len(args) == 1 and callable(args[0]):
+            return args[0]
+        def decorator(func):
+            return func
+        return decorator
+
 from core.map_data import MapData
 from utils.math_utils import CARDINAL_MOVES
+
+
+# 218,297 calls in trace -> compile down to LLVM machine instructions
+@njit(fastmath=True, cache=True)
+def get_step_distance(x1: float, y1: float, x2: float, y2: float) -> float:
+    """
+    Direct JIT-compiled distance calculation bypassing Python math.sqrt abstraction.
+    """
+    dx = x2 - x1
+    dy = y2 - y1
+    return (dx * dx + dy * dy) ** 0.5
+
+
+@njit(fastmath=True, cache=True)
+def lookup_step_distance_jit(
+    matrix_buffer: NDArray[np.int32],
+    tile_x: int,
+    tile_y: int,
+    stage_idx: int,
+    width: int,
+    height: int,
+    max_targets: int,
+    unreachable_val: int = 9999
+) -> int:
+    """
+    O(1) register-speed buffer lookup with inlined bounds check.
+    """
+    if (
+        tile_x < 0 or tile_x >= width or
+        tile_y < 0 or tile_y >= height or
+        stage_idx < 0 or stage_idx >= max_targets
+    ):
+        return unreachable_val
+    return int(matrix_buffer[stage_idx, tile_y, tile_x])
 
 
 class BFSPathfinder:
@@ -57,7 +101,11 @@ class BFSPathfinder:
         Runs backward BFS from target_pos directly into 3D NumPy buffer.
         """
         if stage_idx >= self.max_targets:
-            new_max: int = max(self.max_targets * 2, stage_idx + 1)
+            new_max: int = (
+                self.max_targets * 2
+                if self.max_targets * 2 > (stage_idx + 1)
+                else (stage_idx + 1)
+            )
             new_buf = np.full(
                 (new_max, self.map_data.height, self.map_data.width),
                 self.unreachable_val,
@@ -115,16 +163,18 @@ class BFSPathfinder:
         stage_idx: int = 0
     ) -> int:
         """
-        Retrieves step distance to stage target in O(1) time.
+        Retrieves step distance to stage target in O(1) time via compiled JIT.
         """
-        if (
-            tile_x < 0 or tile_x >= self.map_data.width or
-            tile_y < 0 or tile_y >= self.map_data.height or
-            stage_idx < 0 or stage_idx >= self.max_targets
-        ):
-            return self.unreachable_val
-
-        return int(self._matrix_buffer[stage_idx, tile_y, tile_x])
+        return lookup_step_distance_jit(
+            self._matrix_buffer,
+            tile_x,
+            tile_y,
+            stage_idx,
+            self.map_data.width,
+            self.map_data.height,
+            self.max_targets,
+            self.unreachable_val
+        )
 
     def compute_shortest_path_tiles(
         self,

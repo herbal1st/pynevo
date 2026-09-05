@@ -1,4 +1,12 @@
 profiles:
+  PROG:
+    map_type: BRANCHING_WALLS
+    map_width: 16
+    map_height: 12
+    tile_size: 40
+    wall_density: 0.70
+    stem_early_termination_rate: 0.05
+    min_straight_start_steps: 1
 
   DEFAULT:
     map_type: "BRANCHING_WALLS"
@@ -29,8 +37,8 @@ profiles:
 
   SMALL:
     map_type: "BRANCHING_WALLS"
-    map_width: 20
-    map_height: 15
+    map_width: 200
+    map_height: 150
     tile_size: 50
     wall_density: 1.0
     stem_early_termination_rate: 0.05

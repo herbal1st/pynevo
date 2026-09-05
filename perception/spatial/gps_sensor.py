@@ -7,14 +7,114 @@ from typing import Tuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+try:
+    from numba import njit
+except ImportError:
+    def njit(*args, **kwargs):
+        if len(args) == 1 and callable(args[0]):
+            return args[0]
+        def decorator(func):
+            return func
+        return decorator
+
 from core.map_data import MapData
 from core.pathfinder import BFSPathfinder
 from entities.agent_profile_registry import ResolvedAgentProfile
 
 
+@njit(fastmath=True, cache=True)
+def get_bilinear_bfs_distance(
+    grid_data: NDArray[np.int32],
+    px: float,
+    py: float,
+    width: int,
+    height: int
+) -> float:
+    """
+    JIT-compiled bilinear interpolation directly over the BFS 2D distance slice.
+    """
+    x0 = int(px)
+    y0 = int(py)
+    x1 = (x0 + 1) if (x0 + 1) < (width - 1) else (width - 1)
+    y1 = (y0 + 1) if (y0 + 1) < (height - 1) else (height - 1)
+
+    fx = px - x0
+    fy = py - y0
+
+    d00 = float(grid_data[y0, x0])
+    d10 = float(grid_data[y0, x1])
+    d01 = float(grid_data[y1, x0])
+    d11 = float(grid_data[y1, x1])
+
+    top = d00 + fx * (d10 - d00)
+    bottom = d01 + fx * (d11 - d01)
+    return top + fy * (bottom - top)
+
+
+@njit(fastmath=True, cache=True)
+def compute_stereo_gps_jit(
+    cx: float,
+    cy: float,
+    heading_rad: float,
+    offset_rad: float,
+    r_body: float,
+    grid_data: NDArray[np.int32],
+    width: int,
+    height: int,
+    max_active_dist: float,
+    prev_left: float,
+    prev_right: float,
+    move_speed: float,
+    has_history: bool
+) -> Tuple[float, float, float, float, float, float]:
+    """
+    Evaluates both stereo eye probe positions and bilinear lookups in a single JIT pass.
+    """
+    left_heading = heading_rad + offset_rad
+    right_heading = heading_rad - offset_rad
+
+    lx = cx + (r_body * math.cos(left_heading))
+    ly = cy + (r_body * math.sin(left_heading))
+    rx = cx + (r_body * math.cos(right_heading))
+    ry = cy + (r_body * math.sin(right_heading))
+
+    max_u = float(width - 1)
+    max_v = float(height - 1)
+
+    ul = lx - 0.5
+    vl = ly - 0.5
+    cl_u = 0.0 if ul < 0.0 else (max_u if ul > max_u else ul)
+    cl_v = 0.0 if vl < 0.0 else (max_v if vl > max_v else vl)
+    dist_l = get_bilinear_bfs_distance(grid_data, cl_u, cl_v, width, height)
+
+    ur = rx - 0.5
+    vr = ry - 0.5
+    cr_u = 0.0 if ur < 0.0 else (max_u if ur > max_u else ur)
+    cr_v = 0.0 if vr < 0.0 else (max_v if vr > max_v else vr)
+    dist_r = get_bilinear_bfs_distance(grid_data, cr_u, cr_v, width, height)
+
+    min_curr = dist_l if dist_l < dist_r else dist_r
+    if min_curr > max_active_dist or not has_history:
+        return 0.0, 0.0, 0.0, 0.0, dist_l, dist_r
+
+    denom = move_speed if move_speed > 1e-4 else 1e-4
+    dl = (prev_left - dist_l) / denom
+    dr = (prev_right - dist_r) / denom
+
+    sspl_pos = 1.0 if dl > 1.0 else (0.0 if dl < 0.0 else dl)
+    abs_l = -dl if dl < 0.0 else 0.0
+    sspl_neg = 1.0 if abs_l > 1.0 else (0.0 if abs_l < 0.0 else abs_l)
+
+    sspr_pos = 1.0 if dr > 1.0 else (0.0 if dr < 0.0 else dr)
+    abs_r = -dr if dr < 0.0 else 0.0
+    sspr_neg = 1.0 if abs_r > 1.0 else (0.0 if abs_r < 0.0 else abs_r)
+
+    return sspl_pos, sspr_pos, sspl_neg, sspr_neg, dist_l, dist_r
+
+
 class TopologicalGPSSensor:
     """
-    Evaluates topological BFS GPS progress with bilinear interpolation.
+    Evaluates topological BFS GPS progress with JIT-accelerated bilinear interpolation.
     """
 
     def __init__(
@@ -22,9 +122,6 @@ class TopologicalGPSSensor:
         profile: Optional[ResolvedAgentProfile] = None,
         max_candidates: int = 128
     ) -> None:
-        """
-        Initializes profile reference and pre-allocated array cache.
-        """
         self.profile: Optional[ResolvedAgentProfile] = profile
         self.max_candidates: int = max_candidates
         self._cache: NDArray[np.float32] = np.full(
@@ -37,15 +134,9 @@ class TopologicalGPSSensor:
 
     @property
     def last_gps_progress(self) -> Tuple[float, ...]:
-        """
-        Returns last calculated GPS progress channels.
-        """
         return self.last_gps_channels
 
     def reset_candidate_history(self, candidate_idx: int) -> None:
-        """
-        Zeroes out recorded GPS distance slot for candidate.
-        """
         self._ensure_capacity(candidate_idx)
         self._cache[candidate_idx].fill(9999.0)
         self._initialized[candidate_idx] = False
@@ -63,19 +154,13 @@ class TopologicalGPSSensor:
         prev_heading: Optional[float] = None,
         stage_idx: int = 0
     ) -> Tuple[float, ...]:
-        """
-        Computes frame-to-frame topological BFS GPS progress channels.
-        """
         use_binocular: bool = (
             self.profile.use_binocular_gps_compasses
             if self.profile is not None
             else True
         )
 
-        if (
-            self.profile is not None
-            and not self.profile.activate_gps_compass
-        ):
+        if self.profile is not None and not self.profile.activate_gps_compass:
             res = (0.0, 0.0, 0.0, 0.0) if use_binocular else (0.0, 0.0)
             self.last_gps_channels = res
             return res
@@ -102,23 +187,18 @@ class TopologicalGPSSensor:
             return res
 
         sx, sy = map_data.start_pos
-        initial_dist: int = pathfinder.get_step_distance(
-            sx, sy, stage_idx=stage_idx
-        )
+        initial_dist: int = pathfinder.get_step_distance(sx, sy, stage_idx=stage_idx)
         if initial_dist >= 9999 or initial_dist == 0:
             res = (0.0, 0.0, 0.0, 0.0) if use_binocular else (0.0, 0.0)
             self.last_gps_channels = res
             return res
 
         range_ratio: float = (
-            self.profile.range_gps_compass
-            if self.profile is not None
-            else 1.0
+            self.profile.range_gps_compass if self.profile is not None else 1.0
         )
-        if range_ratio >= 1.0:
-            max_active_dist: float = 9998.0
-        else:
-            max_active_dist = float(initial_dist) * range_ratio
+        max_active_dist: float = (
+            9998.0 if range_ratio >= 1.0 else float(initial_dist) * range_ratio
+        )
 
         is_endless: bool = hasattr(map_data, "chunk_manager")
         if is_endless and self.profile is not None:
@@ -132,302 +212,51 @@ class TopologicalGPSSensor:
             rad_ratio = 0.45
 
         r_body: float = 0.5 * rad_ratio
-
-        is_stateless: bool = (
-            prev_x is not None
-            and prev_y is not None
-            and prev_heading is not None
-        )
-
-        if not use_binocular:
-            res = self._compute_mono_channels(
-                cx,
-                cy,
-                heading_rad,
-                map_data,
-                pathfinder,
-                candidate_idx,
-                prev_x,
-                prev_y,
-                prev_heading,
-                max_active_dist,
-                move_speed,
-                r_body,
-                is_stateless,
-                stage_idx
-            )
-            self.last_gps_channels = res
-            return res
-
-        res = self._compute_stereo_channels(
-            cx,
-            cy,
-            heading_rad,
-            map_data,
-            pathfinder,
-            candidate_idx,
-            prev_x,
-            prev_y,
-            prev_heading,
-            max_active_dist,
-            move_speed,
-            r_body,
-            is_stateless,
-            stage_idx
-        )
-        self.last_gps_channels = res
-        return res
-
-    def get_bilinear_bfs_distance(
-        self,
-        cx: float,
-        cy: float,
-        map_data: MapData,
-        pathfinder: BFSPathfinder,
-        cand_x: Optional[float] = None,
-        cand_y: Optional[float] = None,
-        stage_idx: int = 0
-    ) -> float:
-        """
-        Bilinearly interpolates continuous distance from BFS distance grid.
-        """
-        u: float = cx - 0.5
-        v: float = cy - 0.5
-
-        x0: int = int(math.floor(u))
-        y0: int = int(math.floor(v))
-        x1: int = x0 + 1
-        y1: int = y0 + 1
-
-        uf: float = u - float(x0)
-        vf: float = v - float(y0)
-
-        if cand_x is not None and cand_y is not None:
-            fallback_tile_x: int = int(math.floor(cand_x))
-            fallback_tile_y: int = int(math.floor(cand_y))
-        else:
-            fallback_tile_x = int(math.floor(cx))
-            fallback_tile_y = int(math.floor(cy))
-
-        fallback_d: float = float(
-            pathfinder.get_step_distance(
-                fallback_tile_x, fallback_tile_y, stage_idx=stage_idx
-            )
-        )
-
-        if fallback_d >= 9999.0:
-            return 9999.0
-
-        def sample_d(tx: int, ty: int) -> float:
-            d: int = pathfinder.get_step_distance(
-                tx, ty, stage_idx=stage_idx
-            )
-            if d >= 9999:
-                return fallback_d
-            return float(d)
-
-        d00: float = sample_d(x0, y0)
-        d10: float = sample_d(x1, y0)
-        d01: float = sample_d(x0, y1)
-        d11: float = sample_d(x1, y1)
-
-        d_interp: float = (
-            (1.0 - uf) * (1.0 - vf) * d00
-            + uf * (1.0 - vf) * d10
-            + (1.0 - uf) * vf * d01
-            + uf * vf * d11
-        )
-
-        return d_interp
-
-    def _compute_mono_channels(
-        self,
-        cx: float,
-        cy: float,
-        heading_rad: float,
-        map_data: MapData,
-        pathfinder: BFSPathfinder,
-        candidate_idx: int,
-        prev_x: Optional[float],
-        prev_y: Optional[float],
-        prev_heading: Optional[float],
-        max_active_dist: float,
-        move_speed: float,
-        r_body: float,
-        is_stateless: bool,
-        stage_idx: int
-    ) -> Tuple[float, float]:
-        """
-        Computes 2 mono GPS progress channels (BFS-, BFS+).
-        """
-        nose_x: float = cx + (r_body * math.cos(heading_rad))
-        nose_y: float = cy + (r_body * math.sin(heading_rad))
-
-        curr_dist_val = self.get_bilinear_bfs_distance(
-            nose_x, nose_y, map_data, pathfinder, cx, cy, stage_idx
-        )
-
-        if curr_dist_val > max_active_dist:
-            if not is_stateless:
-                self._ensure_capacity(candidate_idx)
-                self._cache[candidate_idx, 0] = curr_dist_val
-                self._initialized[candidate_idx] = True
-            return 0.0, 0.0
-
-        if is_stateless and prev_x is not None and prev_y is not None:
-            prev_nose_x: float = prev_x + (
-                r_body * math.cos(prev_heading or 0.0)
-            )
-            prev_nose_y: float = prev_y + (
-                r_body * math.sin(prev_heading or 0.0)
-            )
-            prev_dist = self.get_bilinear_bfs_distance(
-                prev_nose_x,
-                prev_nose_y,
-                map_data,
-                pathfinder,
-                prev_x,
-                prev_y,
-                stage_idx
-            )
-        else:
-            self._ensure_capacity(candidate_idx)
-            if not self._initialized[candidate_idx]:
-                self._cache[candidate_idx, 0] = curr_dist_val
-                self._initialized[candidate_idx] = True
-                return 0.0, 0.0
-
-            prev_dist = float(self._cache[candidate_idx, 0])
-            self._cache[candidate_idx, 0] = curr_dist_val
-
-        if curr_dist_val >= 9999.0 or prev_dist >= 9999.0:
-            return 0.0, 0.0
-
-        delta_dist: float = (prev_dist - curr_dist_val) / max(
-            1e-4, move_speed
-        )
-        d_closer: float = max(0.0, min(1.0, delta_dist))
-        d_farther: float = max(0.0, min(1.0, abs(min(0.0, delta_dist))))
-
-        return d_closer, d_farther
-
-    def _compute_stereo_channels(
-        self,
-        cx: float,
-        cy: float,
-        heading_rad: float,
-        map_data: MapData,
-        pathfinder: BFSPathfinder,
-        candidate_idx: int,
-        prev_x: Optional[float],
-        prev_y: Optional[float],
-        prev_heading: Optional[float],
-        max_active_dist: float,
-        move_speed: float,
-        r_body: float,
-        is_stateless: bool,
-        stage_idx: int
-    ) -> Tuple[float, float, float, float]:
-        """
-        Computes 4 stereo GPS channels (BFSL-, BFSR-, BFSL+, BFSR+).
-        """
         offset_deg: float = (
-            self.profile.target_compasses_offset_angle
-            if self.profile is not None
-            else 22.5
+            self.profile.target_compasses_offset_angle if self.profile is not None else 22.5
         )
         offset_rad: float = math.radians(offset_deg)
 
-        left_heading: float = heading_rad + offset_rad
-        right_heading: float = heading_rad - offset_rad
+        self._ensure_capacity(candidate_idx)
+        has_history: bool = bool(self._initialized[candidate_idx])
+        p_left: float = float(self._cache[candidate_idx, 0])
+        p_right: float = float(self._cache[candidate_idx, 1])
 
-        lx: float = cx + (r_body * math.cos(left_heading))
-        ly: float = cy + (r_body * math.sin(left_heading))
-        rx: float = cx + (r_body * math.cos(right_heading))
-        ry: float = cy + (r_body * math.sin(right_heading))
+        grid_matrix = pathfinder._matrix_buffer[stage_idx]
 
-        dist_left = self.get_bilinear_bfs_distance(
-            lx, ly, map_data, pathfinder, cx, cy, stage_idx
+        # Single JIT call bypassing multiple FFI roundtrips
+        (
+            sspl_pos, sspr_pos, sspl_neg, sspr_neg, cur_l, cur_r
+        ) = compute_stereo_gps_jit(
+            cx, cy, heading_rad, offset_rad, r_body,
+            grid_matrix, map_data.width, map_data.height,
+            max_active_dist, p_left, p_right, move_speed, has_history
         )
-        dist_right = self.get_bilinear_bfs_distance(
-            rx, ry, map_data, pathfinder, cx, cy, stage_idx
-        )
 
-        min_curr_dist: float = min(dist_left, dist_right)
-        if min_curr_dist > max_active_dist:
-            if not is_stateless:
-                self._ensure_capacity(candidate_idx)
-                self._cache[candidate_idx, 0] = dist_left
-                self._cache[candidate_idx, 1] = dist_right
-                self._initialized[candidate_idx] = True
-            return 0.0, 0.0, 0.0, 0.0
+        self._cache[candidate_idx, 0] = cur_l
+        self._cache[candidate_idx, 1] = cur_r
+        self._initialized[candidate_idx] = True
 
-        if is_stateless and prev_x is not None and prev_y is not None:
-            p_head: float = prev_heading or 0.0
-            prev_left_head: float = p_head + offset_rad
-            prev_right_head: float = p_head - offset_rad
-
-            plx: float = prev_x + (r_body * math.cos(prev_left_head))
-            ply: float = prev_y + (r_body * math.sin(prev_left_head))
-            prx: float = prev_x + (r_body * math.cos(prev_right_head))
-            pry: float = prev_y + (r_body * math.sin(prev_right_head))
-
-            prev_left = self.get_bilinear_bfs_distance(
-                plx,
-                ply,
-                map_data,
-                pathfinder,
-                prev_x,
-                prev_y,
-                stage_idx
-            )
-            prev_right = self.get_bilinear_bfs_distance(
-                prx,
-                pry,
-                map_data,
-                pathfinder,
-                prev_x,
-                prev_y,
-                stage_idx
-            )
+        if use_binocular:
+            res = (sspl_pos, sspr_pos, sspl_neg, sspr_neg)
         else:
-            self._ensure_capacity(candidate_idx)
-            if not self._initialized[candidate_idx]:
-                self._cache[candidate_idx, 0] = dist_left
-                self._cache[candidate_idx, 1] = dist_right
-                self._initialized[candidate_idx] = True
-                return 0.0, 0.0, 0.0, 0.0
+            res = (sspl_pos, sspl_neg)
 
-            prev_left = float(self._cache[candidate_idx, 0])
-            prev_right = float(self._cache[candidate_idx, 1])
-
-            self._cache[candidate_idx, 0] = dist_left
-            self._cache[candidate_idx, 1] = dist_right
-
-        d_left: float = (prev_left - dist_left) / max(1e-4, move_speed)
-        d_right: float = (prev_right - dist_right) / max(1e-4, move_speed)
-
-        sspl_pos: float = max(0.0, min(1.0, max(0.0, d_left)))
-        sspl_neg: float = max(0.0, min(1.0, abs(min(0.0, d_left))))
-        sspr_pos: float = max(0.0, min(1.0, max(0.0, d_right)))
-        sspr_neg: float = max(0.0, min(1.0, abs(min(0.0, d_right))))
-
-        return sspl_pos, sspr_pos, sspl_neg, sspr_neg
+        self.last_gps_channels = res
+        return res
 
     def _ensure_capacity(self, candidate_idx: int) -> None:
-        """
-        Expands pre-allocated cache if candidate_idx exceeds bounds.
-        """
         if candidate_idx >= self.max_candidates:
-            need_cands: int = max(self.max_candidates * 2, candidate_idx + 1)
-            new_cache = np.full(
-                (need_cands, 2), 9999.0, dtype=np.float32
+            need_cands: int = (
+                self.max_candidates * 2
+                if (self.max_candidates * 2) > (candidate_idx + 1)
+                else (candidate_idx + 1)
             )
+            new_cache = np.full((need_cands, 2), 9999.0, dtype=np.float32)
             new_cache[: self.max_candidates] = self._cache
             self._cache = new_cache
 
             new_init = np.zeros(need_cands, dtype=bool)
             new_init[: self.max_candidates] = self._initialized
             self._initialized = new_init
-
             self.max_candidates = need_cands

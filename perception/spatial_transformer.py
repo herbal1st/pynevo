@@ -24,55 +24,35 @@ class SpatialTransformer:
         self,
         profile: Optional[ResolvedAgentProfile] = None
     ) -> None:
-        """
-        Initializes perception sensors, GPS sensor, & temporal stacker.
-        """
         self.profile: Optional[ResolvedAgentProfile] = profile
         self.gps_sensor: TopologicalGPSSensor = TopologicalGPSSensor(profile)
         self.compiler: SingleFrameFeatureCompiler = (
             SingleFrameFeatureCompiler(profile, self.gps_sensor)
         )
         self.memory_stacker: TemporalMemoryStacker = TemporalMemoryStacker()
+        self.mem_k: int = profile.memory_frames if profile is not None else 0
 
     @property
     def last_gps_progress(self) -> Tuple[float, ...]:
-        """
-        Forwards last calculated GPS progress channels from GPS sensor.
-        """
         return self.gps_sensor.last_gps_progress
 
     @property
     def sampler(self):
-        """
-        Forwarding property for backward compatibility with vision sampler.
-        """
         return self.compiler.sampler
 
     @property
     def exit_compass(self):
-        """
-        Forwarding property for backward compatibility with exit compass.
-        """
         return self.compiler.exit_compass
 
     @property
     def north_compass(self):
-        """
-        Forwarding property for backward compatibility with North compass.
-        """
         return self.compiler.north_compass
 
     @property
     def cardinal_compass(self):
-        """
-        Forwarding property for backward compatibility with cardinal compass.
-        """
         return self.compiler.cardinal_compass
 
     def reset_candidate_history(self, candidate_idx: int) -> None:
-        """
-        Clears temporal observation history & GPS distance for candidate.
-        """
         self.memory_stacker.reset_candidate_history(candidate_idx)
         self.gps_sensor.reset_candidate_history(candidate_idx)
 
@@ -81,9 +61,6 @@ class SpatialTransformer:
         map_data: Optional[MapData] = None,
         start_pos: Optional[Tuple[int, int]] = None
     ) -> float:
-        """
-        Delegates spawn heading generation to SpawnHeadingGenerator.
-        """
         use_bfs: bool = (
             self.profile.use_bfs_spawn_heading
             if self.profile is not None else True
@@ -109,11 +86,9 @@ class SpatialTransformer:
         is_idle: bool = False,
         is_healing: bool = False,
         rot_ratio: float = 0.0,
-        stage_idx: int = 0
+        stage_idx: int = 0,
+        angular_velocity: float = 0.0
     ) -> NDArray[np.float32]:
-        """
-        Compiles single-frame base vector for active or historical step.
-        """
         return self.compiler.compile_base_vector(
             candidate_x,
             candidate_y,
@@ -130,7 +105,8 @@ class SpatialTransformer:
             is_idle=is_idle,
             is_healing=is_healing,
             rot_ratio=rot_ratio,
-            stage_idx=stage_idx
+            stage_idx=stage_idx,
+            angular_velocity=angular_velocity
         )
 
     def compile_feature_vector(
@@ -147,11 +123,9 @@ class SpatialTransformer:
         is_idle: bool = False,
         is_healing: bool = False,
         rot_ratio: float = 0.0,
-        stage_idx: int = 0
+        stage_idx: int = 0,
+        angular_velocity: float = 0.0
     ) -> NDArray[np.float32]:
-        """
-        Samples active frame and stacks past memory_frames observations.
-        """
         base_vector = self.compile_base_vector(
             candidate_x,
             candidate_y,
@@ -165,12 +139,10 @@ class SpatialTransformer:
             is_idle=is_idle,
             is_healing=is_healing,
             rot_ratio=rot_ratio,
-            stage_idx=stage_idx
+            stage_idx=stage_idx,
+            angular_velocity=angular_velocity
         )
 
-        mem_k: int = (
-            self.profile.memory_frames if self.profile is not None else 0
-        )
         return self.memory_stacker.stack_base_vector(
-            candidate_idx, base_vector, mem_k
+            candidate_idx, base_vector, self.mem_k
         )

@@ -16,7 +16,7 @@ from utils.math_utils import calculate_angle_delta
 
 class CandidateStepPipeline:
     """
-    Executes sensory perception, neural inference, & physical steps.
+    Executes sensory perception, neural inference, & physical steps with target zone damping.
     """
 
     def __init__(
@@ -24,9 +24,6 @@ class CandidateStepPipeline:
         transformer: SpatialTransformer,
         kinematics: CandidateKinematics
     ) -> None:
-        """
-        Initializes pipeline with spatial transformer and kinematics engine.
-        """
         self.transformer: SpatialTransformer = transformer
         self.kinematics: CandidateKinematics = kinematics
 
@@ -41,9 +38,6 @@ class CandidateStepPipeline:
         candidate_idx: int = 0,
         target_hold_frames: int = 15
     ) -> bool:
-        """
-        Executes candidate tick with hold zone recovery & physical steps.
-        """
         profile = self.transformer.profile
         max_speed: float = (
             self.kinematics.move_speed if self.kinematics is not None
@@ -58,22 +52,18 @@ class CandidateStepPipeline:
             state.last_rot_ratio if spin_dmg_rate > 0.0 else 0.0
         )
 
-        is_endless: bool = hasattr(map_data, "chunk_manager")
-        if hasattr(map_data, "get_target_pos"):
-            ex, ey = map_data.get_target_pos(state.active_target_idx)
-        else:
-            ex, ey = map_data.exit_pos
+        is_endless: bool = "chunk_manager" in map_data.__dict__
+        ex, ey = map_data.get_target_pos(state.active_target_idx)
 
         target_cx: float = float(ex) + 0.5
         target_cy: float = float(ey) + 0.5
 
-        hold_dist_thresh: float = (
-            profile.target_hold_distance_threshold
-            if profile is not None else 0.25
-        )
+        # 0.48 tile radius: allows holding anywhere on the 1x1 target tile
+        hold_dist_thresh_sq: float = 0.2304  # 0.48 * 0.48
+
         hold_heal_rate: float = (
             profile.target_hold_heal_per_frame
-            if profile is not None else 0.002
+            if profile is not None else 0.005
         )
 
         features = self.transformer.compile_feature_vector(
@@ -89,14 +79,13 @@ class CandidateStepPipeline:
             is_idle=state.last_idle,
             is_healing=state.last_healing,
             rot_ratio=effective_rot_ratio,
-            stage_idx=state.active_target_idx
+            stage_idx=state.active_target_idx,
+            angular_velocity=state.angular_velocity
         )
 
         gps_progress = self.transformer.last_gps_progress
-
         use_linear: bool = (
-            profile.use_linear_speed_output
-            if profile is not None else False
+            profile.use_linear_speed_output if profile is not None else False
         )
 
         outputs = net.forward(features)[0]
@@ -120,20 +109,23 @@ class CandidateStepPipeline:
             move_eff = (net_r + net_l) / 2.0
             turn_eff = (net_r - net_l) / 2.0
 
+        # Holding Damping: when inside the target zone, damp movement to settle into the pad
+        if state.touched_exit:
+            move_eff *= 0.35
+            turn_eff *= 0.35
+
         prev_heading: float = state.heading
         state.heading, _ = self.kinematics.apply_rotation(
             state.heading, turn_eff, move_eff
         )
 
-        d_theta: float = abs(
-            calculate_angle_delta(prev_heading, state.heading)
-        )
-        max_turn_rad: float = max(
-            1e-6,
-            self.kinematics.rad_per_frame
-            if self.kinematics is not None else 0.1
-        )
-        rot_ratio: float = max(0.0, min(1.0, d_theta / max_turn_rad))
+        d_theta: float = abs(calculate_angle_delta(prev_heading, state.heading))
+
+        k_rad = self.kinematics.rad_per_frame if self.kinematics is not None else 0.1
+        max_turn_rad: float = k_rad if k_rad > 1e-6 else 1e-6
+
+        ratio_t = d_theta / max_turn_rad
+        rot_ratio: float = 1.0 if ratio_t > 1.0 else (0.0 if ratio_t < 0.0 else ratio_t)
 
         nx, ny, hit = self.kinematics.calculate_forward_step(
             state.x, state.y, state.heading, move_eff, map_data
@@ -141,91 +133,85 @@ class CandidateStepPipeline:
 
         dx: float = nx - state.x
         dy: float = ny - state.y
-        disp_dist: float = math.sqrt((dx * dx) + (dy * dy))
-        physical_speed_ratio: float = max(
-            0.0, min(1.0, disp_dist / max(1e-4, max_speed))
-        )
+        disp_dist: float = (dx * dx + dy * dy) ** 0.5
+
+        max_sp_safe = max_speed if max_speed > 1e-4 else 1e-4
+        sp_ratio = disp_dist / max_sp_safe
+        physical_speed_ratio: float = 1.0 if sp_ratio > 1.0 else (0.0 if sp_ratio < 0.0 else sp_ratio)
 
         idle_thresh: float = (
-            profile.idle_damage_speed_threshold if profile is not None
-            else 0.05
+            profile.idle_damage_speed_threshold if profile is not None else 0.05
         )
         heal_thresh: float = (
-            profile.heal_speed_threshold if profile is not None
-            else 0.80
+            profile.heal_speed_threshold if profile is not None else 0.80
         )
 
         dx_t: float = nx - target_cx
         dy_t: float = ny - target_cy
-        dist_to_target: float = math.sqrt((dx_t * dx_t) + (dy_t * dy_t))
+        dist_sq: float = (dx_t * dx_t) + (dy_t * dy_t)
 
-        state.touched_exit = (dist_to_target <= hold_dist_thresh)
+        state.touched_exit = (dist_sq <= hold_dist_thresh_sq)
         state.exit_solved = False
 
-        is_idle: bool = (physical_speed_ratio < idle_thresh)
-        is_cruise_healing: bool = (
-            physical_speed_ratio >= heal_thresh and state.is_alive
-        )
+        # No idle damage inside the target zone
+        is_idle: bool = (physical_speed_ratio < idle_thresh) and (not state.touched_exit)
+        is_cruise_healing: bool = (physical_speed_ratio >= heal_thresh and state.is_alive)
         is_hold_healing: bool = state.touched_exit and state.is_alive
         is_healing: bool = is_cruise_healing or is_hold_healing
 
         state.x = nx
         state.y = ny
+        state.visited_tiles.add((int(nx), int(ny)))
+        state.angular_velocity = float(turn_eff)
         state.has_collided = hit
         state.frames_survived += 1
 
         dmg_coll: float = (
-            profile.health_coll_dmg_per_frame if profile is not None
-            else 0.005
+            profile.health_coll_dmg_per_frame if profile is not None else 0.005
         )
         dmg_idle: float = (
-            profile.health_idle_dmg_per_frame if profile is not None
-            else 0.005
+            profile.health_idle_dmg_per_frame if profile is not None else 0.005
         )
         move_heal_rate: float = (
-            profile.move_heal_per_frame if profile is not None
-            else 0.002
+            profile.move_heal_per_frame if profile is not None else 0.002
         )
         path_heal_rate: float = (
-            profile.path_heal_per_frame if profile is not None
-            else 0.0
+            profile.path_heal_per_frame if profile is not None else 0.0
         )
 
         if hit:
-            state.health = max(0.0, state.health - dmg_coll)
+            hp_after_coll = state.health - dmg_coll
+            state.health = hp_after_coll if hp_after_coll > 0.0 else 0.0
 
         if is_idle:
-            state.health = max(0.0, state.health - dmg_idle)
+            hp_after_idle = state.health - dmg_idle
+            state.health = hp_after_idle if hp_after_idle > 0.0 else 0.0
 
         if spin_dmg_rate > 0.0 and rot_ratio > 0.0:
-            state.health = max(
-                0.0, state.health - (spin_dmg_rate * rot_ratio)
-            )
+            hp_after_spin = state.health - (spin_dmg_rate * rot_ratio)
+            state.health = hp_after_spin if hp_after_spin > 0.0 else 0.0
 
         if is_cruise_healing and move_heal_rate > 0.0:
-            state.health = min(1.0, state.health + move_heal_rate)
+            hp_after_cruise = state.health + move_heal_rate
+            state.health = hp_after_cruise if hp_after_cruise < 1.0 else 1.0
 
         if is_hold_healing and hold_heal_rate > 0.0:
-            state.health = min(1.0, state.health + hold_heal_rate)
+            hp_after_hold = state.health + hold_heal_rate
+            state.health = hp_after_hold if hp_after_hold < 1.0 else 1.0
 
         use_binoc: bool = (
-            profile.use_binocular_gps_compasses if profile is not None
-            else True
+            profile.use_binocular_gps_compasses if profile is not None else True
         )
         if use_binoc and len(gps_progress) >= 2:
-            bfsl_pos: float = gps_progress[0]
-            bfsr_pos: float = gps_progress[1]
-            path_refuel: float = 0.5 * path_heal_rate * (
-                bfsl_pos + bfsr_pos
-            )
+            path_refuel: float = 0.5 * path_heal_rate * (gps_progress[0] + gps_progress[1])
         elif len(gps_progress) >= 1:
-            bfs_pos: float = gps_progress[0]
-            path_refuel = path_heal_rate * bfs_pos
+            path_refuel = path_heal_rate * gps_progress[0]
         else:
             path_refuel = 0.0
 
         if path_heal_rate > 0.0 and path_refuel > 0.0:
-            state.health = min(1.0, state.health + path_refuel)
+            hp_after_path = state.health + path_refuel
+            state.health = hp_after_path if hp_after_path < 1.0 else 1.0
 
         if not is_endless:
             if state.touched_exit:
@@ -233,17 +219,21 @@ class CandidateStepPipeline:
                     state.first_touch_step = step_idx
 
                 state.hold_frame_counter += 1
+                if state.hold_frame_counter > state.max_hold_frames:
+                    state.max_hold_frames = state.hold_frame_counter
+
                 if state.hold_frame_counter >= target_hold_frames:
                     if state.first_hold_clear_step < 0:
                         state.first_hold_clear_step = step_idx
+
+                    # Commit completed stage reward into cumulative lifetime progress
+                    state.total_lifetime_progress += 25.0
 
                     state.stages_cleared += 1
                     state.exit_solved = True
                     state.hold_frame_counter = 0
                     state.active_target_idx += 1
-                    self.transformer.gps_sensor.reset_candidate_history(
-                        candidate_idx
-                    )
+                    self.transformer.gps_sensor.reset_candidate_history(candidate_idx)
             else:
                 state.hold_frame_counter = 0
 
@@ -254,9 +244,7 @@ class CandidateStepPipeline:
         state.last_collided = hit
         state.last_idle = is_idle
         state.last_healing = is_healing
-        state.last_rot_ratio = (
-            rot_ratio if spin_dmg_rate > 0.0 else 0.0
-        )
+        state.last_rot_ratio = rot_ratio if spin_dmg_rate > 0.0 else 0.0
 
         curr_dist: int = pathfinder.get_step_distance(
             *state.tile_coords, stage_idx=state.active_target_idx

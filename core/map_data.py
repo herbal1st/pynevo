@@ -8,7 +8,54 @@ from typing import List, Tuple, Optional
 import numpy as np
 from numpy.typing import NDArray
 
+try:
+    from numba import njit
+except ImportError:
+    def njit(*args, **kwargs):
+        if len(args) == 1 and callable(args[0]):
+            return args[0]
+        def decorator(func):
+            return func
+        return decorator
+
 from core.bitmask_encoder import BitmaskEncoder
+
+
+@njit(fastmath=True, cache=True)
+def march_los_segment_jit(
+    cx: float,
+    cy: float,
+    ex: float,
+    ey: float,
+    grid_array: NDArray[np.uint8],
+    width: int,
+    height: int,
+    step_size: float = 0.2
+) -> bool:
+    """
+    JIT-compiled ray march checking wall collisions directly over grid_array.
+    """
+    dx = ex - cx
+    dy = ey - cy
+    dist = (dx * dx + dy * dy) ** 0.5
+
+    if dist < 1e-4:
+        return True
+
+    dir_x = dx / dist
+    dir_y = dy / dist
+    num_steps = int(dist / step_size)
+
+    for step in range(1, num_steps):
+        px = int(math.floor(cx + (dir_x * step * step_size)))
+        py = int(math.floor(cy + (dir_y * step * step_size)))
+
+        if px < 0 or px >= width or py < 0 or py >= height:
+            return False
+        if grid_array[py, px] == 1:
+            return False
+
+    return True
 
 
 class MapData:
@@ -23,9 +70,6 @@ class MapData:
         start_pos: Tuple[int, int],
         exit_pos: Tuple[int, int]
     ) -> None:
-        """
-        Initializes map layout grids, entry/exit coordinates, and contiguous grid array.
-        """
         self.width: int = width
         self.height: int = height
         self.start_pos: Tuple[int, int] = start_pos
@@ -42,21 +86,20 @@ class MapData:
 
     def get_target_pos(self, stage_idx: int) -> Tuple[int, int]:
         """
-        Retrieves target coordinates for specified stage index.
+        Retrieves target coordinates using direct fast indexing.
         """
-        if not self.target_sequence:
-            return self.exit_pos
-        if 0 <= stage_idx < len(self.target_sequence):
-            return self.target_sequence[stage_idx]
-        return self.target_sequence[-1]
+        seq = self.target_sequence
+        n = len(seq)
+        if stage_idx < n:
+            return seq[stage_idx]
+        if n > 0:
+            return seq[-1]
+        return self.exit_pos
 
     def append_next_target(
         self,
         seed_offset: int = 0
     ) -> Tuple[int, int]:
-        """
-        Appends a new solvable walkable target tile to target sequence.
-        """
         if not self.target_sequence:
             self.target_sequence = [self.exit_pos]
 
@@ -79,31 +122,19 @@ class MapData:
         return next_target
 
     def set_wall(self, x: int, y: int, is_wall: bool = True) -> None:
-        """
-        Sets wall state at the designated tile coordinate and updates grid_array.
-        """
         val: int = 1 if is_wall else 0
         self.grid[y][x] = val
         self.grid_array[y, x] = np.uint8(val)
 
     def is_wall(self, x: int, y: int) -> bool:
-        """
-        Checks if tile coordinates contain a wall or are out of bounds.
-        """
         if x < 0 or x >= self.width or y < 0 or y >= self.height:
             return True
         return self.grid_array[y, x] == 1
 
     def is_walkable(self, x: int, y: int) -> bool:
-        """
-        Checks if tile coordinates are open for traversal.
-        """
         return not self.is_wall(x, y)
 
     def encode_bitmask(self) -> List[int]:
-        """
-        Packs 2D grid into 64-bit PyBiwis integer chunks via BitmaskEncoder.
-        """
         chunks: List[int] = BitmaskEncoder.encode_grid_to_chunks(
             self.grid, self.width, self.height
         )
@@ -111,9 +142,6 @@ class MapData:
         return chunks
 
     def decode_bitmask(self, chunks: List[int]) -> None:
-        """
-        Unpacks 64-bit PyBiwis integer chunks into grid and synchronizes grid_array.
-        """
         self.bitmask_chunks = chunks
         BitmaskEncoder.decode_chunks_to_grid(
             chunks, self.grid, self.width, self.height
@@ -123,14 +151,11 @@ class MapData:
                 self.grid_array[y, x] = np.uint8(self.grid[y][x])
 
     def compute_exit_los_cache(self) -> None:
-        """
-        Pre-computes a 2D boolean grid of multi-point Line-of-Sight to exit.
-        """
         cache: List[List[bool]] = [
             [False for _ in range(self.width)] for _ in range(self.height)
         ]
         ex, ey = self.exit_pos
-        exit_targets: List[Tuple[float, float]] = [
+        exit_targets = [
             (float(ex) + 0.5, float(ey) + 0.5),
             (float(ex) + 0.1, float(ey) + 0.1),
             (float(ex) + 0.9, float(ey) + 0.1),
@@ -143,7 +168,7 @@ class MapData:
                 if self.is_wall(tx, ty):
                     continue
 
-                tile_probes: List[Tuple[float, float]] = [
+                tile_probes = [
                     (float(tx) + 0.5, float(ty) + 0.5),
                     (float(tx) + 0.1, float(ty) + 0.1),
                     (float(tx) + 0.9, float(ty) + 0.1),
@@ -154,9 +179,7 @@ class MapData:
                 has_los: bool = False
                 for px, py in tile_probes:
                     for tx_target, ty_target in exit_targets:
-                        if self._march_los_segment(
-                            px, py, tx_target, ty_target
-                        ):
+                        if self._march_los_segment(px, py, tx_target, ty_target):
                             has_los = True
                             break
                     if has_los:
@@ -167,9 +190,6 @@ class MapData:
         self.los_cache = cache
 
     def has_line_of_sight_to_exit(self, tile_x: int, tile_y: int) -> bool:
-        """
-        Retrieves pre-computed tile Line-of-Sight status in O(1) time.
-        """
         if self.los_cache is None:
             self.compute_exit_los_cache()
 
@@ -193,24 +213,8 @@ class MapData:
         step_size: float = 0.2
     ) -> bool:
         """
-        Marches a line segment probe from candidate to exit checking walls.
+        Fast line-of-sight segment probe checking wall obstacles via JIT.
         """
-        dx: float = ex - cx
-        dy: float = ey - cy
-        dist: float = math.sqrt((dx * dx) + (dy * dy))
-
-        if dist < 1e-4:
-            return True
-
-        dir_x: float = dx / dist
-        dir_y: float = dy / dist
-        num_steps: int = int(dist / step_size)
-
-        for step in range(1, num_steps):
-            px: int = int(math.floor(cx + (dir_x * step * step_size)))
-            py: int = int(math.floor(cy + (dir_y * step * step_size)))
-
-            if self.is_wall(px, py):
-                return False
-
-        return True
+        return march_los_segment_jit(
+            cx, cy, ex, ey, self.grid_array, self.width, self.height, step_size
+        )

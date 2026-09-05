@@ -27,8 +27,8 @@ profiles:
   SHORT:
     min_path_difficulty_ratio: 0.6
     max_path_difficulty_ratio: 0.8
-    learning_generations: 10
-    population_size: 25
+    learning_generations: 15
+    population_size: 1024
     max_simulation_steps: 1000
     target_hold_frames: 15
     elitism_ratio: 0.15

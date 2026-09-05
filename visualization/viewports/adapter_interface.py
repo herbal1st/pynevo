@@ -24,7 +24,15 @@ class IViewportAdapter:
         rows: int,
         cols: int
     ) -> None:
-        """
-        Renders an individual candidate environment frame into rect bounds.
-        """
+        raise NotImplementedError
+
+    def render_overlay_viewport(
+        self,
+        surface: pygame.Surface,
+        gen_data: Dict[str, Any],
+        selected_cand_idx: int,
+        active_step: int,
+        rect: Tuple[int, int, int, int],
+        is_camera_centered: bool
+    ) -> None:
         raise NotImplementedError

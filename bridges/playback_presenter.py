@@ -383,7 +383,8 @@ class PlaybackPresenter:
                 is_collided=hit_k,
                 is_idle=is_idle_k,
                 is_healing=is_heal_k,
-                rot_ratio=rot_ratio_k
+                rot_ratio=rot_ratio_k,
+                angular_velocity=0.0
             )
             base_vectors.append(bv)
 

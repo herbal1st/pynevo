@@ -43,11 +43,12 @@ class ArchiveBridge:
 
         if est_mb > max_allowed_mb:
             print(
-                f"[Error] Estimated archive size ({est_mb:.2f} MB) "
-                f"exceeds MAX_TEMP_CACHE_SIZE_MB limit "
-                f"({max_allowed_mb:.2f} MB)."
+                f"[Warning] Estimated archive size "
+                f"({est_mb:.2f} MB) exceeds "
+                f"MAX_TEMP_CACHE_SIZE_MB "
+                f"({max_allowed_mb:.2f} MB). "
+                f"Continuing because the cache is optional."
             )
-            sys.exit(1)
 
         archive_dict: Dict[str, Any] = {
             "num_generations": np.array(num_gens, dtype=np.int64),

@@ -19,12 +19,12 @@ class GaussianMutation:
         mutation_scale: float
     ) -> None:
         """
-        Applies Gaussian noise in-place to the contiguous parameter buffer.
+        Applies Gaussian exploration noise in-place to weights.
         """
         if random.random() >= mutation_rate:
             return
 
         noise = np.random.normal(
             0.0, mutation_scale, size=child_net.param_buffer.shape
-        )
-        np.add(child_net.param_buffer, noise, out=child_net.param_buffer)
+        ).astype(np.float32)
+        child_net.param_buffer += noise

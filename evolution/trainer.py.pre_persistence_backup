@@ -1,0 +1,372 @@
+"""
+Headless neuroevolution simulation trainer running progressive curriculum scaling across CPU cores.
+"""
+
+import time
+import os
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor
+from typing import List, Optional, Tuple
+import numpy as np
+
+import config
+from core.warmup import warmup_jit
+from core.map_generation.generator import MapGenerator
+from core.pathfinder import BFSPathfinder
+from entities.agent_profile_registry import AgentProfileRegistry
+from entities.training_profile_registry import (
+    TrainingProfileRegistry,
+    ResolvedTrainingProfile
+)
+from entities.map_profile_registry import (
+    MapProfileRegistry,
+    ResolvedMapProfile
+)
+from entities.agent_factory import AgentFactory
+from entities.entity_state import AgentState
+from evolution.fitness import FitnessEvaluator
+from evolution.population import PopulationManager
+from evolution.recorder import FrameRecorder
+from bridges.candidate_step_pipeline import CandidateStepPipeline
+from bridges.cli_presenter import CLIPresenter
+from neural.brain_persistence import BrainPersistence
+
+
+def _worker_init(core_id: int):
+    if hasattr(os, "sched_setaffinity"):
+        try:
+            os.sched_setaffinity(0, {core_id})
+        except Exception:
+            pass
+
+
+def _simulate_candidate_substep(args) -> Tuple[int, AgentState, np.ndarray]:
+    (
+        c_idx, state, flat_weights, map_data, pathfinder_buf,
+        max_steps, profile_name, target_hold_frames
+    ) = args
+
+    registry = AgentProfileRegistry()
+    factory = AgentFactory(registry, profile_name)
+    transformer = factory.create_transformer()
+    kinematics = factory.create_kinematics()
+    net = factory.create_network()
+    net.import_flat_weights(flat_weights)
+    pipeline = CandidateStepPipeline(transformer, kinematics)
+
+    pathfinder = BFSPathfinder(map_data)
+    pathfinder._matrix_buffer = pathfinder_buf
+
+    telemetry_rows = np.zeros((max_steps, 8), dtype=np.float32)
+
+    class FastWorkerRecorder:
+        def record_step_data(self, step_idx, cand_idx, x, y, heading, health, dist, hit_wall, is_alive, reached_exit):
+            if step_idx < max_steps:
+                telemetry_rows[step_idx, 0] = x
+                telemetry_rows[step_idx, 1] = y
+                telemetry_rows[step_idx, 2] = heading
+                telemetry_rows[step_idx, 3] = health
+                telemetry_rows[step_idx, 4] = dist
+                telemetry_rows[step_idx, 5] = 1.0 if hit_wall else 0.0
+                telemetry_rows[step_idx, 6] = 1.0 if is_alive else 0.0
+                telemetry_rows[step_idx, 7] = 1.0 if reached_exit else 0.0
+
+    dummy_rec = FastWorkerRecorder()
+
+    for step in range(1, max_steps + 1):
+        step_idx = step - 1
+        if not state.is_alive:
+            if step_idx > 0:
+                telemetry_rows[step_idx] = telemetry_rows[step_idx - 1]
+            continue
+
+        pipeline.execute_step(
+            step_idx,
+            state,
+            net,
+            map_data,
+            pathfinder,
+            dummy_rec,
+            candidate_idx=c_idx,
+            target_hold_frames=target_hold_frames
+        )
+
+    return c_idx, state, telemetry_rows
+
+
+class HeadlessTrainer:
+    """
+    Coordinates headless training loops with Progressive Grid Expansion ('PROG').
+    """
+
+    def __init__(
+        self,
+        active_profile_name: str = config.ACTIVE_AGENT_PROFILE,
+        active_training_name: str = config.ACTIVE_TRAINING_PROFILE,
+        active_map_name: str = config.ACTIVE_MAP_PROFILE
+    ) -> None:
+        warmup_jit()
+
+        self.active_profile_name: str = active_profile_name
+        self.registry: AgentProfileRegistry = AgentProfileRegistry()
+        self.factory: AgentFactory = AgentFactory(
+            self.registry, active_profile_name
+        )
+
+        self.training_registry: TrainingProfileRegistry = (
+            TrainingProfileRegistry()
+        )
+        self.training_profile: ResolvedTrainingProfile = (
+            self.training_registry.get_profile(active_training_name)
+        )
+
+        self.map_registry: MapProfileRegistry = MapProfileRegistry()
+        self.is_prog_mode: bool = (active_map_name.upper() == "PROG")
+
+        # Progressive mode setup
+        if self.is_prog_mode:
+            self.prog_width: int = 16
+            self.prog_height: int = 12
+            self.map_profile: ResolvedMapProfile = ResolvedMapProfile(
+                profile_name="PROG",
+                map_type="BRANCHING_WALLS",
+                map_width=self.prog_width,
+                map_height=self.prog_height,
+                tile_size=40,
+                wall_density=0.70,
+                stem_early_termination_rate=0.05,
+                min_straight_start_steps=1
+            )
+        else:
+            self.map_profile = self.map_registry.get_profile(active_map_name)
+
+        self.pop_size: int = self.training_profile.population_size
+        self.max_steps: int = self.training_profile.max_simulation_steps
+        self.map_generator: MapGenerator = MapGenerator(
+            map_profile=self.map_profile
+        )
+        self.population: PopulationManager = PopulationManager(
+            factory=self.factory,
+            pop_size=self.pop_size,
+            mutation_rate=self.training_profile.mutation_rate,
+            mutation_scale=self.training_profile.mutation_scale,
+            elitism_ratio=self.training_profile.elitism_ratio
+        )
+        self.recorder: FrameRecorder = FrameRecorder()
+        self.persistence: BrainPersistence = BrainPersistence()
+
+        seed_net = self.factory.create_network()
+        if self.persistence.load_brain(
+            active_profile_name, seed_net, self.factory.profile,
+            context="training"
+        ):
+            self.population.seed_population_from_brain(seed_net)
+
+        self.cli_presenter: CLIPresenter = CLIPresenter(
+            self.pop_size, self.max_steps
+        )
+
+        total_cpus = multiprocessing.cpu_count()
+        self.usable_cores = list(range(1, total_cpus)) if total_cpus > 1 else [0]
+        print(f"[Parallel Engine] Multi-core worker pool initialized across {len(self.usable_cores)} cores: {self.usable_cores}")
+
+    def run_training_session(
+        self,
+        num_generations: Optional[int] = None
+    ) -> FrameRecorder:
+        # In PROG mode, runs indefinitely until user presses Ctrl+C
+        gens_count: int = (
+            999999 if self.is_prog_mode
+            else (num_generations if num_generations is not None else self.training_profile.learning_generations)
+        )
+
+        param_cnt: int = self.population.networks[0].param_count
+        # Allocate buffers for session
+        initial_alloc = 200 if self.is_prog_mode else gens_count
+        self.recorder.allocate_session_buffers(
+            self.max_steps, self.pop_size, initial_alloc, param_cnt
+        )
+
+        self.cli_presenter.print_start_banner(
+            agent_profile=self.active_profile_name,
+            training_profile=self.training_profile.profile_name,
+            map_profile=f"PROG ({self.prog_width}x{self.prog_height})" if self.is_prog_mode else self.map_profile.profile_name,
+            hold_frames=self.training_profile.target_hold_frames
+        )
+        for w_str in AgentProfileRegistry.get_clamped_warning_strings():
+            print(w_str)
+
+        min_diff_ratio = self.training_profile.min_path_difficulty_ratio
+        max_diff_ratio = self.training_profile.max_path_difficulty_ratio
+
+        gen_idx = 0
+        try:
+            with ProcessPoolExecutor(max_workers=len(self.usable_cores)) as executor:
+                while gen_idx < gens_count:
+                    gen_start_time = time.perf_counter()
+
+                    map_data = self.map_generator.generate_solvable_map(
+                        min_difficulty_ratio=min_diff_ratio,
+                        max_difficulty_ratio=max_diff_ratio
+                    )
+                    map_data.target_sequence = [map_data.exit_pos]
+
+                    pathfinder = BFSPathfinder(map_data)
+                    pathfinder.clear_cache()
+                    pathfinder.compute_distance_matrix_for_target(
+                        map_data.exit_pos, stage_idx=0
+                    )
+
+                    start_x, start_y = map_data.start_pos
+                    initial_bfs_dist = pathfinder.get_step_distance(
+                        start_x, start_y, stage_idx=0
+                    )
+
+                    candidate_states = [
+                        AgentState(float(start_x) + 0.5, float(start_y) + 0.5)
+                        for _ in range(self.pop_size)
+                    ]
+
+                    transformer = self.factory.create_transformer()
+                    for c_idx, state in enumerate(candidate_states):
+                        state.heading = transformer.generate_random_heading(
+                            map_data, map_data.start_pos
+                        )
+                        state.best_step_dist = initial_bfs_dist
+
+                    tasks = []
+                    for c_idx in range(self.pop_size):
+                        flat_w = self.population.networks[c_idx].export_flat_weights()
+                        task_args = (
+                            c_idx,
+                            candidate_states[c_idx],
+                            flat_w,
+                            map_data,
+                            pathfinder._matrix_buffer,
+                            self.max_steps,
+                            self.active_profile_name,
+                            self.training_profile.target_hold_frames
+                        )
+                        tasks.append(task_args)
+
+                    results = list(executor.map(_simulate_candidate_substep, tasks))
+
+                    actual_steps = 1
+                    for c_idx, final_state, t_rows in results:
+                        candidate_states[c_idx] = final_state
+                        if self.recorder.telemetry_bundler is not None and self.recorder.telemetry_bundler._curr_buffer is not None:
+                            self.recorder.telemetry_bundler._curr_buffer[:, c_idx, :] = t_rows
+                        actual_steps = max(actual_steps, final_state.frames_survived)
+
+                    raw_scores = [
+                        FitnessEvaluator.calculate_raw_score(
+                            c_state,
+                            initial_bfs_dist,
+                            max_steps=self.max_steps,
+                            stage_bonus=50.0,
+                            lost_hp_impact=self.training_profile.lost_hp_score_impact_ratio
+                        )
+                        for c_state in candidate_states
+                    ]
+                    norm_scores = FitnessEvaluator.normalize_scores(raw_scores)
+
+                    # Expand bundler buffer if running past initial allocation
+                    if self.recorder.weight_bundler and gen_idx >= self.recorder.weight_bundler.num_generations:
+                        new_cap = self.recorder.weight_bundler.num_generations + 100
+                        new_tensor = np.zeros((new_cap, self.pop_size, param_cnt), dtype=np.float16)
+                        new_tensor[:self.recorder.weight_bundler.num_generations] = self.recorder.weight_bundler.master_tensor
+                        self.recorder.weight_bundler._tensor = new_tensor
+                        self.recorder.weight_bundler.num_generations = new_cap
+
+                    self.recorder.finalize_generation(
+                        gen_idx,
+                        map_data,
+                        raw_scores,
+                        norm_scores,
+                        actual_steps,
+                        pop_networks=self.population.networks
+                    )
+
+                    elapsed_sec = time.perf_counter() - gen_start_time
+
+                    self.cli_presenter.print_generation_row(
+                        gen_idx,
+                        raw_scores,
+                        norm_scores,
+                        candidate_states,
+                        elapsed_sec
+                    )
+
+                    winner_idx = int(np.argmax(norm_scores))
+                    winner_net = self.population.networks[winner_idx]
+
+                    # Check 50% exits threshold
+                    exits_cnt = sum(
+                        1 for c in candidate_states
+                        if c.first_touch_step >= 0 or c.touched_exit or c.stages_cleared > 0
+                    )
+                    solve_cnt = sum(1 for c in candidate_states if c.stages_cleared > 0)
+                    threshold = int(self.pop_size * 0.50)
+
+                    # Progressive Curriculum Scaling Trigger
+                    if self.is_prog_mode and (exits_cnt >= threshold or solve_cnt >= max(2, int(threshold * 0.5))):
+                        # 1. Save winning model checkpoint immediately
+                        saved_path = self.persistence.save_brain(
+                            self.active_profile_name,
+                            winner_net,
+                            self.factory.profile,
+                            context=f"curriculum {self.prog_width}x{self.prog_height}"
+                        )
+
+                        # 2. Expand map dimensions
+                        old_w, old_h = self.prog_width, self.prog_height
+                        self.prog_width = min(80, self.prog_width + 4)
+                        self.prog_height = min(60, self.prog_height + 3)
+
+                        print("\n" + "=" * 80)
+                        print(f"🎉 [CURRICULUM UPGRADE] {exits_cnt}/{self.pop_size} (>=50%) agents conquered {old_w}x{old_h}!")
+                        print(f"💾 Checkpoint saved: {saved_path.name}")
+                        print(f"🗺️  Expanding maze bounds to -> {self.prog_width}x{self.prog_height}")
+                        print("=" * 80 + "\n")
+
+                        # Rebuild map profile and generator for larger size
+                        self.map_profile = ResolvedMapProfile(
+                            profile_name="PROG",
+                            map_type="BRANCHING_WALLS",
+                            map_width=self.prog_width,
+                            map_height=self.prog_height,
+                            tile_size=max(12, int(40 * (16 / self.prog_width))),
+                            wall_density=min(0.78, 0.70 + (self.prog_width * 0.001)),
+                            stem_early_termination_rate=0.05,
+                            min_straight_start_steps=1
+                        )
+                        self.map_generator = MapGenerator(map_profile=self.map_profile)
+
+                    elif not self.is_prog_mode and gen_idx == gens_count - 1:
+                        self.persistence.save_brain(
+                            self.active_profile_name,
+                            winner_net,
+                            self.factory.profile,
+                            context="training"
+                        )
+
+                    self.population.evolve_next_generation(norm_scores)
+                    gen_idx += 1
+
+        except KeyboardInterrupt:
+            print("\n[Curriculum] Ctrl+C detected! Finalizing checkpoint and booting visualizer...")
+            winner_idx = int(np.argmax(norm_scores)) if 'norm_scores' in locals() else 0
+            winner_net = self.population.networks[winner_idx]
+            self.persistence.save_brain(
+                self.active_profile_name,
+                winner_net,
+                self.factory.profile,
+                context=f"final curriculum {self.prog_width}x{self.prog_height}"
+            )
+
+        self.cli_presenter.print_finish_footer()
+        for w_str in AgentProfileRegistry.get_clamped_warning_strings():
+            print(w_str)
+
+        self.recorder.save_temporary_disk_archive()
+        return self.recorder

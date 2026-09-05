@@ -11,7 +11,7 @@ VIRTUAL_WIDTH: int = 1280  # pixels
 VIRTUAL_HEIGHT: int = 720  # pixels
 FPS: int = 60  # hertz
 USE_RESIZABLE_WINDOW: bool = True  # toggle
-MAX_TEMP_CACHE_SIZE_MB: int = 8192  # megabytes limit
+MAX_TEMP_CACHE_SIZE_MB: int = 2000  # megabytes limit
 
 # ------ Multi-Candidate Viewport Grid ------
 GRID_ROWS: int = 3  # count

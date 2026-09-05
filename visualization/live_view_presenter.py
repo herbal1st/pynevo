@@ -1,36 +1,23 @@
 """
-Dedicated live winner view presenter managing UI rendering and events.
+Dedicated live winner view presenter managing multi-champion swarm UI and loop rendering.
 """
 
 from typing import Tuple, Dict, Any, List, Optional
 import pygame
 
 import config
-from core.map_data import MapData
 from bridges.live_winner_runner import LiveWinnerRunner
 from visualization.map_renderer import MapRenderer
-from visualization.vision_renderer import VisionRenderer
 from visualization.live_help_overlay import LiveHelpOverlay
 from visualization.overlay_panel import OverlayPanel
 from visualization.timeline_scrubber import TimelineScrubber
 from visualization.network_graph.graph_facade import NetworkGraph
-from visualization.viewports.native.state_resolver import (
-    ViewportStateResolver,
-)
-from visualization.viewports.native.tile_renderer import (
-    ViewportTileRenderer,
-)
-from visualization.viewports.native.avatar_renderer import (
-    ViewportAvatarRenderer,
-)
-from visualization.viewports.native.hud_overlay_renderer import (
-    ViewportHUDOverlayRenderer,
-)
+from visualization.viewports.native_maze_viewport import NativeMazeViewport
 
 
 class LiveViewPresenter:
     """
-    Manages live mode UI view, inputs, background cache, & scrubbing.
+    Manages live multi-champion swarm view, inputs, background cache, & auto-regeneration.
     """
 
     def __init__(
@@ -38,37 +25,14 @@ class LiveViewPresenter:
         virtual_width: int = config.VIRTUAL_WIDTH,
         virtual_height: int = config.VIRTUAL_HEIGHT,
     ) -> None:
-        """
-        Initializes live runner, isolated map renderer, & UI sub-renderers.
-        """
         self.runner: LiveWinnerRunner = LiveWinnerRunner()
         self.map_renderer: MapRenderer = MapRenderer()
-        self.state_resolver: ViewportStateResolver = (
-            ViewportStateResolver()
-        )
-        self.tile_renderer: ViewportTileRenderer = ViewportTileRenderer()
-        self.vision_renderer: VisionRenderer = VisionRenderer(
-            virtual_width, virtual_height
-        )
-        self.avatar_renderer: ViewportAvatarRenderer = (
-            ViewportAvatarRenderer()
-        )
-        self.hud_renderer: ViewportHUDOverlayRenderer = (
-            ViewportHUDOverlayRenderer(virtual_width, virtual_height)
-        )
+        self.viewport: NativeMazeViewport = NativeMazeViewport(virtual_width, virtual_height)
 
-        self.overlay_panel: OverlayPanel = OverlayPanel(
-            config.LAYOUT_PANEL_RECT
-        )
-        self.network_graph: NetworkGraph = NetworkGraph(
-            config.LAYOUT_GRAPH_RECT
-        )
-        self.help_overlay: LiveHelpOverlay = LiveHelpOverlay(
-            config.LAYOUT_GRAPH_RECT
-        )
-        self.timeline_scrubber: TimelineScrubber = TimelineScrubber(
-            config.LAYOUT_SCRUBBER_RECT
-        )
+        self.overlay_panel: OverlayPanel = OverlayPanel(config.LAYOUT_PANEL_RECT)
+        self.network_graph: NetworkGraph = NetworkGraph(config.LAYOUT_GRAPH_RECT)
+        self.help_overlay: LiveHelpOverlay = LiveHelpOverlay(config.LAYOUT_GRAPH_RECT)
+        self.timeline_scrubber: TimelineScrubber = TimelineScrubber(config.LAYOUT_SCRUBBER_RECT)
 
         self.is_camera_centered: bool = False
         self.show_help_overlay: bool = False
@@ -80,16 +44,10 @@ class LiveViewPresenter:
         self.held_key_last_repeat_time: int = 0
 
     def activate(self) -> None:
-        """
-        Activates live mode, reloads weights, & flushes background cache.
-        """
         self.runner.load_winner_brain(verbose=False)
         self.generate_fresh_maze()
 
     def generate_fresh_maze(self) -> None:
-        """
-        Generates fresh maze, executes upfront run, & resumes auto-play.
-        """
         self.runner.generate_fresh_maze()
         self.map_renderer.clear_cache()
         self.active_frame = 0
@@ -98,15 +56,12 @@ class LiveViewPresenter:
         self.timeline_scrubber.is_playing = True
 
     def handle_event(self, event: pygame.event.Event) -> bool:
-        """
-        Processes live mode keyboard and mouse input events.
-        """
         total_steps: int = max(1, self.runner.total_run_steps)
         sp: float = self.timeline_scrubber.playback_speed
 
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_LEFT, pygame.K_RIGHT):
-                now_ms: int = pygame.time.get_ticks()
+                now_ms = pygame.time.get_ticks()
                 self.held_nav_key = event.key
                 self.held_key_press_time = now_ms
                 self.held_key_last_repeat_time = now_ms
@@ -117,10 +72,14 @@ class LiveViewPresenter:
             elif event.key == pygame.K_DOWN:
                 self._execute_brain_cycle(-1)
 
+            # '[' and ']' dynamically scale champion swarm count
+            elif event.key in (pygame.K_LEFTBRACKET, pygame.K_MINUS, pygame.K_KP_MINUS):
+                self.runner.set_champion_count(self.runner.num_champions - 5)
+            elif event.key in (pygame.K_RIGHTBRACKET, pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_EQUALS):
+                self.runner.set_champion_count(self.runner.num_champions + 5)
+
             elif event.key == pygame.K_SPACE:
-                self.timeline_scrubber.is_playing = (
-                    not self.timeline_scrubber.is_playing
-                )
+                self.timeline_scrubber.is_playing = not self.timeline_scrubber.is_playing
             elif event.key == pygame.K_r:
                 self.generate_fresh_maze()
             elif event.key == pygame.K_TAB:
@@ -129,25 +88,6 @@ class LiveViewPresenter:
                 self.show_help_overlay = not self.show_help_overlay
             elif event.key == pygame.K_ESCAPE:
                 return False
-            elif event.key in (
-                pygame.PAGEUP
-                if hasattr(pygame, "PAGEUP")
-                else pygame.K_PAGEUP,
-                pygame.K_PLUS,
-                pygame.K_KP_PLUS,
-                pygame.K_EQUALS,
-            ):
-                self.timeline_scrubber.step_speed_up()
-            elif event.key in (
-                pygame.PAGEDOWN
-                if hasattr(pygame, "PAGEDOWN")
-                else pygame.K_PAGEDOWN,
-                pygame.K_MINUS,
-                pygame.K_KP_MINUS,
-            ):
-                self.timeline_scrubber.step_speed_down()
-            elif event.key in (pygame.K_PERIOD, pygame.K_KP_PERIOD):
-                self.timeline_scrubber.reset_speed()
 
         elif event.type == pygame.KEYUP:
             if event.key == self.held_nav_key:
@@ -156,13 +96,8 @@ class LiveViewPresenter:
         elif event.type == pygame.MOUSEBUTTONDOWN:
             vx, vy = event.pos
             if event.button in (1, 2, 3):
-                clicked_gen, clicked_frame = (
-                    self.timeline_scrubber.handle_click(
-                        (vx, vy),
-                        total_gens=1,
-                        total_frames=total_steps,
-                        mouse_button=event.button,
-                    )
+                clicked_gen, clicked_frame = self.timeline_scrubber.handle_click(
+                    (vx, vy), total_gens=1, total_frames=total_steps, mouse_button=event.button
                 )
                 if clicked_frame is not None:
                     self.active_frame = clicked_frame
@@ -196,28 +131,8 @@ class LiveViewPresenter:
         return True
 
     def update(self) -> None:
-        """
-        Advances scrubbed frame pointer during playback and auto-resets.
-        """
         total_steps: int = max(1, self.runner.total_run_steps)
         sp: float = self.timeline_scrubber.playback_speed
-
-        if (
-            self.held_nav_key is not None
-            and self.held_nav_key in (pygame.K_LEFT, pygame.K_RIGHT)
-        ):
-            now_ms: int = pygame.time.get_ticks()
-            delay: int = config.TIMELINE_KEY_REPEAT_DELAY_MS
-            interval: int = config.TIMELINE_KEY_REPEAT_INTERVAL_MS
-
-            if (
-                now_ms - self.held_key_press_time >= delay
-                and now_ms - self.held_key_last_repeat_time >= interval
-            ):
-                self.held_key_last_repeat_time = now_ms
-                self._execute_frame_jump(
-                    self.held_nav_key, total_steps, sp
-                )
 
         if not self.timeline_scrubber.is_playing:
             return
@@ -225,47 +140,42 @@ class LiveViewPresenter:
         self.active_frame_float += sp
         self.active_frame = int(self.active_frame_float)
 
+        # Autogen next map when simulation ends (all died, solved, or hit limit)
         if self.active_frame >= total_steps:
-            auto_reset: bool = getattr(
-                config, "LIVE_RUNNER_AUTO_RESET", True
-            )
-            if auto_reset:
-                self.generate_fresh_maze()
-            else:
-                self.active_frame = total_steps - 1
-                self.active_frame_float = float(self.active_frame)
-                self.timeline_scrubber.is_playing = False
+            self.generate_fresh_maze()
 
     def draw(self, surface: pygame.Surface) -> None:
-        """
-        Renders live viewports, telemetry panel, activation graph, & scrubber.
-        """
-        live_gen_data: Dict[str, Any] = self.runner.to_gen_data_adapter()
-        total_steps: int = max(1, self.runner.total_run_steps)
-        safe_frame: int = max(0, min(self.active_frame, total_steps - 1))
+        live_gen_data = self.runner.to_gen_data_adapter()
+        total_steps = max(1, self.runner.total_run_steps)
+        safe_frame = max(0, min(self.active_frame, total_steps - 1))
 
-        rect: Tuple[int, int, int, int] = config.LAYOUT_GRID_RECT
-        self._draw_live_viewport(surface, rect, live_gen_data, safe_frame)
+        rect = config.LAYOUT_GRID_RECT
+        # Render all champion models overlaid onto the fresh map
+        self.viewport.render_overlay_viewport(
+            surface,
+            live_gen_data,
+            selected_cand_idx=live_gen_data.get("winner_index", 0),
+            active_step=safe_frame,
+            rect=rect,
+            is_camera_centered=self.is_camera_centered
+        )
 
+        title_str = f"{self.runner.active_brain_title} ({self.runner.num_champions} Clones)"
         self.overlay_panel.draw_panel(
             surface,
             live_gen_data,
-            active_cand_idx=0,
+            active_cand_idx=live_gen_data.get("winner_index", 0),
             active_step=safe_frame,
             total_steps=total_steps,
             total_gens=1,
-            active_profile_title=self.runner.active_brain_title,
+            active_profile_title=title_str,
         )
 
         if self.show_help_overlay:
             self.help_overlay.draw_panel(surface)
         else:
-            live_activations: List[
-                List[float]
-            ] = self.runner.get_activations_for_step(safe_frame)
-            self.network_graph.draw_live_graph(
-                surface, live_activations
-            )
+            live_activations = self.runner.get_activations_for_step(safe_frame)
+            self.network_graph.draw_live_graph(surface, live_activations)
 
         self.timeline_scrubber.draw_controls(
             surface,
@@ -273,119 +183,21 @@ class LiveViewPresenter:
             total_gens=1,
             active_frame=safe_frame,
             total_frames=total_steps,
-            selected_cand_idx=0,
+            selected_cand_idx=live_gen_data.get("winner_index", 0),
             gen_history=[live_gen_data],
         )
 
     def _execute_brain_cycle(self, delta: int) -> None:
-        """
-        Triggers runner brain cycling, clears map cache, & resumes auto-play.
-        """
         self.runner.cycle_brain(delta)
         self.map_renderer.clear_cache()
         self.active_frame = 0
         self.active_frame_float = 0.0
         self.timeline_scrubber.is_playing = True
 
-    def _execute_frame_jump(
-        self, key: int, total_steps: int, speed: float
-    ) -> None:
-        """
-        Jumps active frame index backward or forward based on arrow key.
-        """
-        jump: int = max(
-            1, int(total_steps * config.TIMELINE_FRAME_JUMP_RATIO * speed)
-        )
+    def _execute_frame_jump(self, key: int, total_steps: int, speed: float) -> None:
+        jump = max(1, int(total_steps * config.TIMELINE_FRAME_JUMP_RATIO * speed))
         if key == pygame.K_LEFT:
             self.active_frame = max(0, self.active_frame - jump)
         elif key == pygame.K_RIGHT:
             self.active_frame = min(total_steps - 1, self.active_frame + jump)
         self.active_frame_float = float(self.active_frame)
-
-    def _draw_live_viewport(
-        self,
-        surface: pygame.Surface,
-        rect: Tuple[int, int, int, int],
-        gen_data: Dict[str, Any],
-        active_step: int,
-    ) -> None:
-        """
-        Renders native live sub-viewport into bounding rect.
-        """
-        frame_state = self.state_resolver.resolve_frame_state(
-            gen_data, 0, active_step
-        )
-        if frame_state is None:
-            return
-
-        rx, ry, rw, rh = rect
-        map_w: int = int(gen_data.get("map_width", 40))
-        map_h: int = int(gen_data.get("map_height", 30))
-        map_data = MapData(
-            map_w, map_h, gen_data["start_pos"], gen_data["exit_pos"]
-        )
-        map_data.decode_bitmask(gen_data["bitmask_chunks"])
-        map_data.target_sequence = list(
-            gen_data.get("target_sequence", [gen_data["exit_pos"]])
-        )
-
-        clip_rect = pygame.Rect(rx, ry, rw, rh)
-        surface.set_clip(clip_rect)
-        pygame.draw.rect(surface, config.COLOR_BG, rect)
-
-        rows: int = config.GRID_ROWS
-        cols: int = config.GRID_COLS
-
-        tile_size, origin_pixel = self.tile_renderer.draw_tiles(
-            surface,
-            rect,
-            map_data,
-            gen_idx=-1,
-            cx=frame_state.x,
-            cy=frame_state.y,
-            is_camera_centered=self.is_camera_centered,
-            is_zoomed=False,
-            rows=rows,
-            cols=cols,
-            camera_zoom=self.tile_renderer.skin_profile.camera_zoom,
-            target_override=frame_state.target_pos,
-            checkpoint_override=frame_state.checkpoint_pos
-        )
-
-        self.vision_renderer.draw_vision_arc(
-            surface,
-            rx,
-            ry,
-            rw,
-            rh,
-            frame_state.x,
-            frame_state.y,
-            frame_state.heading,
-            origin_pixel,
-            tile_size,
-            self.is_camera_centered,
-            map_data,
-        )
-
-        self.avatar_renderer.draw_avatar(
-            surface,
-            origin_pixel,
-            tile_size,
-            frame_state,
-            is_selected=True,
-            ui_scale=1.0,
-            active_step=active_step,
-        )
-
-        self.hud_renderer.draw_hud_overlays(
-            surface,
-            rect,
-            frame_state,
-            ui_scale=1.0,
-            show_scorecard=True,
-        )
-
-        surface.set_clip(None)
-        self.hud_renderer.draw_viewport_borders(
-            surface, rect, frame_state, is_selected=True
-        )

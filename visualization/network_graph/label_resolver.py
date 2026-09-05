@@ -31,7 +31,7 @@ class GraphLabelResolver:
         else:
             labels.append("0°")
 
-        labels.extend(["SPD", "HP", "DMG-C", "DMG-I", "DMG-S", "HEAL"])
+        labels.extend(["SPD", "HP", "DMG-C", "DMG-I", "DMG-S", "HEAL", "A-VEL", "PATH-L", "PATH-R"])
 
         use_binocular: bool = profile.use_binocular_gps_compasses
         if not use_binocular:
