@@ -42,6 +42,57 @@ class TopologicalGPSSensor:
         """
         return self.last_gps_channels
 
+    def compute_scent_field_intensity(
+        self,
+        cx: float,
+        cy: float,
+        map_data: MapData,
+        stage_idx: int = 0
+    ) -> float:
+        """
+        Calculates thermodynamic scent field intensity [0.00, 0.95].
+        """
+        if hasattr(map_data, "get_target_pos"):
+            ex_t, ey_t = map_data.get_target_pos(stage_idx)
+        else:
+            ex_t, ey_t = map_data.exit_pos
+
+        t_cx: float = float(ex_t) + 0.5
+        t_cy: float = float(ey_t) + 0.5
+        dx_t: float = cx - t_cx
+        dy_t: float = cy - t_cy
+        dist: float = math.sqrt((dx_t * dx_t) + (dy_t * dy_t))
+
+        hold_thresh: float = (
+            self.profile.target_hold_distance_threshold
+            if self.profile is not None else 0.25
+        )
+        plateau: float = (
+            self.profile.target_zone_plateau_intensity
+            if self.profile is not None else 0.95
+        )
+
+        if dist <= hold_thresh:
+            return plateau
+
+        if hasattr(map_data, "chunk_manager"):
+            vw_tiles: float = float(getattr(map_data, "vw_tiles", 32.0))
+            vh_tiles: float = float(getattr(map_data, "vh_tiles", 18.0))
+            max_dist: float = math.sqrt(
+                ((vw_tiles / 2.0) ** 2) + ((vh_tiles / 2.0) ** 2)
+            )
+        else:
+            w: float = float(getattr(map_data, "width", 40))
+            h: float = float(getattr(map_data, "height", 30))
+            max_dist = math.sqrt((w * w) + (h * h))
+
+        decay_span: float = max(1e-4, max_dist - hold_thresh)
+        falloff: float = plateau * (
+            1.0 - ((dist - hold_thresh) / decay_span)
+        )
+
+        return max(0.0, min(plateau, falloff))
+
     def reset_candidate_history(self, candidate_idx: int) -> None:
         """
         Zeroes out recorded GPS distance slot for candidate.
@@ -97,7 +148,7 @@ class TopologicalGPSSensor:
         )
 
         if dist_to_t <= hold_thresh:
-            res = (1.0, 1.0, 0.0, 0.0) if use_binocular else (1.0, 0.0)
+            res = (0.0, 0.0, 1.0, 1.0) if use_binocular else (0.0, 1.0)
             self.last_gps_channels = res
             return res
 
@@ -329,7 +380,7 @@ class TopologicalGPSSensor:
         stage_idx: int
     ) -> Tuple[float, float, float, float]:
         """
-        Computes 4 stereo GPS channels (BFSL-, BFSR-, BFSL+, BFSR+).
+        Computes 4 stereo GPS channels (BFSL+, BFSR+, BFSL-, BFSR-).
         """
         offset_deg: float = (
             self.profile.target_compasses_offset_angle

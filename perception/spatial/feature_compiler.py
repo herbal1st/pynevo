@@ -2,6 +2,7 @@
 Compiles single-frame sensory observations and proprioceptive state vectors.
 """
 
+import math
 from typing import Optional, List
 import numpy as np
 from numpy.typing import NDArray
@@ -162,13 +163,31 @@ class SingleFrameFeatureCompiler:
 
         val_heal: float = 1.0 if is_healing else 0.0
 
+        if hasattr(map_data, "get_target_pos"):
+            ex_t, ey_t = map_data.get_target_pos(stage_idx)
+        else:
+            ex_t, ey_t = map_data.exit_pos
+
+        tc_x: float = float(ex_t) + 0.5
+        tc_y: float = float(ey_t) + 0.5
+        dx_t: float = candidate_x - tc_x
+        dy_t: float = candidate_y - tc_y
+        dist_to_t: float = math.sqrt((dx_t * dx_t) + (dy_t * dy_t))
+
+        hold_thresh: float = (
+            self.profile.target_hold_distance_threshold
+            if self.profile is not None else 0.25
+        )
+        val_tzone: float = 1.0 if dist_to_t <= hold_thresh else 0.0
+
         state_list: List[float] = [
             clamped_spd,
             clamped_hp,
             val_dmg_c,
             val_dmg_i,
             val_dmg_s,
-            val_heal
+            val_heal,
+            val_tzone
         ]
         state_list.extend(gps_channels)
         state_list.extend([c_n, c_e, c_s, c_w])

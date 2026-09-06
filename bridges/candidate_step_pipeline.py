@@ -42,7 +42,7 @@ class CandidateStepPipeline:
         target_hold_frames: int = 15
     ) -> bool:
         """
-        Executes candidate tick with hold zone recovery & physical steps.
+        Executes candidate tick with thermodynamic metabolic health updates.
         """
         profile = self.transformer.profile
         max_speed: float = (
@@ -51,14 +51,13 @@ class CandidateStepPipeline:
         )
 
         spin_dmg_rate: float = (
-            profile.health_spin_dmg_per_frame if profile is not None
+            profile.spin_dmg_per_frame if profile is not None
             else 0.0
         )
         effective_rot_ratio: float = (
             state.last_rot_ratio if spin_dmg_rate > 0.0 else 0.0
         )
 
-        is_endless: bool = hasattr(map_data, "chunk_manager")
         if hasattr(map_data, "get_target_pos"):
             ex, ey = map_data.get_target_pos(state.active_target_idx)
         else:
@@ -70,10 +69,6 @@ class CandidateStepPipeline:
         hold_dist_thresh: float = (
             profile.target_hold_distance_threshold
             if profile is not None else 0.25
-        )
-        hold_heal_rate: float = (
-            profile.target_hold_heal_per_frame
-            if profile is not None else 0.002
         )
 
         features = self.transformer.compile_feature_vector(
@@ -93,6 +88,12 @@ class CandidateStepPipeline:
         )
 
         gps_progress = self.transformer.last_gps_progress
+        f_dist: float = self.transformer.compute_scent_field_intensity(
+            state.x,
+            state.y,
+            map_data,
+            stage_idx=state.active_target_idx
+        )
 
         use_linear: bool = (
             profile.use_linear_speed_output
@@ -146,15 +147,6 @@ class CandidateStepPipeline:
             0.0, min(1.0, disp_dist / max(1e-4, max_speed))
         )
 
-        idle_thresh: float = (
-            profile.idle_damage_speed_threshold if profile is not None
-            else 0.05
-        )
-        heal_thresh: float = (
-            profile.heal_speed_threshold if profile is not None
-            else 0.80
-        )
-
         dx_t: float = nx - target_cx
         dy_t: float = ny - target_cy
         dist_to_target: float = math.sqrt((dx_t * dx_t) + (dy_t * dy_t))
@@ -162,73 +154,169 @@ class CandidateStepPipeline:
         state.touched_exit = (dist_to_target <= hold_dist_thresh)
         state.exit_solved = False
 
+        # --- Thermodynamic Metabolic Engine ---
+        move_thresh: float = (
+            profile.move_dmg_threshold if profile is not None else 0.05
+        )
+        spin_thresh: float = (
+            profile.spin_dmg_threshold if profile is not None else 0.05
+        )
+        idle_thresh: float = (
+            profile.idle_damage_speed_threshold
+            if profile is not None else 0.20
+        )
+        heal_thresh: float = (
+            profile.heal_speed_threshold if profile is not None else 0.80
+        )
+
+        is_moving: bool = (physical_speed_ratio >= move_thresh)
+        is_spinning: bool = (rot_ratio >= spin_thresh)
         is_idle: bool = (physical_speed_ratio < idle_thresh)
-        is_cruise_healing: bool = (
-            physical_speed_ratio >= heal_thresh and state.is_alive
-        )
-        is_hold_healing: bool = state.touched_exit and state.is_alive
-        is_healing: bool = is_cruise_healing or is_hold_healing
-
-        state.x = nx
-        state.y = ny
-        state.has_collided = hit
-        state.frames_survived += 1
-
-        dmg_coll: float = (
-            profile.health_coll_dmg_per_frame if profile is not None
-            else 0.005
-        )
-        dmg_idle: float = (
-            profile.health_idle_dmg_per_frame if profile is not None
-            else 0.005
-        )
-        move_heal_rate: float = (
-            profile.move_heal_per_frame if profile is not None
-            else 0.002
-        )
-        path_heal_rate: float = (
-            profile.path_heal_per_frame if profile is not None
-            else 0.0
-        )
-
-        if hit:
-            state.health = max(0.0, state.health - dmg_coll)
-
-        if is_idle:
-            state.health = max(0.0, state.health - dmg_idle)
-
-        if spin_dmg_rate > 0.0 and rot_ratio > 0.0:
-            state.health = max(
-                0.0, state.health - (spin_dmg_rate * rot_ratio)
-            )
-
-        if is_cruise_healing and move_heal_rate > 0.0:
-            state.health = min(1.0, state.health + move_heal_rate)
-
-        if is_hold_healing and hold_heal_rate > 0.0:
-            state.health = min(1.0, state.health + hold_heal_rate)
+        is_collided: bool = hit
+        is_in_target_zone: bool = state.touched_exit
+        is_fwd_motion: bool = (move_eff >= 0.0)
 
         use_binoc: bool = (
             profile.use_binocular_gps_compasses if profile is not None
             else True
         )
         if use_binoc and len(gps_progress) >= 2:
-            bfsl_pos: float = gps_progress[0]
-            bfsr_pos: float = gps_progress[1]
-            path_refuel: float = 0.5 * path_heal_rate * (
-                bfsl_pos + bfsr_pos
+            path_intensity: float = 0.5 * (
+                max(0.0, gps_progress[0]) + max(0.0, gps_progress[1])
             )
         elif len(gps_progress) >= 1:
-            bfs_pos: float = gps_progress[0]
-            path_refuel = path_heal_rate * bfs_pos
+            path_intensity = max(0.0, gps_progress[0])
         else:
-            path_refuel = 0.0
+            path_intensity = 0.0
 
-        if path_heal_rate > 0.0 and path_refuel > 0.0:
-            state.health = min(1.0, state.health + path_refuel)
+        eta_behavior: float = max(
+            0.0, min(1.0, physical_speed_ratio / max(1e-4, heal_thresh))
+        )
 
+        invert_target: bool = (
+            profile.invert_target_zone_field if profile is not None
+            else False
+        )
+
+        # 1. Total Per-Frame Damage Vector
+        move_dmg_rate: float = (
+            profile.move_fwd_dmg_per_frame if is_fwd_motion
+            else profile.move_bwd_dmg_per_frame
+        ) if profile is not None else 0.0
+
+        d_base: float = (
+            profile.base_dmg_per_frame if profile is not None else 0.0
+        )
+        d_move: float = (
+            (move_dmg_rate * physical_speed_ratio)
+            if is_moving else 0.0
+        )
+        d_spin: float = (
+            (profile.spin_dmg_per_frame * rot_ratio)
+            if (profile is not None and is_spinning) else 0.0
+        )
+        d_coll: float = (
+            profile.coll_dmg_per_frame
+            if (profile is not None and is_collided) else 0.0
+        )
+        d_idle: float = (
+            profile.idle_dmg_per_frame
+            if (profile is not None and is_idle) else 0.0
+        )
+        d_path: float = (
+            (profile.path_dmg_per_frame * (1.0 - path_intensity))
+            if profile is not None else 0.0
+        )
+
+        if invert_target:
+            d_target: float = (
+                (profile.target_hold_dmg_per_frame * f_dist)
+                if profile is not None else 0.0
+            )
+        else:
+            d_target = (
+                profile.target_hold_dmg_per_frame
+                if (profile is not None and is_in_target_zone) else 0.0
+            )
+
+        raw_dmg: float = (
+            d_base + d_move + d_spin + d_coll + d_idle + d_path + d_target
+        )
+
+        # 2. Total Per-Frame Healing Vector
+        move_heal_rate: float = (
+            profile.move_fwd_heal_per_frame if is_fwd_motion
+            else profile.move_bwd_heal_per_frame
+        ) if profile is not None else 0.0
+
+        h_base: float = (
+            profile.base_heal_per_frame if profile is not None else 0.0
+        )
+        h_move: float = (
+            (move_heal_rate * eta_behavior)
+            if is_moving else 0.0
+        )
+        h_spin: float = (
+            (profile.spin_heal_per_frame * rot_ratio)
+            if (profile is not None and is_spinning) else 0.0
+        )
+        h_coll: float = (
+            profile.coll_heal_per_frame
+            if (profile is not None and is_collided) else 0.0
+        )
+        h_idle: float = (
+            profile.idle_heal_per_frame
+            if (profile is not None and is_idle) else 0.0
+        )
+        h_path: float = (
+            (profile.path_heal_per_frame * path_intensity)
+            if profile is not None else 0.0
+        )
+
+        if invert_target:
+            h_target: float = 0.0
+        else:
+            h_target = (
+                (profile.target_hold_heal_per_frame * f_dist)
+                if profile is not None else 0.0
+            )
+
+        raw_heal: float = (
+            h_base + h_move + h_spin + h_coll + h_idle + h_path + h_target
+        )
+
+        # 3. Dynamic Field Capping Math
+        if invert_target:
+            if is_in_target_zone:
+                total_heal: float = min(raw_heal, 0.95 * max(1e-6, raw_dmg))
+                total_dmg: float = raw_dmg
+            else:
+                total_heal = raw_heal
+                total_dmg = min(
+                    raw_dmg, max(0.0, f_dist) * max(1e-6, raw_heal)
+                )
+        else:
+            if is_in_target_zone:
+                total_dmg: float = min(raw_dmg, 0.95 * max(1e-6, raw_heal))
+                total_heal: float = raw_heal
+            else:
+                total_dmg = raw_dmg
+                total_heal = min(
+                    raw_heal, max(0.0, f_dist) * max(1e-6, raw_dmg)
+                )
+
+        # 4. Net Health Update
+        net_hp_delta: float = total_heal - total_dmg
+        if state.is_alive:
+            state.health = max(0.0, min(1.0, state.health + net_hp_delta))
+
+        if state.health <= 0.0:
+            state.is_alive = False
+
+        # --- Stage Hold & Clear Logic ---
+        is_endless: bool = hasattr(map_data, "chunk_manager")
         if not is_endless:
-            if state.touched_exit:
+            if state.is_alive and state.touched_exit:
                 if state.first_touch_step < 0:
                     state.first_touch_step = step_idx
 
@@ -241,19 +329,28 @@ class CandidateStepPipeline:
                     state.exit_solved = True
                     state.hold_frame_counter = 0
                     state.active_target_idx += 1
+
+                    if (
+                        profile is not None
+                        and profile.full_heal_on_stage_clear
+                    ):
+                        state.health = 1.0
+
                     self.transformer.gps_sensor.reset_candidate_history(
                         candidate_idx
                     )
             else:
                 state.hold_frame_counter = 0
 
-        if state.health <= 0.0:
-            state.is_alive = False
+        state.x = nx
+        state.y = ny
+        state.has_collided = hit
+        state.frames_survived += 1
 
         state.last_speed_ratio = physical_speed_ratio
         state.last_collided = hit
         state.last_idle = is_idle
-        state.last_healing = is_healing
+        state.last_healing = (total_heal > total_dmg and state.is_alive)
         state.last_rot_ratio = (
             rot_ratio if spin_dmg_rate > 0.0 else 0.0
         )

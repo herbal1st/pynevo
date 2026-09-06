@@ -69,6 +69,20 @@ class SpatialTransformer:
         """
         return self.compiler.cardinal_compass
 
+    def compute_scent_field_intensity(
+        self,
+        candidate_x: float,
+        candidate_y: float,
+        map_data: MapData,
+        stage_idx: int = 0
+    ) -> float:
+        """
+        Calculates thermodynamic scent field intensity [0.00, 0.95].
+        """
+        return self.gps_sensor.compute_scent_field_intensity(
+            candidate_x, candidate_y, map_data, stage_idx=stage_idx
+        )
+
     def reset_candidate_history(self, candidate_idx: int) -> None:
         """
         Clears temporal observation history & GPS distance for candidate.

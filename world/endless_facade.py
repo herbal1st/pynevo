@@ -19,7 +19,9 @@ class EndlessMapDataFacade:
         target_x: float,
         target_y: float,
         agent_x: float = 0.0,
-        agent_y: float = 0.0
+        agent_y: float = 0.0,
+        vw_tiles: float = 32.0,
+        vh_tiles: float = 18.0
     ) -> None:
         """
         Initializes facade with chunk manager, target, and agent positions.
@@ -39,6 +41,8 @@ class EndlessMapDataFacade:
         self.target_y: float = target_y
         self.agent_x: float = agent_x
         self.agent_y: float = agent_y
+        self.vw_tiles: float = vw_tiles
+        self.vh_tiles: float = vh_tiles
 
     def is_wall(self, x: int, y: int) -> bool:
         """

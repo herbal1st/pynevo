@@ -4,7 +4,7 @@ profiles:
     map_type: "BRANCHING_WALLS"
     map_width: 40
     map_height: 30
-    tile_size: 50
+    tile_size: 100
     wall_density: 1.0
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
@@ -13,7 +13,7 @@ profiles:
     map_type: "BRANCHING_WALLS"
     map_width: 40
     map_height: 30
-    tile_size: 50
+    tile_size: 100
     wall_density: 0.0
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
@@ -22,7 +22,7 @@ profiles:
     map_type: "BRANCHING_WALLS"
     map_width: 60
     map_height: 45
-    tile_size: 50
+    tile_size: 100
     wall_density: 1.0
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
@@ -31,16 +31,16 @@ profiles:
     map_type: "BRANCHING_WALLS"
     map_width: 20
     map_height: 15
-    tile_size: 50
+    tile_size: 100
     wall_density: 1.0
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
 
   TINY:
     map_type: "BRANCHING_WALLS"
-    map_width: 12
-    map_height: 9
-    tile_size: 50
+    map_width: 16
+    map_height: 12
+    tile_size: 100
     wall_density: 1.0
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
@@ -49,7 +49,7 @@ profiles:
     map_type: "BRANCHING_WALLS_6_ANCHOR"
     map_width: 40
     map_height: 30
-    tile_size: 50
+    tile_size: 100
     wall_density: 1.0
     stem_early_termination_rate: 0.05
     min_straight_start_steps: 1
@@ -58,21 +58,21 @@ profiles:
     map_type: "RANDOM"
     map_width: 40
     map_height: 30
-    tile_size: 50
+    tile_size: 100
     wall_density: 0.65
 
   PACMAN:
     map_type: "PACMAN"
     map_width: 40
     map_height: 30
-    tile_size: 50
+    tile_size: 100
     wall_density: 0.65
 
   PACMAN_ANCHOR:
     map_type: "PACMAN_25_ANCHOR"
     map_width: 40
     map_height: 30
-    tile_size: 50
+    tile_size: 100
     wall_density: 0.65
 
 

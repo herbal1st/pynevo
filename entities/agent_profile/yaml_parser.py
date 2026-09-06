@@ -52,7 +52,7 @@ class AgentProfileParser:
 
         if yaml is None:
             print(
-                "[Error] PyYAML library is not installed. Please install "
+                "[Error] PyYAML library is not installed. Install "
                 "via 'pip install pyyaml'."
             )
             sys.exit(1)
@@ -90,6 +90,9 @@ class AgentProfileParser:
         kin = AgentProfileParser._get_required_section(
             p_dict, "kinematics", p_name, file_name
         )
+        meta = AgentProfileParser._get_required_section(
+            p_dict, "metabolics", p_name, file_name
+        )
         perc = AgentProfileParser._get_required_section(
             p_dict, "perception", p_name, file_name
         )
@@ -111,8 +114,11 @@ class AgentProfileParser:
         )
         use_linear: bool = bool(
             AgentProfileParser._get_required_val(
-                kin, "use_linear_speed_output", "kinematics",
-                p_name, file_name
+                kin,
+                "use_linear_speed_output",
+                "kinematics",
+                p_name,
+                file_name
             )
         )
         move_speed: float = float(
@@ -136,7 +142,11 @@ class AgentProfileParser:
         )
         diam_ratio: float = float(
             AgentProfileParser._get_required_val(
-                kin, "agent_diameter_ratio", "kinematics", p_name, file_name
+                kin,
+                "agent_diameter_ratio",
+                "kinematics",
+                p_name,
+                file_name
             )
         )
         endless_diam_ratio: float = float(
@@ -148,61 +158,224 @@ class AgentProfileParser:
                 file_name
             )
         )
-        hold_dist_thresh: float = float(
+
+        base_dmg: float = float(
             AgentProfileParser._get_required_val(
-                kin,
-                "target_hold_distance_threshold",
-                "kinematics",
+                meta,
+                "base_dmg_per_frame",
+                "metabolics",
                 p_name,
                 file_name
             )
         )
-        hold_heal_rate: float = float(
+        move_fwd_dmg: float = float(
             AgentProfileParser._get_required_val(
-                kin,
-                "target_hold_heal_per_frame",
-                "kinematics",
+                meta,
+                "move_fwd_dmg_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        move_bwd_dmg: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "move_bwd_dmg_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        spin_dmg: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "spin_dmg_per_frame",
+                "metabolics",
                 p_name,
                 file_name
             )
         )
         coll_dmg: float = float(
             AgentProfileParser._get_required_val(
-                kin, "health_coll_dmg_per_frame", "kinematics",
-                p_name, file_name
+                meta,
+                "coll_dmg_per_frame",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
         idle_dmg: float = float(
             AgentProfileParser._get_required_val(
-                kin, "health_idle_dmg_per_frame", "kinematics",
-                p_name, file_name
+                meta,
+                "idle_dmg_per_frame",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
-        spin_dmg: float = float(
+        path_dmg: float = float(
             AgentProfileParser._get_required_val(
-                kin, "health_spin_dmg_per_frame", "kinematics",
-                p_name, file_name
+                meta,
+                "path_dmg_per_frame",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
-        idle_thresh: float = float(
+        target_hold_dmg: float = float(
             AgentProfileParser._get_required_val(
-                kin, "idle_damage_speed_threshold", "kinematics",
-                p_name, file_name
+                meta,
+                "target_hold_dmg_per_frame",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
-        heal_thresh: float = float(
+
+        move_dmg_thresh: float = float(
             AgentProfileParser._get_required_val(
-                kin, "heal_speed_threshold", "kinematics", p_name, file_name
+                meta,
+                "move_dmg_threshold",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
-        move_heal: float = float(
+        spin_dmg_thresh: float = float(
             AgentProfileParser._get_required_val(
-                kin, "move_heal_per_frame", "kinematics", p_name, file_name
+                meta,
+                "spin_dmg_threshold",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        idle_dmg_thresh: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "idle_dmg_threshold",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        heal_speed_thresh: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "heal_speed_threshold",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        hold_dist_thresh: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "target_hold_distance_threshold",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+
+        plateau_intensity: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "target_zone_plateau_intensity",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        invert_target_field: bool = bool(
+            AgentProfileParser._get_required_val(
+                meta,
+                "invert_target_zone_field",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        full_heal_clear: bool = bool(
+            AgentProfileParser._get_required_val(
+                meta,
+                "full_heal_on_stage_clear",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+
+        base_heal: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "base_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
         path_heal: float = float(
             AgentProfileParser._get_required_val(
-                kin, "path_heal_per_frame", "kinematics", p_name, file_name
+                meta,
+                "path_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        move_fwd_heal: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "move_fwd_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        move_bwd_heal: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "move_bwd_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        spin_heal: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "spin_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        coll_heal: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "coll_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        idle_heal: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "idle_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
+            )
+        )
+        hold_heal_rate: float = float(
+            AgentProfileParser._get_required_val(
+                meta,
+                "target_hold_heal_per_frame",
+                "metabolics",
+                p_name,
+                file_name
             )
         )
 
@@ -224,69 +397,110 @@ class AgentProfileParser:
 
         act_exit: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "activate_exit_compass", "perception", p_name, file_name
+                perc,
+                "activate_exit_compass",
+                "perception",
+                p_name,
+                file_name
             )
         )
         act_exit_los: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "exit_compass_los_gating", "perception",
-                p_name, file_name
+                perc,
+                "exit_compass_los_gating",
+                "perception",
+                p_name,
+                file_name
             )
         )
         rng_exit: float = float(
             AgentProfileParser._get_required_val(
-                perc, "range_exit_compass", "perception", p_name, file_name
+                perc,
+                "range_exit_compass",
+                "perception",
+                p_name,
+                file_name
             )
         )
         act_north: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "activate_north_compass", "perception",
-                p_name, file_name
+                perc,
+                "activate_north_compass",
+                "perception",
+                p_name,
+                file_name
             )
         )
         act_cardinal: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "activate_cardinal_compass", "perception",
-                p_name, file_name
+                perc,
+                "activate_cardinal_compass",
+                "perception",
+                p_name,
+                file_name
             )
         )
         act_gps: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "activate_gps_compass", "perception", p_name, file_name
+                perc,
+                "activate_gps_compass",
+                "perception",
+                p_name,
+                file_name
             )
         )
         use_binoc_gps: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "use_binocular_gps_compasses", "perception",
-                p_name, file_name
+                perc,
+                "use_binocular_gps_compasses",
+                "perception",
+                p_name,
+                file_name
             )
         )
         rng_gps: float = float(
             AgentProfileParser._get_required_val(
-                perc, "range_gps_compass", "perception", p_name, file_name
+                perc,
+                "range_gps_compass",
+                "perception",
+                p_name,
+                file_name
             )
         )
         use_bfs_spawn_heading: bool = bool(
             AgentProfileParser._get_required_val(
-                perc, "use_bfs_spawn_heading", "perception",
-                p_name, file_name
+                perc,
+                "use_bfs_spawn_heading",
+                "perception",
+                p_name,
+                file_name
             )
         )
         offset_angle: float = float(
             AgentProfileParser._get_required_val(
-                perc, "target_compasses_offset_angle", "perception",
-                p_name, file_name
+                perc,
+                "target_compasses_offset_angle",
+                "perception",
+                p_name,
+                file_name
             )
         )
         focus_fov: float = float(
             AgentProfileParser._get_required_val(
-                perc, "focus_field_of_view", "perception", p_name, file_name
+                perc,
+                "focus_field_of_view",
+                "perception",
+                p_name,
+                file_name
             )
         )
         periphere_fov: float = float(
             AgentProfileParser._get_required_val(
-                perc, "periphere_field_of_view", "perception",
-                p_name, file_name
+                perc,
+                "periphere_field_of_view",
+                "perception",
+                p_name,
+                file_name
             )
         )
 
@@ -325,15 +539,30 @@ class AgentProfileParser:
             turn_speed=turn_speed,
             agent_diameter_ratio=diam_ratio,
             endless_agent_diameter_ratio=endless_diam_ratio,
+            base_dmg_per_frame=base_dmg,
+            move_fwd_dmg_per_frame=move_fwd_dmg,
+            move_bwd_dmg_per_frame=move_bwd_dmg,
+            spin_dmg_per_frame=spin_dmg,
+            coll_dmg_per_frame=coll_dmg,
+            idle_dmg_per_frame=idle_dmg,
+            path_dmg_per_frame=path_dmg,
+            target_hold_dmg_per_frame=target_hold_dmg,
+            move_dmg_threshold=move_dmg_thresh,
+            spin_dmg_threshold=spin_dmg_thresh,
+            idle_dmg_threshold=idle_dmg_thresh,
+            heal_speed_threshold=heal_speed_thresh,
             target_hold_distance_threshold=hold_dist_thresh,
-            target_hold_heal_per_frame=hold_heal_rate,
-            health_coll_dmg_per_frame=coll_dmg,
-            health_idle_dmg_per_frame=idle_dmg,
-            health_spin_dmg_per_frame=spin_dmg,
-            idle_damage_speed_threshold=idle_thresh,
-            heal_speed_threshold=heal_thresh,
-            move_heal_per_frame=move_heal,
+            target_zone_plateau_intensity=plateau_intensity,
+            invert_target_zone_field=invert_target_field,
+            full_heal_on_stage_clear=full_heal_clear,
+            base_heal_per_frame=base_heal,
             path_heal_per_frame=path_heal,
+            move_fwd_heal_per_frame=move_fwd_heal,
+            move_bwd_heal_per_frame=move_bwd_heal,
+            spin_heal_per_frame=spin_heal,
+            coll_heal_per_frame=coll_heal,
+            idle_heal_per_frame=idle_heal,
+            target_hold_heal_per_frame=hold_heal_rate,
             vision_rays=v_rays,
             vision_arc_angle=v_arc,
             vision_max_dist=v_dist,

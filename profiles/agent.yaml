@@ -1,207 +1,289 @@
 profiles:
 
   TANK_1:
-    skin_profile: "DEFAULT"
+    skin_profile: "DEFAULT"  # profile
     kinematics:
-      profile_style: "TANK"
-      use_linear_speed_output: true
-      move_speed: 0.25
-      endless_move_speed: 4.0
-      turn_speed: 1800.0
-      agent_diameter_ratio: 0.5
-      endless_agent_diameter_ratio: 4.0
-      health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.001
-      idle_damage_speed_threshold: 0.2
-      health_idle_dmg_per_frame: 0.001
-      heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.001
-      path_heal_per_frame: 0.003
-      target_hold_distance_threshold: 0.25
-      target_hold_heal_per_frame: 0.003
+      profile_style: "TANK"  # style
+      use_linear_speed_output: true  # toggle
+      move_speed: 0.2  # speed
+      endless_move_speed: 4.0  # speed
+      turn_speed: 1800.0  # speed
+      agent_diameter_ratio: 0.25  # ratio
+      endless_agent_diameter_ratio: 4.0  # ratio
+    metabolics:
+      base_dmg_per_frame: 0.001  # rate
+      move_fwd_dmg_per_frame: 0.001  # rate
+      move_bwd_dmg_per_frame: 0.003  # rate
+      spin_dmg_per_frame: 0.004  # rate
+      coll_dmg_per_frame: 0.004  # rate
+      idle_dmg_per_frame: 0.0  # rate
+      path_dmg_per_frame: 0.0  # rate
+      target_hold_dmg_per_frame: 0.0  # rate
+      move_dmg_threshold: 0.05  # ratio
+      spin_dmg_threshold: 0.01  # ratio
+      idle_dmg_threshold: 0.2  # ratio
+      heal_speed_threshold: 0.8  # ratio
+      target_hold_distance_threshold: 0.5  # ratio
+      target_zone_plateau_intensity: 0.95  # ratio
+      full_heal_on_stage_clear: false  # toggle
+      base_heal_per_frame: 0.004  # rate
+      path_heal_per_frame: 0.0  # rate
+      move_fwd_heal_per_frame: 0.0  # rate
+      move_bwd_heal_per_frame: 0.0  # rate
+      spin_heal_per_frame: 0.0  # rate
+      coll_heal_per_frame: 0.0  # rate
+      idle_heal_per_frame: 0.0  # rate
+      target_hold_heal_per_frame: 0.0  # rate
+      invert_target_zone_field: false  # toggle
     perception:
-      vision_rays: 15
-      vision_arc_angle: 210.0
-      vision_max_dist: 2.0
-      use_bfs_spawn_heading: true
-      activate_gps_compass: true
-      use_binocular_gps_compasses: true
-      range_gps_compass: 1.0
-      activate_cardinal_compass: true
-      activate_north_compass: true
-      activate_exit_compass: true
-      exit_compass_los_gating: true
-      range_exit_compass: 40.0
-      target_compasses_offset_angle: 30.0
-      focus_field_of_view: 180.0
-      periphere_field_of_view: 360.0
+      vision_rays: 15  # count
+      vision_arc_angle: 210.0  # degrees
+      vision_max_dist: 2.0  # tiles
+      use_bfs_spawn_heading: true  # toggle
+      activate_gps_compass: true  # toggle
+      use_binocular_gps_compasses: true  # toggle
+      range_gps_compass: 1.0  # ratio
+      activate_cardinal_compass: true  # toggle
+      activate_north_compass: true  # toggle
+      activate_exit_compass: true  # toggle
+      exit_compass_los_gating: true  # toggle
+      range_exit_compass: 40.0  # tiles
+      target_compasses_offset_angle: 30.0  # degrees
+      focus_field_of_view: 180.0  # degrees
+      periphere_field_of_view: 360.0  # degrees
     neural:
-      memory_frames: 2
-      hidden_layers: 3
-      neurons: 40
+      memory_frames: 2  # count
+      hidden_layers: 3  # count
+      neurons: 40  # count
 
   TANK_2:
-    skin_profile: "DEFAULT"
+    skin_profile: "DEFAULT"  # profile
     kinematics:
-      profile_style: "TANK"
-      use_linear_speed_output: true
-      move_speed: 0.25
-      endless_move_speed: 4.0
-      turn_speed: 1800.0
-      agent_diameter_ratio: 0.5
-      endless_agent_diameter_ratio: 4.0
-      health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.001
-      idle_damage_speed_threshold: 0.2
-      health_idle_dmg_per_frame: 0.001
-      heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.001
-      path_heal_per_frame: 0.003
-      target_hold_distance_threshold: 0.25
-      target_hold_heal_per_frame: 0.003
+      profile_style: "TANK"  # style
+      use_linear_speed_output: true  # toggle
+      move_speed: 0.25  # speed
+      endless_move_speed: 4.0  # speed
+      turn_speed: 1800.0  # speed
+      agent_diameter_ratio: 0.5  # ratio
+      endless_agent_diameter_ratio: 4.0  # ratio
+    metabolics:
+      base_dmg_per_frame: 0.0005  # rate
+      move_fwd_dmg_per_frame: 0.002  # rate
+      move_bwd_dmg_per_frame: 0.004  # rate
+      spin_dmg_per_frame: 0.002  # rate
+      coll_dmg_per_frame: 0.005  # rate
+      idle_dmg_per_frame: 0.0005  # rate
+      path_dmg_per_frame: 0.0  # rate
+      target_hold_dmg_per_frame: 0.0  # rate
+      move_dmg_threshold: 0.05  # ratio
+      spin_dmg_threshold: 0.05  # ratio
+      idle_dmg_threshold: 0.2  # ratio
+      heal_speed_threshold: 0.8  # ratio
+      target_hold_distance_threshold: 0.5  # ratio
+      target_zone_plateau_intensity: 0.95  # ratio
+      invert_target_zone_field: false  # toggle
+      full_heal_on_stage_clear: true  # toggle
+      base_heal_per_frame: 0.004  # rate
+      path_heal_per_frame: 0.0  # rate
+      move_fwd_heal_per_frame: 0.001  # rate
+      move_bwd_heal_per_frame: 0.0  # rate
+      spin_heal_per_frame: 0.0  # rate
+      coll_heal_per_frame: 0.0  # rate
+      idle_heal_per_frame: 0.0005  # rate
+      target_hold_heal_per_frame: 0.002  # rate
     perception:
-      vision_rays: 15
-      vision_arc_angle: 210.0
-      vision_max_dist: 2.0
-      use_bfs_spawn_heading: true
-      activate_gps_compass: true
-      use_binocular_gps_compasses: false
-      range_gps_compass: 1.0
-      activate_cardinal_compass: true
-      activate_north_compass: true
-      activate_exit_compass: true
-      exit_compass_los_gating: true
-      range_exit_compass: 40.0
-      target_compasses_offset_angle: 30.0
-      focus_field_of_view: 180.0
-      periphere_field_of_view: 360.0
+      vision_rays: 15  # count
+      vision_arc_angle: 210.0  # degrees
+      vision_max_dist: 2.0  # tiles
+      use_bfs_spawn_heading: true  # toggle
+      activate_gps_compass: true  # toggle
+      use_binocular_gps_compasses: false  # toggle
+      range_gps_compass: 1.0  # ratio
+      activate_cardinal_compass: true  # toggle
+      activate_north_compass: true  # toggle
+      activate_exit_compass: true  # toggle
+      exit_compass_los_gating: true  # toggle
+      range_exit_compass: 40.0  # tiles
+      target_compasses_offset_angle: 30.0  # degrees
+      focus_field_of_view: 180.0  # degrees
+      periphere_field_of_view: 360.0  # degrees
     neural:
-      memory_frames: 2
-      hidden_layers: 3
-      neurons: 40
+      memory_frames: 2  # count
+      hidden_layers: 3  # count
+      neurons: 40  # count
 
   CAR_1:
-    skin_profile: "DEFAULT"
+    skin_profile: "DEFAULT"  # profile
     kinematics:
-      profile_style: "CAR"
-      use_linear_speed_output: true
-      move_speed: 0.25
-      endless_move_speed: 4.0
-      turn_speed: 1800.0
-      agent_diameter_ratio: 0.5
-      endless_agent_diameter_ratio: 4.0
-      health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.001
-      idle_damage_speed_threshold: 0.2
-      health_idle_dmg_per_frame: 0.001
-      heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.001
-      path_heal_per_frame: 0.003
-      target_hold_distance_threshold: 0.25
-      target_hold_heal_per_frame: 0.003
+      profile_style: "CAR"  # style
+      use_linear_speed_output: true  # toggle
+      move_speed: 0.25  # speed
+      endless_move_speed: 4.0  # speed
+      turn_speed: 1800.0  # speed
+      agent_diameter_ratio: 0.5  # ratio
+      endless_agent_diameter_ratio: 4.0  # ratio
+    metabolics:
+      base_dmg_per_frame: 0.0005  # rate
+      move_fwd_dmg_per_frame: 0.002  # rate
+      move_bwd_dmg_per_frame: 0.004  # rate
+      spin_dmg_per_frame: 0.002  # rate
+      coll_dmg_per_frame: 0.005  # rate
+      idle_dmg_per_frame: 0.0005  # rate
+      path_dmg_per_frame: 0.0  # rate
+      target_hold_dmg_per_frame: 0.0  # rate
+      move_dmg_threshold: 0.05  # ratio
+      spin_dmg_threshold: 0.05  # ratio
+      idle_dmg_threshold: 0.2  # ratio
+      heal_speed_threshold: 0.8  # ratio
+      target_hold_distance_threshold: 0.5  # ratio
+      target_zone_plateau_intensity: 0.95  # ratio
+      invert_target_zone_field: false  # toggle
+      full_heal_on_stage_clear: true  # toggle
+      base_heal_per_frame: 0.004  # rate
+      path_heal_per_frame: 0.0  # rate
+      move_fwd_heal_per_frame: 0.001  # rate
+      move_bwd_heal_per_frame: 0.0  # rate
+      spin_heal_per_frame: 0.0  # rate
+      coll_heal_per_frame: 0.0  # rate
+      idle_heal_per_frame: 0.0005  # rate
+      target_hold_heal_per_frame: 0.002  # rate
     perception:
-      vision_rays: 15
-      vision_arc_angle: 210.0
-      vision_max_dist: 2.0
-      use_bfs_spawn_heading: true
-      activate_gps_compass: true
-      use_binocular_gps_compasses: true
-      range_gps_compass: 1.0
-      activate_cardinal_compass: true
-      activate_north_compass: true
-      activate_exit_compass: true
-      exit_compass_los_gating: true
-      range_exit_compass: 40.0
-      target_compasses_offset_angle: 30.0
-      focus_field_of_view: 180.0
-      periphere_field_of_view: 360.0
+      vision_rays: 15  # count
+      vision_arc_angle: 210.0  # degrees
+      vision_max_dist: 2.0  # tiles
+      use_bfs_spawn_heading: true  # toggle
+      activate_gps_compass: true  # toggle
+      use_binocular_gps_compasses: true  # toggle
+      range_gps_compass: 1.0  # ratio
+      activate_cardinal_compass: true  # toggle
+      activate_north_compass: true  # toggle
+      activate_exit_compass: true  # toggle
+      exit_compass_los_gating: true  # toggle
+      range_exit_compass: 40.0  # tiles
+      target_compasses_offset_angle: 30.0  # degrees
+      focus_field_of_view: 180.0  # degrees
+      periphere_field_of_view: 360.0  # degrees
     neural:
-      memory_frames: 2
-      hidden_layers: 3
-      neurons: 40
+      memory_frames: 2  # count
+      hidden_layers: 3  # count
+      neurons: 40  # count
 
   CAR_2:
-    skin_profile: "DEFAULT"
+    skin_profile: "DEFAULT"  # profile
     kinematics:
-      profile_style: "CAR"
-      use_linear_speed_output: true
-      move_speed: 0.25
-      endless_move_speed: 4.0
-      turn_speed: 1800.0
-      agent_diameter_ratio: 0.5
-      endless_agent_diameter_ratio: 4.0
-      health_coll_dmg_per_frame: 0.005
-      health_spin_dmg_per_frame: 0.001
-      idle_damage_speed_threshold: 0.2
-      health_idle_dmg_per_frame: 0.001
-      heal_speed_threshold: 0.8
-      move_heal_per_frame: 0.001
-      path_heal_per_frame: 0.003
-      target_hold_distance_threshold: 0.25
-      target_hold_heal_per_frame: 0.003
+      profile_style: "CAR"  # style
+      use_linear_speed_output: true  # toggle
+      move_speed: 0.25  # speed
+      endless_move_speed: 4.0  # speed
+      turn_speed: 1800.0  # speed
+      agent_diameter_ratio: 0.5  # ratio
+      endless_agent_diameter_ratio: 4.0  # ratio
+    metabolics:
+      base_dmg_per_frame: 0.0005  # rate
+      move_fwd_dmg_per_frame: 0.002  # rate
+      move_bwd_dmg_per_frame: 0.004  # rate
+      spin_dmg_per_frame: 0.002  # rate
+      coll_dmg_per_frame: 0.005  # rate
+      idle_dmg_per_frame: 0.0005  # rate
+      path_dmg_per_frame: 0.0  # rate
+      target_hold_dmg_per_frame: 0.0  # rate
+      move_dmg_threshold: 0.05  # ratio
+      spin_dmg_threshold: 0.05  # ratio
+      idle_dmg_threshold: 0.2  # ratio
+      heal_speed_threshold: 0.8  # ratio
+      target_hold_distance_threshold: 0.5  # ratio
+      target_zone_plateau_intensity: 0.95  # ratio
+      invert_target_zone_field: false  # toggle
+      full_heal_on_stage_clear: true  # toggle
+      base_heal_per_frame: 0.004  # rate
+      path_heal_per_frame: 0.0  # rate
+      move_fwd_heal_per_frame: 0.001  # rate
+      move_bwd_heal_per_frame: 0.0  # rate
+      spin_heal_per_frame: 0.0  # rate
+      coll_heal_per_frame: 0.0  # rate
+      idle_heal_per_frame: 0.0005  # rate
+      target_hold_heal_per_frame: 0.002  # rate
     perception:
-      vision_rays: 15
-      vision_arc_angle: 210.0
-      vision_max_dist: 2.0
-      use_bfs_spawn_heading: true
-      activate_gps_compass: true
-      use_binocular_gps_compasses: false
-      range_gps_compass: 1.0
-      activate_cardinal_compass: true
-      activate_north_compass: true
-      activate_exit_compass: true
-      exit_compass_los_gating: true
-      range_exit_compass: 40.0
-      target_compasses_offset_angle: 30.0
-      focus_field_of_view: 180.0
-      periphere_field_of_view: 360.0
+      vision_rays: 15  # count
+      vision_arc_angle: 210.0  # degrees
+      vision_max_dist: 2.0  # tiles
+      use_bfs_spawn_heading: true  # toggle
+      activate_gps_compass: true  # toggle
+      use_binocular_gps_compasses: false  # toggle
+      range_gps_compass: 1.0  # ratio
+      activate_cardinal_compass: true  # toggle
+      activate_north_compass: true  # toggle
+      activate_exit_compass: true  # toggle
+      exit_compass_los_gating: true  # toggle
+      range_exit_compass: 40.0  # tiles
+      target_compasses_offset_angle: 30.0  # degrees
+      focus_field_of_view: 180.0  # degrees
+      periphere_field_of_view: 360.0  # degrees
     neural:
-      memory_frames: 2
-      hidden_layers: 3
-      neurons: 40
+      memory_frames: 2  # count
+      hidden_layers: 3  # count
+      neurons: 40  # count
 
 
 # ============================================================================
 # AGENT LIBRARY CONFIGURATION LEGEND
 # ============================================================================
 #
-# KINEMATICS (Driving Physics & Damage Rates):
-# profile_style:              Driving steering mode ("TANK" or "CAR").
-# use_linear_speed_output:     Toggle: true = Task-Space, false = Direct.
-# move_speed:                 Maximum forward velocity in maze mode.
-# endless_move_speed:         Maximum forward velocity in endless mode.
-# turn_speed:                 Maximum rotational velocity (degrees/sec).
-# agent_diameter_ratio:       Hit-box diameter ratio in bounded maze mode.
+# KINEMATICS (Driving Physics & Steering Mechanics):
+# profile_style:                Driving steering mode ("TANK" or "CAR").
+# use_linear_speed_output:       Toggle: true = Task-Space (FWD/BWD+S-L/S-R),
+#                               false = Differential Wheels (Left/Right Tracks).
+# move_speed:                   Maximum forward velocity in maze mode.
+# endless_move_speed:           Maximum forward velocity in endless mode.
+# turn_speed:                   Maximum rotational velocity (deg/sec).
+# agent_diameter_ratio:         Hit-box diameter ratio in maze mode.
 # endless_agent_diameter_ratio: Hit-box diameter ratio in endless mode.
-# target_hold_distance_threshold: Distance radius (tiles) to hold target.
-# target_hold_heal_per_frame: Stamina restored per frame in target hold zone.
-# health_coll_dmg_per_frame:  Health damage deducted per collision frame.
-# health_spin_dmg_per_frame:  Health damage deducted per physical spin frame.
-# idle_damage_speed_threshold: Speed ratio threshold for idle damage.
-# health_idle_dmg_per_frame:  Health damage deducted per stationary frame.
-# heal_speed_threshold:       Speed ratio threshold for kinetic heal.
-# move_heal_per_frame:        Health restored per frame during high speed.
-# path_heal_per_frame:        Health restored per frame during path progress.
+#
+# METABOLICS (Energy & Survival Rates):
+# base_dmg_per_frame:           Background existence tax per frame.
+# move_fwd_dmg_per_frame:       Forward movement work tax per frame.
+# move_bwd_dmg_per_frame:       Backward movement work tax per frame.
+# spin_dmg_per_frame:           Rotational turning work tax per frame.
+# coll_dmg_per_frame:           Wall impact damage penalty per frame.
+# idle_dmg_per_frame:           Stalling penalty rate per frame.
+# path_dmg_per_frame:           Energy tax per frame moving off path.
+# target_hold_dmg_per_frame:    Energy tax per frame inside target zone.
+# move_dmg_threshold:           Speed ratio required for move tax.
+# spin_dmg_threshold:           Rotation ratio required for spin tax.
+# idle_dmg_threshold:           Speed ratio required before stalling tax.
+# heal_speed_threshold:         Speed ratio where behavioral heal clamps.
+# target_hold_distance_threshold: Target boundary radius for plateau.
+# target_zone_plateau_intensity: Scent intensity inside target zone.
+# invert_target_zone_field:     Toggle: true = Target inflicts hazard damage.
+# full_heal_on_stage_clear:     Toggle restoring health on stage clear.
+# base_heal_per_frame:          Base background recovery rate per frame.
+# path_heal_per_frame:          Topological BFS path refuel rate.
+# move_fwd_heal_per_frame:      Kinetic forward movement heal rate.
+# move_bwd_heal_per_frame:      Kinetic backward movement heal rate.
+# spin_heal_per_frame:          Rotational turning heal rate per frame.
+# coll_heal_per_frame:          Wall impact recovery rate per frame.
+# idle_heal_per_frame:          Stalling recovery rate per frame.
+# target_hold_heal_per_frame:   Target zone recovery rate per frame.
 #
 # PERCEPTION (Sensory Range & Orientation Toggles):
-# vision_rays:                Number of probe rays cast across vision fan.
-# vision_arc_angle:           Field of view angle spread in degrees.
-# vision_max_dist:            Maximum ray reach distance in tiles.
-# use_bfs_spawn_heading:      Toggle BFS aligned or random spawn heading.
-# activate_gps_compass:       Master toggle for GPS path progress triggers.
-# use_binocular_gps_compasses: Toggle: true = Stereo (4ch), false = Mono (2ch).
-# range_gps_compass:          Ratio threshold [0.0-1.0] for GPS triggers.
-# activate_cardinal_compass:  Toggle for 4-needle compass (C-N,C-E,C-S,C-W).
-# activate_north_compass:     Master toggle for North compass (N_L/N_R).
-# activate_exit_compass:      Master toggle for Exit compass (TG-L/TG-R).
-# exit_compass_los_gating:    Toggle LOS wall blocking for exit radar.
-# range_exit_compass:         Max effective distance for exit compass.
+# vision_rays:                  Number of probe rays cast in vision fan.
+# vision_arc_angle:             Field of view angle spread in degrees.
+# vision_max_dist:              Maximum ray reach distance in tiles.
+# use_bfs_spawn_heading:        Toggle BFS aligned or random heading.
+# activate_gps_compass:         Toggle for GPS path progress triggers.
+# use_binocular_gps_compasses:  Toggle: true = Stereo, false = Mono.
+# range_gps_compass:            Ratio threshold [0.0 - 1.0] for GPS.
+# activate_cardinal_compass:    Toggle for 4-needle cardinal compass.
+# activate_north_compass:       Toggle for North compass (NFL/NFR/etc).
+# activate_exit_compass:        Toggle for Exit compass (EFL/EFR/etc).
+# exit_compass_los_gating:      Toggle LOS wall gating for exit radar.
+# range_exit_compass:           Max effective distance for exit compass.
 # target_compasses_offset_angle: Stereo eye offset angle relative to heading.
-# focus_field_of_view:        Narrow focus eye FOV angle in degrees.
-# periphere_field_of_view:    Wide peripheral eye FOV angle in degrees.
+# focus_field_of_view:          Narrow focus eye FOV angle in degrees.
+# periphere_field_of_view:      Wide peripheral eye FOV angle in degrees.
 #
 # NEURAL (Multi-Layer Perceptron Topology):
-# memory_frames:              Stacked observation frame history count.
-# hidden_layers:              Number of dense hidden layers in network.
-# neurons:                    Number of artificial neurons per hidden layer.
+# memory_frames:                Stacked observation frame history count.
+# hidden_layers:                Number of dense hidden layers in network.
+# neurons:                      Number of neurons per hidden layer.
 # ============================================================================

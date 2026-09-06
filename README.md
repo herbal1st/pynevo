@@ -30,38 +30,40 @@ Architecture   : PyNevo is a self-contained 2D neuroevolution simulation
                  terrain generation with fast array-threshold strata mapping
                  (np.digitize), continuous Circle-to-AABB smooth wall physics
                  with Minimum Translation Vector (MTV) tile ejection, physics
-                 sub-stepping for anti-tunneling at high velocities
-                 (EndlessKinematics), an on-demand multi-stage target relocation
-                 system (relocating target tiles upon N-frame position holds),
-                 a C-contiguous 3D NumPy BFS distance matrix cache (shape:
-                 max_targets x height x width) enabling O(1) multi-stage step-
-                 distance queries, a clean map background rendering engine that
-                 dynamically paints active checkpoints (blue) and targets
-                 (green) per step tick, a 3-pass direct-canvas dynamic lighting
-                 and 3D hillshading pipeline featuring a 360-degree
-                 counterclockwise solar orbit clock (DayNightClock),
-                 vectorized height field sampling (ViewportHeightSampler),
-                 Tile-Aware base-color additive highlights and mountain
-                 shadows (VectorizedHeightShadowEngine), multiplicative
-                 day/night ambient tinting (AmbientPaletteResolver),
-                 Amanatides-Woo fast voxel grid traversal raycasting,
-                 pre-allocated contiguous sensor array caches, flexible
-                 steering kinematics (Car, Tank, and Direct Vector
-                 profiles), a data-driven profile library (profiles/), a
-                 configurable dual-mode 4-neuron motor actuation switch
+                 sub-stepping for anti-tunneling at high velocities and
+                 small body radii across bounded and endless modes
+                 (CandidateKinematics and EndlessKinematics), an on-demand
+                 multi-stage target relocation system (relocating target tiles
+                 upon N-frame position holds), a C-contiguous 3D NumPy BFS
+                 distance matrix cache (shape: max_targets x height x width)
+                 enabling O(1) multi-stage step-distance queries, a clean map
+                 background rendering engine that dynamically paints active
+                 checkpoints (blue) and targets (green) per step tick, a 3-pass
+                 direct-canvas dynamic lighting and 3D hillshading pipeline
+                 featuring a 360-degree counterclockwise solar orbit clock
+                 (DayNightClock), vectorized height field sampling
+                 (ViewportHeightSampler), Tile-Aware base-color additive
+                 highlights and mountain shadows (VectorizedHeightShadowEngine),
+                 multiplicative day/night ambient tinting
+                 (AmbientPaletteResolver), Amanatides-Woo fast voxel grid
+                 traversal raycasting, pre-allocated contiguous sensor array
+                 caches, flexible steering kinematics (Car, Tank, and Direct
+                 Vector profiles), a data-driven profile library (profiles/),
+                 a configurable dual-mode 4-neuron motor actuation switch
                  (Task-Space vs Direct Differential Wheels via
                  use_linear_speed_output), physical turning tax (DMG-S)
                  with strict zero-gating, dual-mode orientation compasses
                  (Focus and Peripheral North & Exit with optional Line-of-
                  Sight wall gating), stage-aware target radar eyes,
                  topological BFS GPS path progress sensors with target-zone
-                 saturation, a triple-metabolic survival engine (Kinetic
-                 Move Heal, Invisible Topological Path Refuel, and Target
-                 Hold Stamina Recovery), orthogonal cardinal spawn heading
-                 alignment, a multi-tile safe spawn solver
-                 (EndlessSpawnSolver), a human player input controller
-                 (PlayerController), a decoupled Universal Entity Layer
-                 (EntityState, AgentState, and ViewportFrameState), an
+                 saturation, a dynamic thermodynamic metabolic survival engine
+                 (7 base energy taxes and recoveries plus target hold overlay
+                 rates with pacing ceiling clamps and full-heal stage
+                 transitions), crisp binary target zone triggers (T-Z),
+                 orthogonal cardinal spawn heading alignment, a multi-tile
+                 safe spawn solver (EndlessSpawnSolver), a human player input
+                 controller (PlayerController), a decoupled Universal Entity
+                 Layer (EntityState, AgentState, and ViewportFrameState), an
                  Endless Adapter Facade subsystem (EndlessMapDataFacade
                  and EndlessPathfinderFacade) enabling zero-modification
                  neural perception re-use across dynamic target vectors, a
@@ -100,15 +102,15 @@ Presentation   : Interactive Pygame visualizers featuring dual camera tracking
                  Arrow key human player movement across endless spatial
                  worlds (EndlessAppWindow), pre-rendered background surface
                  caching, automatic 16:9 letterboxed screen projection,
-                 unconstrained cumulative tile distance progress fitness scoring,
-                 rank-colored timeline tick markers, a dynamic inner shell status
-                 ring with a continuous Libra Balance Engine, gyroscopic counter-
-                 rotating blue target-zone arcs, non-blocking terminal score
-                 cards (rendered only on dead candidates or final steps),
-                 real-time neural activation graph heatmaps driven by live
-                 network forward passes, dynamic 3D relief terrain, rotating
-                 light and shadow fields, and profile-agnostic entity avatar
-                 rendering.
+                 unconstrained cumulative tile distance progress fitness
+                 scoring, rank-colored timeline tick markers, a dynamic inner
+                 shell status ring with a continuous Libra Balance Engine,
+                 gyroscopic counter-rotating blue target-zone arcs, non-
+                 blocking terminal score cards (rendered only on dead
+                 candidates or final steps), real-time neural activation
+                 graph heatmaps driven by live network forward passes, dynamic
+                 3D relief terrain, rotating light and shadow fields, and
+                 profile-agnostic entity avatar rendering.
 
 [2.0 MEMORY, MAPS & PROCEDURAL GENERATION (PYBIWIS & STRATEGIES)]
 -------------------------------------------------------------------------------
@@ -375,9 +377,9 @@ BFS Path GPS   : Managed by perception/spatial_transformer.py and
                  topological BFS step-distance progress querying the 3D
                  pathfinder buffer for active Target T_K:
                  - Target Zone Saturation: When Candidate C enters within
-                   target_hold_distance_threshold (0.25 tiles) of Target T_K's
-                   center, the GPS progress channels immediately saturate to
-                   peak brightness (1.0). This provides maximum positive
+                   target_hold_distance_threshold (0.25 to 0.5 tiles) of
+                   Target T_K's center, the GPS progress channels immediately
+                   saturate to peak signal (1.0). This provides maximum positive
                    goal feedback, calming the neural network so it holds
                    position smoothly without panic or agitation.
                  - Stage Re-Baselining: When Candidate C completes Stage K and
@@ -393,13 +395,6 @@ BFS Path GPS   : Managed by perception/spatial_transformer.py and
                    independent progress for Left Eye and Right Eye skin offset
                    points, providing pure differential steering feedback
                    (BFSL-, BFSR-, BFSL+, BFSR+).
-                 - Corner Drop-Off Differential: In Stereo Mode, when an
-                   agent negotiates a 90-degree corner or T-junction, the
-                   inside eye loses contact with the optimal BFS step-
-                   distance gradient exactly 1 frame earlier than the
-                   outside eye. This 1-frame signal drop-off provides a
-                   high-contrast pivot boundary that agents use for
-                   decisive corner turns.
                  - Full-Map Unconstrained Navigation: When range_gps_compass
                    is 1.0, progress triggers cover unconstrained map
                    distance, maintaining continuous GPS signals during
@@ -409,7 +404,7 @@ BFS Path GPS   : Managed by perception/spatial_transformer.py and
                  active waypoint each step. When the car reaches the waypoint,
                  the GPS instantly locks onto peak 100% arrival signal so the
                  driver can pause smoothly before turning toward the next stop.
-Proprioception : Tracks 6 core physical state channels in Layer 0:
+Proprioception : Tracks 7 core physical state channels in Layer 0:
                  - SPD    : Continuous physical displacement speedometer
                             ratio (delta d / move_speed in [0.0, 1.0]).
                  - HP     : Overall health ratio (0.0 .. 1.0).
@@ -417,12 +412,26 @@ Proprioception : Tracks 6 core physical state channels in Layer 0:
                  - DMG-I  : Stalling / idle damage pulse (1.0 or 0.0).
                  - DMG-S  : Physical rotation tax ratio (|delta theta| /
                             max_rad_per_frame in [0.0, 1.0]).
-                 - HEAL   : High-speed kinetic recovery pulse OR target-zone
-                            stamina recovery pulse (1.0 or 0.0).
-                 Plain Explanation: These 6 channels tell the brain how fast
-                 it is moving, its remaining health, and whether it is
-                 currently taking wall collision damage, stalling damage, or
-                 turning damage, or earning stamina healing.
+                 - HEAL   : Kinetic or target-zone recovery pulse (1.0/0.0).
+                 - T-Z    : Crisp binary target zone indicator (1.0 when
+                            inside target threshold, 0.0 outside).
+                 Plain Explanation: These 7 channels tell the brain how fast
+                 it is moving, its remaining health, whether it is taking
+                 wall, stalling, or turning damage, whether it is earning
+                 stamina recovery, and whether its body is inside the active
+                 target zone.
+Target Zone Ceiling: Managed by perception/spatial/gps_sensor.py and
+                 bridges/candidate_step_pipeline.py. Inside the target hold
+                 threshold, scent field intensity sets a maximum recovery
+                 ceiling (target_zone_plateau_intensity: 0.95). As the agent
+                 approaches the target center, healing reaches its maximum
+                 surplus above environmental damage, smoothly decreasing toward
+                 the boundary cap to encourage stable stationary holding.
+                 Plain Explanation: Think of the target zone like a cozy
+                 warm campfire. In the center, you get maximum warmth
+                 (surplus healing). Near the edge, the warmth fades down
+                 to equal the cold outside air, encouraging agents to stay
+                 inside the circle without bouncing off the center point.
 Optimal Spawn  : Managed by perception/spawn_heading.py. Spawns candidates
                  strictly aligned to orthogonal cardinal directions (0°, 90°,
                  180°, 270°) facing an open corridor, eliminating diagonal
@@ -431,9 +440,9 @@ Zero-Gating    : Strict sensory zero-gating: if health_spin_dmg_per_frame is
                  0.0, DMG-S is locked to strictly 0.0 for both health deduction
                  and the Layer 0 neural input channel.
 Base Vector    : Standardized input vector dynamically matching active mode:
-                 - Mono Mode (_bg0): 20 state channels (6 Proprioceptive +
+                 - Mono Mode (_bg0): 21 state channels (7 Proprioceptive +
                    2 BFS GPS + 4 Cardinal + 4 North + 4 Exit) + Vision Rays.
-                 - Stereo Mode (_bg1): 22 state channels (6 Proprioceptive +
+                 - Stereo Mode (_bg1): 23 state channels (7 Proprioceptive +
                    4 BFS GPS + 4 Cardinal + 4 North + 4 Exit) + Vision Rays.
 Memory Stream  : Managed by perception/spatial/memory_stacker.py. Stacks past
                  observation frames into a pre-allocated 3D NumPy array cache.
@@ -447,11 +456,12 @@ Data-Driven YAML: System configurations are decoupled into dedicated profile
                    vs Tank, use_linear_speed_output toggle, move_speed,
                    endless_move_speed, agent_diameter_ratio,
                    endless_agent_diameter_ratio, target_hold_distance_threshold,
-                   target_hold_heal_per_frame, collision/idle/spin damage,
-                   move_heal_per_frame, and path_heal_per_frame), perception
-                   parameters (exit_compass_los_gating toggle,
-                   use_bfs_spawn_heading toggle), neural hidden topology, and
-                   references a visual skin.
+                   target_zone_plateau_intensity, full_heal_on_stage_clear,
+                   all 7 damage rates [base, move_fwd, move_bwd, spin, coll,
+                   idle, path, target_hold], all 8 heal rates [base, path,
+                   move_fwd, move_bwd, spin, coll, idle, target_hold], speed
+                   thresholds), perception settings (exit_compass_los_gating,
+                   use_bfs_spawn_heading), hidden topology, and skin bindings.
                  - profiles/player.yaml   : Defines human player profiles,
                    steering mechanics (DIRECT_VECTOR, TANK, CAR), translation
                    speed, turn speed, diameter_ratio, min_spawn_speed,
@@ -502,12 +512,13 @@ Disk Persistence: neural/brain_persistence.py saves winning candidate weight
                  (_lin0). Switching use_linear_speed_output in YAML never
                  overwrites or corrupts saved weights from the other mode!
 
-[5.0 KINEMATICS, HEALTH & TRIPLE-METABOLIC REFUEL ENGINE]
+[5.0 KINEMATICS, HEALTH & DUAL THERMODYNAMIC METABOLIC MATRIX]
 -------------------------------------------------------------------------------
 Kinematics     : Decoupled into core/kinematics/:
                  - profiles.py: Defines "CAR" dynamics and "TANK" dynamics.
-                 - engine.py: Handles 2D translation and continuous Circle-
-                   to-AABB penetration resolution using Minimum Translation
+                 - engine.py: Handles 2D translation, sub-stepping anti-
+                   tunneling safeguards, and continuous Circle-to-AABB
+                   penetration resolution using Minimum Translation
                    Vectors (MTV) for bounded maps.
                  - endless_engine.py (EndlessKinematics): Universal physics
                    engine for infinite noise chunk terrain. Provides 2D
@@ -515,11 +526,13 @@ Kinematics     : Decoupled into core/kinematics/:
                    "CAR"), terrain friction scaling, physics sub-stepping
                    anti-tunneling safeguards, and Circle-to-AABB MTV wall
                    collision ejection directly against ChunkManager.
-Physics Sub-Stepping: Managed by EndlessKinematics in core/kinematics/
-                 endless_engine.py. Prevents high-speed entities from slipping
-                 or tunneling through mountain walls. When movement step
-                 displacement exceeds MAX_SUB_STEP_DIST (0.20 tiles), the
-                 engine divides the frame step into smaller micro-steps.
+Physics Sub-Stepping: Managed by CandidateKinematics (core/kinematics/
+                 engine.py) and EndlessKinematics (core/kinematics/
+                 endless_engine.py). Prevents high-speed or small-radius
+                 entities from slipping or tunneling through solid walls.
+                 When movement step displacement exceeds MAX_SUB_STEP_DIST
+                 (0.20 tiles), the engine divides the frame step into
+                 smaller micro-steps.
 Player Controller: Managed by entities/player_controller.py (PlayerController).
                  Translates raw Pygame keyboard input (WASD / Arrow keys) into
                  normalized movement and rotational effort.
@@ -540,34 +553,60 @@ Continuous Run Rule: In Maze Mode, clearing a target stage does NOT stop
                  steps), advancing through Stage 1, Stage 2, Stage 3, etc.
                  The ONLY condition that stops a candidate early before step
                  1000 is physical death (not is_alive) due to stamina depletion.
-Triple Metabolism: Candidates start at 100% health (1.0). Health represents the
-                 agent's physical stamina and survival timer:
-                 - Collision Damage: Wall impacts deduct
-                   health_coll_dmg_per_frame and trigger the DMG-C pulse.
-                 - Idle Damage: Stalling (speed_ratio < threshold) deducts
-                   health_idle_dmg_per_frame and triggers the DMG-I pulse.
-                 - Rotation Tax: Physical turning effort deducts
-                   health_spin_dmg_per_frame x rot_ratio per tick and carries
-                   rot_ratio on the DMG-S channel.
-                 - Kinetic Movement Heal (move_heal_per_frame): Cruising at
-                   high physical speed (speed_ratio >= heal_speed_threshold)
-                   restores move_heal_per_frame per frame, triggering the
-                   HEAL pulse on the neural input layer.
-                 - Target Hold Stamina Heal (target_hold_heal_per_frame):
-                   Continuous per-frame stamina recovery applied whenever
-                   candidate distance to active target center is <=
-                   target_hold_distance_threshold. Restores stamina and
-                   triggers HEAL pulse.
-                 - Invisible Topological Refuel (path_heal_per_frame): Pure
-                   physical/environmental refuel reading stereo BFS progress
-                   intensities (BFSL+, BFSR+).
-                 - Hard Health Cap: Health is strictly capped at 1.0 (100%),
-                   preventing agents from building over-healing shield buffers.
-Libra Balance  : utils/color_utils.py resolves a continuous Net Delta score:
-                 Net Delta = (Damage Sources Count) - (Kinetic Heal Count)
+Thermodynamic Metabolic Engine: Candidates start at 100% health (1.0). Health
+                 represents the agent's stamina and physical survival pool.
+                 Every frame, health updates via net delta (Heal - Damage):
+                 - 7 Base Damage Taxes + Target Hold Overlay:
+                   1. Base Existence Tax (base_dmg_per_frame).
+                   2. Forward Motion Tax (move_fwd_dmg_per_frame * speed_ratio).
+                   3. Backward Motion Tax (move_bwd_dmg_per_frame * speed_ratio).
+                   4. Rotation Tax (spin_dmg_per_frame * rot_ratio).
+                   5. Collision Damage (coll_dmg_per_frame on wall impact).
+                   6. Stalling Idle Tax (idle_dmg_per_frame when speed < threshold).
+                   7. Off-Path Tax (path_dmg_per_frame * (1.0 - path_intensity)).
+                   8. Target Hold Tax (target_hold_dmg_per_frame when active).
+                 - 7 Base Healing Sources + Target Hold Overlay Refuel:
+                   1. Base Healing (base_heal_per_frame).
+                   2. Forward Kinetic Heal (move_fwd_heal_per_frame * eta_behavior).
+                   3. Backward Kinetic Heal (move_bwd_heal_per_frame * eta_behavior).
+                   4. Rotational Heal (spin_heal_per_frame * rot_ratio).
+                   5. Impact Heal (coll_heal_per_frame on wall collision).
+                   6. Idle Recovery (idle_heal_per_frame when speed < threshold).
+                   7. Topological Path Refuel (path_heal_per_frame * path_intensity).
+                   8. Target Hold Refuel (target_hold_heal_per_frame * f_dist).
+
+                 Dynamic Field Capping & Target Scaling:
+                 - Inside Target Zone (dist <= hold_dist_thresh): Damage is
+                   capped to 95% of raw healing (total_dmg = min(raw_dmg,
+                   0.95 * raw_heal)), guaranteeing a net stamina surplus
+                   ranging from maximum surplus at center down to a zero-surplus
+                   boundary cap.
+                 - Outside Target Zone (dist > hold_dist_thresh): Baseline damage
+                   remains constant at the cap level, while healing scales down
+                   linearly with distance (f_dist), increasing energy decay
+                   further away from the target.
+                 - Inverted Target Mode (invert_target_zone_field: true):
+                   Flips the field mechanics so the target zone becomes a hazard
+                   capping healing to 95% of damage, while outside damage
+                   scales proportionally with distance.
+Pacing Ceiling Clamp: Managed by CandidateStepPipeline. Behavioral kinetic heal
+                 is scaled by eta_behavior = clamp(speed_ratio / heal_speed_
+                 threshold, 0.0, 1.0). When an agent reaches heal_speed_
+                 threshold (0.80), its kinetic healing locks at 100%. Driving
+                 faster increases forward work tax without extra healing,
+                 naturally forcing the brain to pace itself efficiently.
+Full-Heal Stage Clear: When full_heal_on_stage_clear is true in YAML, clearing
+                 a target stage hold instantly restores health back to 1.0.
+Hard Health Cap: Health is strictly capped at 1.0 (100%), preventing agents
+                 from building over-healing shield buffers.
+Libra Balance  : utils/color_utils.py resolves a visual status indicator
+                 Net Delta based on active physics event states:
+                 Net Delta = (Damage Events Count) - (Kinetic Heal State)
                  - Net Delta = 0.0 (Neutral)  : Yellow highlight ring.
                  - Net Delta > 0.0 (Damage)   : Smoothly blends Yellow -> Red.
                  - Net Delta < 0.0 (Recovery) : Smoothly blends Yellow -> Green.
+                 Note: Physical health updates use continuous net_hp_delta
+                 (total_heal - total_dmg) calculated in CandidateStepPipeline.
 Gyroscopic Arcs: When candidate distance to active target center is <=
                  target_hold_distance_threshold, concentric dual-radius blue
                  arcs render on top of the status ring. The inner arcs glide
@@ -784,7 +823,7 @@ PyNevo/
 │   ├── pathfinder.py               # Contiguous 3D NumPy BFS matrix cache
 │   ├── kinematics/                 # Kinematics Subsystem
 │   │   ├── profiles.py             # Car and Tank steering profiles
-│   │   ├── engine.py               # Bounded candidate kinematics & MTV
+│   │   ├── engine.py               # Bounded candidate kinematics, sub-stepping & MTV
 │   │   └── endless_engine.py       # Endless kinematics & sub-stepping
 │   └── map_generation/             # Procedural Generation Package
 │       ├── base_strategy.py        # Abstract generator strategy interface

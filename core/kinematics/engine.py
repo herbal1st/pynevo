@@ -20,6 +20,8 @@ class CandidateKinematics:
     Handles 2D movement physics and Circle-to-AABB penetration resolution.
     """
 
+    MAX_SUB_STEP_DIST: float = 0.20  # tiles limit
+
     def __init__(
         self,
         move_speed: float = 0.15,
@@ -63,20 +65,39 @@ class CandidateKinematics:
         map_data: MapData
     ) -> Tuple[float, float, bool]:
         """
-        Calculates step and resolves Circle-to-AABB penetration pushback.
+        Calculates step with anti-tunneling physics sub-stepping.
         """
         clamped_effort: float = max(-1.0, min(1.0, move_effort))
         if abs(clamped_effort) < 1e-4:
             return curr_x, curr_y, False
 
-        step_dist: float = clamped_effort * self.move_speed
-        next_x: float = curr_x + (math.cos(heading_rad) * step_dist)
-        next_y: float = curr_y + (math.sin(heading_rad) * step_dist)
+        total_dist: float = clamped_effort * self.move_speed
+        if abs(total_dist) < 1e-5:
+            return curr_x, curr_y, False
 
-        resolved_x, resolved_y, hit = self._resolve_circle_aabb(
-            next_x, next_y, map_data
+        num_sub_steps: int = max(
+            1, math.ceil(abs(total_dist) / self.MAX_SUB_STEP_DIST)
         )
-        return resolved_x, resolved_y, hit
+        sub_dist: float = total_dist / float(num_sub_steps)
+
+        dx_sub: float = math.cos(heading_rad) * sub_dist
+        dy_sub: float = math.sin(heading_rad) * sub_dist
+
+        pos_x: float = curr_x
+        pos_y: float = curr_y
+        has_any_collision: bool = False
+
+        for _ in range(num_sub_steps):
+            pos_x += dx_sub
+            pos_y += dy_sub
+
+            pos_x, pos_y, hit = self._resolve_circle_aabb(
+                pos_x, pos_y, map_data
+            )
+            if hit:
+                has_any_collision = True
+
+        return pos_x, pos_y, has_any_collision
 
     def interpolate_pixel_pos(
         self,

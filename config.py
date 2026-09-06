@@ -19,7 +19,7 @@ GRID_COLS: int = 3  # count
 
 # ------ Active Profile Selectors ------
 ACTIVE_AGENT_PROFILE: str = "TANK_1"  # profile
-ACTIVE_TRAINING_PROFILE: str = "TEST"  # profile
+ACTIVE_TRAINING_PROFILE: str = "DEFAULTs"  # profile
 ACTIVE_MAP_PROFILE: str = "TINY"  # profile
 
 # ------ Endless Settings & Debug Overlays ------
