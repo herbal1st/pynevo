@@ -150,7 +150,7 @@ class LiveWinnerRunner:
             return
 
         for idx, meta in enumerate(discovered):
-            if meta.clean_title == self.active_profile_name:
+            if self.active_profile_name in meta.clean_title or meta.clean_title == self.active_profile_name:
                 self.active_brain_index = idx
                 return
 
@@ -176,17 +176,29 @@ class LiveWinnerRunner:
             CandidateStepPipeline(t, self.kinematics) for t in self.transformers
         ]
 
-        loaded_ok = self.persistence.load_brain(
-            self.active_profile_name,
-            self.network,
-            self.profile,
-            context="live multi-champion swarm",
-            verbose=False,
-        )
+        loaded_ok = self.load_winner_brain(verbose=False)
         self.generate_fresh_maze()
         return loaded_ok
 
     def load_winner_brain(self, verbose: bool = False) -> bool:
+        discovered = self.persistence.discover_saved_brains(force_refresh=True)
+        if discovered and 0 <= self.active_brain_index < len(discovered):
+            target_meta = discovered[self.active_brain_index]
+            try:
+                archive = np.load(target_meta.file_path)
+                num_layers = int(archive.get("num_layers", len(self.network.layers)))
+                for idx in range(num_layers):
+                    if f"layer_{idx}_weights" in archive and f"layer_{idx}_biases" in archive:
+                        self.network.layers[idx].weights = archive[f"layer_{idx}_weights"]
+                        self.network.layers[idx].biases = archive[f"layer_{idx}_biases"]
+                if verbose:
+                    print(f"[Live Winner] Successfully loaded trained champion brain: {target_meta.file_name}")
+                archive.close()
+                return True
+            except Exception as e:
+                if verbose:
+                    print(f"[Live Winner] Failed to load brain {target_meta.file_name}: {e}")
+
         return self.persistence.load_brain(
             self.active_profile_name,
             self.network,
@@ -215,7 +227,6 @@ class LiveWinnerRunner:
         for idx, (st, tf) in enumerate(zip(self.states, self.transformers)):
             tf.reset_candidate_history(idx)
             base_heading = tf.generate_random_heading(map_data, map_data.start_pos)
-            # Add subtle angular divergence so clones explore alternate branches
             angle_jitter = (float(idx) - (self.num_champions / 2.0)) * 0.08
             st.heading = (base_heading + angle_jitter) % (2.0 * math.pi)
             st.best_step_dist = initial_dist

@@ -13,6 +13,7 @@ from visualization.overlay_panel import OverlayPanel
 from visualization.timeline_scrubber import TimelineScrubber
 from visualization.network_graph.graph_facade import NetworkGraph
 from visualization.viewports.native_maze_viewport import NativeMazeViewport
+from visualization.viewports.native.first_person_3d_renderer import FirstPerson3DRenderer
 
 
 class LiveViewPresenter:
@@ -33,8 +34,10 @@ class LiveViewPresenter:
         self.network_graph: NetworkGraph = NetworkGraph(config.LAYOUT_GRAPH_RECT)
         self.help_overlay: LiveHelpOverlay = LiveHelpOverlay(config.LAYOUT_GRAPH_RECT)
         self.timeline_scrubber: TimelineScrubber = TimelineScrubber(config.LAYOUT_SCRUBBER_RECT)
+        self.renderer_3d: FirstPerson3DRenderer = FirstPerson3DRenderer()
 
         self.is_camera_centered: bool = False
+        self.is_3d_mode: bool = False
         self.show_help_overlay: bool = False
         self.active_frame: int = 0
         self.active_frame_float: float = 0.0
@@ -72,11 +75,13 @@ class LiveViewPresenter:
             elif event.key == pygame.K_DOWN:
                 self._execute_brain_cycle(-1)
 
-            # '[' and ']' dynamically scale champion swarm count
             elif event.key in (pygame.K_LEFTBRACKET, pygame.K_MINUS, pygame.K_KP_MINUS):
                 self.runner.set_champion_count(self.runner.num_champions - 5)
             elif event.key in (pygame.K_RIGHTBRACKET, pygame.K_PLUS, pygame.K_KP_PLUS, pygame.K_EQUALS):
                 self.runner.set_champion_count(self.runner.num_champions + 5)
+
+            elif event.key in (pygame.K_3, pygame.K_KP3):
+                self.is_3d_mode = not self.is_3d_mode
 
             elif event.key == pygame.K_SPACE:
                 self.timeline_scrubber.is_playing = not self.timeline_scrubber.is_playing
@@ -140,7 +145,6 @@ class LiveViewPresenter:
         self.active_frame_float += sp
         self.active_frame = int(self.active_frame_float)
 
-        # Autogen next map when simulation ends (all died, solved, or hit limit)
         if self.active_frame >= total_steps:
             self.generate_fresh_maze()
 
@@ -149,8 +153,15 @@ class LiveViewPresenter:
         total_steps = max(1, self.runner.total_run_steps)
         safe_frame = max(0, min(self.active_frame, total_steps - 1))
 
+        if self.is_3d_mode:
+            focal_state = self.viewport.state_resolver.resolve_frame_state(
+                live_gen_data, live_gen_data.get("winner_index", 0), safe_frame
+            )
+            if focal_state:
+                self.renderer_3d.render_3d_view(surface, live_gen_data, focal_state)
+            return
+
         rect = config.LAYOUT_GRID_RECT
-        # Render all champion models overlaid onto the fresh map
         self.viewport.render_overlay_viewport(
             surface,
             live_gen_data,

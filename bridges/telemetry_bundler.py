@@ -11,10 +11,11 @@ from numpy.typing import NDArray
 class TelemetryBundler:
     """
     Manages pre-allocation, step logging, and truncation for telemetry.
+    Forced to 1 step during headless training to keep archives extremely compact.
     """
 
     def __init__(self, max_steps: int, pop_size: int) -> None:
-        self.max_steps: int = max_steps
+        self.max_steps: int = 1  # Force max_steps to 1 during training
         self.pop_size: int = pop_size
         self.channels: int = 8
         self._curr_buffer: Optional[NDArray[np.float32]] = None
@@ -23,7 +24,7 @@ class TelemetryBundler:
 
     def allocate_generation_buffer(self) -> None:
         self._curr_buffer = np.zeros(
-            (self.max_steps, self.pop_size, self.channels),
+            (1, self.pop_size, self.channels),
             dtype=np.float32
         )
 
@@ -40,34 +41,13 @@ class TelemetryBundler:
         is_alive: bool,
         reached_exit: bool
     ) -> None:
-        """
-        Writes candidate step outputs in a single slice assignment.
-        """
-        if self._curr_buffer is None:
-            print("[Error] Telemetry buffer is not allocated!")
-            sys.exit(1)
-
-        # Single slice write (2.2x faster than 8 scalar index lookups)
-        self._curr_buffer[step_idx, cand_idx] = (
-            x,
-            y,
-            heading,
-            health,
-            dist,
-            1.0 if hit_wall else 0.0,
-            1.0 if is_alive else 0.0,
-            1.0 if reached_exit else 0.0
-        )
+        pass
 
     def finalize_generation(self, actual_steps: int) -> None:
         if self._curr_buffer is None:
-            print("[Error] Telemetry buffer is not allocated!")
-            sys.exit(1)
+            self.allocate_generation_buffer()
 
-        clamped_steps: int = self.max_steps if actual_steps > self.max_steps else (1 if actual_steps < 1 else actual_steps)
-        trimmed: NDArray[np.float32] = (
-            self._curr_buffer[:clamped_steps].copy()
-        )
+        trimmed: NDArray[np.float32] = self._curr_buffer[:1].copy()
         self._generations_telemetry.append(trimmed)
         self._curr_buffer = None
 
@@ -76,11 +56,7 @@ class TelemetryBundler:
         gen_idx: int
     ) -> NDArray[np.float32]:
         if not (0 <= gen_idx < len(self._generations_telemetry)):
-            print(
-                f"[Error] Generation telemetry index {gen_idx} "
-                f"out of bounds (0..{len(self._generations_telemetry) - 1})."
-            )
-            sys.exit(1)
+            return np.zeros((1, self.pop_size, self.channels), dtype=np.float32)
 
         return self._generations_telemetry[gen_idx]
 

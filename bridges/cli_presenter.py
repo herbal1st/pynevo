@@ -24,7 +24,7 @@ class CLIPresenter:
         self.header_str: str = (
             f"{'GEN':>5s} | {'TOP':>5s} | {'AVG':>6s} | "
             f"{'FIRST':>5s} | {'STAGE':>5s} | {'TOUCH':>5s} | "
-            f"{'SOLVE':>5s} | {'EXITS':>5s} | {'PROS':>5s} | {'TIME':>6s}"
+            f"{'SOLVE':>5s} | {'EXITS':>5s} | {'PROS':>5s} | {'SOLVE%':>6s} | {'TIME':>6s}"
         )
 
     def print_start_banner(
@@ -55,10 +55,11 @@ class CLIPresenter:
         raw_scores: List[float],
         norm_scores: List[float],
         candidate_states: List[AgentState],
+        running_solve_avg: float = 0.0,
         elapsed_sec: float = 0.0
     ) -> None:
         """
-        Formats and prints a single generation progress metrics row.
+        Formats and prints a single generation progress metrics row including running solve average.
         """
         top_int: int = int(round(max(raw_scores)))
         avg_raw: float = (
@@ -91,13 +92,14 @@ class CLIPresenter:
         exits_str: str = f"{exits_cnt}" if exits_cnt > 0 else "-"
         pros_str: str = f"{pros_cnt}" if pros_cnt > 0 else "-"
         winner_str: str = f"# {winner_idx}"
+        solve_pct_str: str = f"{running_solve_avg * 100.0:5.1f}%"
         time_str: str = f"{elapsed_sec:5.2f}s"
 
         row_str: str = (
             f"{gen_idx + 1:>5d} | {top_int:>5d} | {avg_raw:>6.1f} | "
             f"{winner_str:>5s} | {winner_stage:>5d} | {touch_str:>5s} | "
             f"{solve_str:>5s} | {exits_str:>5s} | {pros_str:>5s} | "
-            f"{time_str:>6s}"
+            f"{solve_pct_str:>6s} | {time_str:>6s}"
         )
         print(row_str)
 

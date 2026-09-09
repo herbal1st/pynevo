@@ -1,5 +1,6 @@
 """
 Computes topological BFS step-distance GPS progress channels.
+Respects SLAM_MODE by returning zeros.
 """
 
 import math
@@ -17,6 +18,7 @@ except ImportError:
             return func
         return decorator
 
+import config
 from core.map_data import MapData
 from core.pathfinder import BFSPathfinder
 from entities.agent_profile_registry import ResolvedAgentProfile
@@ -30,9 +32,6 @@ def get_bilinear_bfs_distance(
     width: int,
     height: int
 ) -> float:
-    """
-    JIT-compiled bilinear interpolation directly over the BFS 2D distance slice.
-    """
     x0 = int(px)
     y0 = int(py)
     x1 = (x0 + 1) if (x0 + 1) < (width - 1) else (width - 1)
@@ -67,9 +66,6 @@ def compute_stereo_gps_jit(
     move_speed: float,
     has_history: bool
 ) -> Tuple[float, float, float, float, float, float]:
-    """
-    Evaluates both stereo eye probe positions and bilinear lookups in a single JIT pass.
-    """
     left_heading = heading_rad + offset_rad
     right_heading = heading_rad - offset_rad
 
@@ -114,7 +110,7 @@ def compute_stereo_gps_jit(
 
 class TopologicalGPSSensor:
     """
-    Evaluates topological BFS GPS progress with JIT-accelerated bilinear interpolation.
+    Evaluates topological BFS GPS progress. Returns zeros if SLAM_MODE is active.
     """
 
     def __init__(
@@ -160,7 +156,7 @@ class TopologicalGPSSensor:
             else True
         )
 
-        if self.profile is not None and not self.profile.activate_gps_compass:
+        if getattr(config, "SLAM_MODE", False) or (self.profile is not None and not self.profile.activate_gps_compass):
             res = (0.0, 0.0, 0.0, 0.0) if use_binocular else (0.0, 0.0)
             self.last_gps_channels = res
             return res
@@ -224,7 +220,6 @@ class TopologicalGPSSensor:
 
         grid_matrix = pathfinder._matrix_buffer[stage_idx]
 
-        # Single JIT call bypassing multiple FFI roundtrips
         (
             sspl_pos, sspr_pos, sspl_neg, sspr_neg, cur_l, cur_r
         ) = compute_stereo_gps_jit(

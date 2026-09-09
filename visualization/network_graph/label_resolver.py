@@ -3,7 +3,6 @@ Label resolution module for neural network observation channels and outputs.
 """
 
 from typing import List, Optional
-
 from entities.agent_profile_registry import ResolvedAgentProfile
 
 
@@ -16,9 +15,6 @@ class GraphLabelResolver:
         self,
         profile: ResolvedAgentProfile
     ) -> List[str]:
-        """
-        Generates shorthand labels for single-frame observation channels.
-        """
         labels: List[str] = []
         num_rays: int = profile.vision_rays
         half_arc: float = profile.vision_arc_angle / 2.0
@@ -31,17 +27,14 @@ class GraphLabelResolver:
         else:
             labels.append("0°")
 
-        labels.extend(["SPD", "HP", "DMG-C", "DMG-I", "DMG-S", "HEAL", "A-VEL", "PATH-L", "PATH-R"])
-
-        use_binocular: bool = profile.use_binocular_gps_compasses
-        if not use_binocular:
-            labels.extend(["BFS-", "BFS+"])
-        else:
-            labels.extend(["BFSL-", "BFSR-", "BFSL+", "BFSR+"])
-
-        labels.extend(["C-N", "C-E", "C-S", "C-W"])
-        labels.extend(["NFR", "NFL", "NPR", "NPL"])
-        labels.extend(["EFR", "EFL", "EPR", "EPL"])
+        # 3 clearance channels
+        labels.extend(["CLR-L", "CLR-F", "CLR-R"])
+        # 7 proprioception channels
+        labels.extend(["SPD", "HP", "DMG-C", "DMG-I", "DMG-S", "HEAL", "A-VEL"])
+        # 2 compass channels
+        labels.extend(["CMP-X", "CMP-Y"])
+        # 3 visual exit channels (LOS only)
+        labels.extend(["EX-VIS", "EX-FWD", "EX-LAT"])
 
         return labels
 
@@ -50,9 +43,6 @@ class GraphLabelResolver:
         output_count: int,
         profile: Optional[ResolvedAgentProfile] = None
     ) -> List[str]:
-        """
-        Generates semantic output labels matching active actuation mode.
-        """
         use_linear: bool = (
             profile.use_linear_speed_output
             if profile is not None else False

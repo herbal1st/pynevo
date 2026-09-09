@@ -24,9 +24,6 @@ class AgentProfileParser:
 
     @classmethod
     def get_clamped_warning_strings(cls) -> List[str]:
-        """
-        Returns formatted memory frame safety cap warning strings.
-        """
         warnings: List[str] = []
         for p_name, (raw_val, cap_val) in cls.clamped_warnings.items():
             warnings.append(
@@ -41,9 +38,6 @@ class AgentProfileParser:
         library_path: Path,
         skin_registry: SkinProfileRegistry
     ) -> Dict[str, ResolvedAgentProfile]:
-        """
-        Parses YAML configuration file and builds resolved profile map.
-        """
         if not library_path.exists():
             print(
                 f"[Error] Agent library YAML file missing: {library_path}"
@@ -83,9 +77,6 @@ class AgentProfileParser:
         library_path: Path,
         skin_registry: SkinProfileRegistry
     ) -> ResolvedAgentProfile:
-        """
-        Extracts behavior fields, resolves skin, & builds Agent profile.
-        """
         file_name: str = library_path.name
         kin = AgentProfileParser._get_required_section(
             p_dict, "kinematics", p_name, file_name
@@ -192,17 +183,20 @@ class AgentProfileParser:
         )
         heal_thresh: float = float(
             AgentProfileParser._get_required_val(
-                kin, "heal_speed_threshold", "kinematics", p_name, file_name
+                kin, "heal_speed_threshold", "kinematics",
+                p_name, file_name
             )
         )
         move_heal: float = float(
             AgentProfileParser._get_required_val(
-                kin, "move_heal_per_frame", "kinematics", p_name, file_name
+                kin, "move_heal_per_frame", "kinematics",
+                p_name, file_name
             )
         )
         path_heal: float = float(
             AgentProfileParser._get_required_val(
-                kin, "path_heal_per_frame", "kinematics", p_name, file_name
+                kin, "path_heal_per_frame", "kinematics",
+                p_name, file_name
             )
         )
 
@@ -306,7 +300,8 @@ class AgentProfileParser:
             )
         )
 
-        max_mem_cap: int = 10
+        # Increased max memory capacity cap to 15 frames for long-horizon path planning on massive maps
+        max_mem_cap: int = 15
         if raw_mem > max_mem_cap:
             AgentProfileParser.clamped_warnings[p_name] = (
                 raw_mem, max_mem_cap
@@ -361,9 +356,6 @@ class AgentProfileParser:
         profile_name: str,
         file_name: str
     ) -> Dict[str, Any]:
-        """
-        Enforces section existence or fails fast with an explicit error.
-        """
         if section_name not in p_dict:
             print(
                 f"[Error] Profile '{profile_name}' in profiles/{file_name} "
@@ -380,9 +372,6 @@ class AgentProfileParser:
         profile_name: str,
         file_name: str
     ) -> Any:
-        """
-        Enforces key existence in dict or fails fast with an explicit error.
-        """
         if key_name not in d:
             print(
                 f"[Error] Profile '{profile_name}' in section "

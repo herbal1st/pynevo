@@ -16,9 +16,6 @@ class InputController:
     """
 
     def __init__(self) -> None:
-        """
-        Initializes click timer and held key repetition timing state.
-        """
         self.last_click_time: int = 0
         self.held_nav_key: Optional[int] = None
         self.held_key_press_time: int = 0
@@ -35,9 +32,6 @@ class InputController:
         total_frames: int,
         total_candidates: int
     ) -> Tuple[bool, int, int]:
-        """
-        Polls Pygame events and returns updated (running, active_gen, frame).
-        """
         running: bool = True
         new_gen: int = active_gen
         new_frame: int = active_frame
@@ -121,9 +115,6 @@ class InputController:
         total_gens: int,
         total_frames: int
     ) -> Tuple[int, int]:
-        """
-        Executes continuous repeats for held navigation keys based on timers.
-        """
         if self.held_nav_key is None:
             return active_gen, active_frame
 
@@ -179,9 +170,6 @@ class InputController:
         y_delta: int,
         timeline_scrubber: TimelineScrubber
     ) -> None:
-        """
-        Steps playback speed up or down based on mouse wheel scroll direction.
-        """
         if y_delta > 0:
             timeline_scrubber.step_speed_up()
         elif y_delta < 0:
@@ -198,9 +186,6 @@ class InputController:
         total_frames: int,
         total_candidates: int
     ) -> Tuple[bool, int, int]:
-        """
-        Processes keydown events for viewport, transport, and scrubber.
-        """
         new_gen: int = active_gen
         new_frame: int = active_frame
 
@@ -226,6 +211,9 @@ class InputController:
         elif key == pygame.K_r:
             viewport_grid.refresh_middle_candidates()
 
+        elif key in (pygame.K_3, pygame.K_KP3):
+            viewport_grid.toggle_3d_mode()
+
         elif key in (pygame.K_KP7, pygame.K_7):
             viewport_grid.navigate_grid(-1, -1, total_candidates)
         elif key in (pygame.K_KP8, pygame.K_8):
@@ -242,8 +230,6 @@ class InputController:
             viewport_grid.navigate_grid(1, -1, total_candidates)
         elif key in (pygame.K_KP2, pygame.K_2):
             viewport_grid.navigate_grid(1, 0, total_candidates)
-        elif key in (pygame.K_KP3, pygame.K_3):
-            viewport_grid.navigate_grid(1, 1, total_candidates)
 
         if key == pygame.K_ESCAPE:
             return False, new_gen, new_frame
@@ -311,9 +297,6 @@ class InputController:
         return True, new_gen, new_frame
 
     def _handle_key_up(self, key: int) -> None:
-        """
-        Clears held key state on key release event.
-        """
         if key == self.held_nav_key:
             self.held_nav_key = None
 
@@ -328,9 +311,6 @@ class InputController:
         total_gens: int,
         total_frames: int
     ) -> Tuple[int, int]:
-        """
-        Processes mouse click coordinates across viewports and controls.
-        """
         vx, vy = mouse_pos
         gx, gy, gw, gh = config.LAYOUT_GRAPH_RECT
         if mouse_button == 3 and (gx <= vx <= gx + gw and gy <= vy <= gy + gh):

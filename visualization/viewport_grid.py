@@ -10,6 +10,7 @@ from visualization.viewports.grid_layout import GridLayoutManager
 from visualization.viewports.candidate_mapper import CandidatePoolMapper
 from visualization.viewports.native_maze_viewport import NativeMazeViewport
 from visualization.viewports.adapter_interface import IViewportAdapter
+from visualization.viewports.native.first_person_3d_renderer import FirstPerson3DRenderer
 
 
 class ViewportGrid:
@@ -24,24 +25,20 @@ class ViewportGrid:
         cols: int = config.GRID_COLS,
         adapter: Optional[IViewportAdapter] = None
     ) -> None:
-        """
-        Initializes layout manager, candidate selection, and viewport adapter.
-        """
         self.layout: GridLayoutManager = GridLayoutManager(rect, rows, cols)
         self.selected_slot: int = 0
         self.is_zoomed: bool = False
         self.is_camera_centered: bool = False
+        self.is_3d_mode: bool = False
         self.refresh_seed_offset: int = 0
         self.adapter: IViewportAdapter = adapter or NativeMazeViewport(
             rect[2], rect[3]
         )
+        self.renderer_3d: FirstPerson3DRenderer = FirstPerson3DRenderer()
         self._last_mapped_candidates: List[int] = []
 
     @property
     def selected_idx(self) -> int:
-        """
-        Dynamically returns candidate ID mapped to currently selected slot.
-        """
         if (
             0 <= self.selected_slot < len(self._last_mapped_candidates)
         ):
@@ -50,57 +47,36 @@ class ViewportGrid:
 
     @property
     def rows(self) -> int:
-        """
-        Returns grid row count.
-        """
         return self.layout.rows
 
     @property
     def cols(self) -> int:
-        """
-        Returns grid column count.
-        """
         return self.layout.cols
 
     @property
     def x(self) -> int:
-        """
-        Returns grid bounding X position.
-        """
         return self.layout.x
 
     @property
     def y(self) -> int:
-        """
-        Returns grid bounding Y position.
-        """
         return self.layout.y
 
     @property
     def w(self) -> int:
-        """
-        Returns grid bounding width.
-        """
         return self.layout.w
 
     @property
     def h(self) -> int:
-        """
-        Returns grid bounding height.
-        """
         return self.layout.h
 
     def refresh_middle_candidates(self) -> None:
-        """
-        Increments refresh seed offset to re-sample middle candidate slots.
-        """
         self.refresh_seed_offset += 1
 
     def toggle_camera_mode(self) -> None:
-        """
-        Toggles between Map-Centered and Camera-Centered tracking views.
-        """
         self.is_camera_centered = not self.is_camera_centered
+
+    def toggle_3d_mode(self) -> None:
+        self.is_3d_mode = not self.is_3d_mode
 
     def navigate_grid(
         self,
@@ -108,9 +84,6 @@ class ViewportGrid:
         delta_col: int,
         total_candidates: int
     ) -> None:
-        """
-        Navigates selected grid slot in 2D grid space with clamping.
-        """
         if total_candidates <= 0:
             return
 
@@ -119,9 +92,6 @@ class ViewportGrid:
         )
 
     def reset_selection(self) -> None:
-        """
-        Resets grid selection to top-left slot (#0).
-        """
         self.selected_slot = 0
 
     def draw_grid(
@@ -130,9 +100,15 @@ class ViewportGrid:
         gen_data: Dict[str, Any],
         active_step: int
     ) -> None:
-        """
-        Renders sub-viewports for all candidate maps or single zoomed view.
-        """
+        if self.is_3d_mode:
+            # Fullscreen 3D view overrides all grid / zoom layout
+            frame_state = self.adapter.state_resolver.resolve_frame_state(
+                gen_data, self.selected_idx, active_step
+            )
+            if frame_state:
+                self.renderer_3d.render_3d_view(surface, gen_data, frame_state)
+            return
+
         telemetry = gen_data.get("telemetry", None)
         num_cand: int = (
             int(telemetry.shape[1]) if telemetry is not None
@@ -182,9 +158,6 @@ class ViewportGrid:
         is_double_click: bool = False,
         mouse_button: int = 1
     ) -> bool:
-        """
-        Processes click selection, double-click zoom, & camera toggling.
-        """
         cx, cy = click_pos
         slot_idx = self.layout.get_slot_index_from_click(cx, cy)
         if slot_idx is None:

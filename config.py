@@ -27,6 +27,9 @@ USE_ENDLESS_MODE: bool = False  # toggle
 SHOW_TARGET_INDICATOR: bool = True  # toggle
 SHOW_FPS_COUNTER: bool = True  # toggle
 
+# ------ SLAM Mode Toggle (True = No Omniscient Exit/Path Knowledge) ------
+SLAM_MODE: bool = True
+
 # ------ Active Endless Profile Selectors ------
 ACTIVE_PLAYER_PROFILE: str = "DEFAULT"  # profile
 ACTIVE_ENDLESS_MAP_PROFILE: str = "SIMPLEX_MIXED"  # profile
@@ -90,4 +93,4 @@ COLOR_BUTTON: Tuple[int, int, int] = (45, 45, 55)  # rgb
 COLOR_BUTTON_ACTIVE: Tuple[int, int, int] = (80, 80, 100)  # rgb
 
 # ------ Live Multi-Champion Swarm Defaults ------
-LIVE_CHAMPION_COUNT: int = 15  # Default amount of champions overlaid in live mode
+LIVE_CHAMPION_COUNT: int = 15

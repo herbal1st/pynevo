@@ -1,5 +1,5 @@
 """
-Entity physical state and AI candidate evaluation state tracking.
+Entity physical state and candidate evaluation state tracking.
 """
 
 from typing import Tuple, Set
@@ -13,6 +13,8 @@ class EntityState:
     def __init__(self, start_x: float, start_y: float) -> None:
         self.x: float = start_x
         self.y: float = start_y
+        self.start_x: float = start_x
+        self.start_y: float = start_y
         self.heading: float = 0.0
         self.frames_survived: int = 0
         self.has_collided: bool = False
@@ -32,6 +34,8 @@ class EntityState:
     def reset(self, start_x: float, start_y: float) -> None:
         self.x = start_x
         self.y = start_y
+        self.start_x = start_x
+        self.start_y = start_y
         self.heading = 0.0
         self.frames_survived = 0
         self.has_collided = False
@@ -47,7 +51,7 @@ class EntityState:
 
 class AgentState(EntityState):
     """
-    Extends EntityState with unique tile exploration tracking and multi-stage goals.
+    Extends EntityState with unique tile exploration tracking and target progress.
     """
 
     def __init__(self, start_x: float, start_y: float) -> None:
@@ -63,6 +67,8 @@ class AgentState(EntityState):
         self.first_hold_clear_step: int = -1
         self.total_lifetime_progress: float = 0.0
         self.visited_tiles: Set[Tuple[int, int]] = {(int(start_x), int(start_y))}
+        self.distance_traveled: float = 0.0
+        self.collision_count: int = 0
 
     @property
     def has_reached_exit(self) -> bool:
@@ -93,3 +99,5 @@ class AgentState(EntityState):
         self.first_hold_clear_step = -1
         self.total_lifetime_progress = 0.0
         self.visited_tiles = {(int(start_x), int(start_y))}
+        self.distance_traveled = 0.0
+        self.collision_count = 0

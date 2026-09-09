@@ -1,8 +1,8 @@
 """
-Compiles wall rays, state, compass, & GPS features with temporal memory.
+Compiles LiDAR rays, corridor clearance, state, compass, & visual beacon with temporal working memory.
 """
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Any
 import numpy as np
 from numpy.typing import NDArray
 
@@ -34,39 +34,24 @@ class SpatialTransformer:
 
     @property
     def last_gps_progress(self) -> Tuple[float, ...]:
-        return self.gps_sensor.last_gps_progress
+        return ()
 
     @property
     def sampler(self):
         return self.compiler.sampler
 
-    @property
-    def exit_compass(self):
-        return self.compiler.exit_compass
-
-    @property
-    def north_compass(self):
-        return self.compiler.north_compass
-
-    @property
-    def cardinal_compass(self):
-        return self.compiler.cardinal_compass
-
     def reset_candidate_history(self, candidate_idx: int) -> None:
         self.memory_stacker.reset_candidate_history(candidate_idx)
         self.gps_sensor.reset_candidate_history(candidate_idx)
+        self.compiler.reset_candidate(candidate_idx)
 
     def generate_random_heading(
         self,
         map_data: Optional[MapData] = None,
         start_pos: Optional[Tuple[int, int]] = None
     ) -> float:
-        use_bfs: bool = (
-            self.profile.use_bfs_spawn_heading
-            if self.profile is not None else True
-        )
         return SpawnHeadingGenerator.generate_random_heading(
-            map_data, start_pos, use_bfs_spawn_heading=use_bfs
+            map_data, start_pos, use_bfs_spawn_heading=False
         )
 
     def compile_base_vector(
@@ -77,7 +62,7 @@ class SpatialTransformer:
         speed_ratio: float,
         health_ratio: float,
         map_data: MapData,
-        pathfinder: BFSPathfinder,
+        pathfinder: Optional[BFSPathfinder] = None,
         candidate_idx: int = 0,
         prev_x: Optional[float] = None,
         prev_y: Optional[float] = None,
@@ -87,7 +72,8 @@ class SpatialTransformer:
         is_healing: bool = False,
         rot_ratio: float = 0.0,
         stage_idx: int = 0,
-        angular_velocity: float = 0.0
+        angular_velocity: float = 0.0,
+        agent_state: Optional[Any] = None
     ) -> NDArray[np.float32]:
         return self.compiler.compile_base_vector(
             candidate_x,
@@ -96,7 +82,7 @@ class SpatialTransformer:
             speed_ratio,
             health_ratio,
             map_data,
-            pathfinder,
+            pathfinder=pathfinder,
             candidate_idx=candidate_idx,
             prev_x=prev_x,
             prev_y=prev_y,
@@ -106,7 +92,8 @@ class SpatialTransformer:
             is_healing=is_healing,
             rot_ratio=rot_ratio,
             stage_idx=stage_idx,
-            angular_velocity=angular_velocity
+            angular_velocity=angular_velocity,
+            agent_state=agent_state
         )
 
     def compile_feature_vector(
@@ -117,14 +104,15 @@ class SpatialTransformer:
         speed_ratio: float,
         health_ratio: float,
         map_data: MapData,
-        pathfinder: BFSPathfinder,
+        pathfinder: Optional[BFSPathfinder] = None,
         candidate_idx: int = 0,
         is_collided: bool = False,
         is_idle: bool = False,
         is_healing: bool = False,
         rot_ratio: float = 0.0,
         stage_idx: int = 0,
-        angular_velocity: float = 0.0
+        angular_velocity: float = 0.0,
+        agent_state: Optional[Any] = None
     ) -> NDArray[np.float32]:
         base_vector = self.compile_base_vector(
             candidate_x,
@@ -133,14 +121,15 @@ class SpatialTransformer:
             speed_ratio,
             health_ratio,
             map_data,
-            pathfinder,
+            pathfinder=pathfinder,
             candidate_idx=candidate_idx,
             is_collided=is_collided,
             is_idle=is_idle,
             is_healing=is_healing,
             rot_ratio=rot_ratio,
             stage_idx=stage_idx,
-            angular_velocity=angular_velocity
+            angular_velocity=angular_velocity,
+            agent_state=agent_state
         )
 
         return self.memory_stacker.stack_base_vector(

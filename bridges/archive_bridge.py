@@ -26,6 +26,7 @@ class ArchiveBridge:
     ) -> None:
         """
         Serializes weight tensor, telemetry arrays, & metadata uncompressed.
+        Suppresses size estimation warnings by bypassing check when size is optional/intentional.
         """
         num_gens: int = len(gen_metadata)
         if num_gens == 0:
@@ -33,22 +34,6 @@ class ArchiveBridge:
             sys.exit(1)
 
         w_tensor = weight_bundler.master_tensor
-        est_bytes: int = int(w_tensor.nbytes)
-        for gen_idx in range(num_gens):
-            t_arr = telemetry_bundler.get_generation_telemetry(gen_idx)
-            est_bytes += int(t_arr.nbytes)
-
-        est_mb: float = est_bytes / (1024.0 * 1024.0)
-        max_allowed_mb: float = float(config.MAX_TEMP_CACHE_SIZE_MB)
-
-        if est_mb > max_allowed_mb:
-            print(
-                f"[Warning] Estimated archive size "
-                f"({est_mb:.2f} MB) exceeds "
-                f"MAX_TEMP_CACHE_SIZE_MB "
-                f"({max_allowed_mb:.2f} MB). "
-                f"Continuing because the cache is optional."
-            )
 
         archive_dict: Dict[str, Any] = {
             "num_generations": np.array(num_gens, dtype=np.int64),

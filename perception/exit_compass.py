@@ -1,5 +1,6 @@
 """
 Stereo binocular target compass sensor with profile-driven bounds.
+Respects SLAM_MODE by returning zeros.
 """
 
 import math
@@ -17,6 +18,7 @@ except ImportError:
             return func
         return decorator
 
+import config
 from core.map_data import MapData, march_los_segment_jit
 from entities.agent_profile_registry import ResolvedAgentProfile
 
@@ -33,16 +35,11 @@ def check_5point_los_jit(
     width: int,
     height: int
 ) -> bool:
-    """
-    Evaluates 5-point inset probes in a single JIT routine.
-    """
     f_ex = float(ex_tile)
     f_ey = float(ey_tile)
 
-    # Center
     if march_los_segment_jit(cx, cy, f_ex + 0.5, f_ey + 0.5, grid_array, width, height, 0.2):
         return True
-    # Corners
     if march_los_segment_jit(cx, cy, f_ex + 0.1, f_ey + 0.1, grid_array, width, height, 0.2):
         return True
     if march_los_segment_jit(cx, cy, f_ex + 0.9, f_ey + 0.1, grid_array, width, height, 0.2):
@@ -57,7 +54,7 @@ def check_5point_los_jit(
 
 class ExitCompass:
     """
-    Computes 4-channel Focus/Peripheral Exit Lock Radar signals.
+    Computes 4-channel Focus/Peripheral Exit Lock Radar signals. Returns zeros if SLAM_MODE is active.
     """
 
     def __init__(self) -> None:
@@ -82,12 +79,14 @@ class ExitCompass:
         profile: Optional[ResolvedAgentProfile] = None,
         stage_idx: int = 0
     ) -> Tuple[float, float, float, float]:
+        if getattr(config, "SLAM_MODE", False):
+            return 0.0, 0.0, 0.0, 0.0
+
         if profile is not None:
             if not profile.activate_exit_compass:
                 return 0.0, 0.0, 0.0, 0.0
             self._sync_profile(profile)
 
-        # Direct call bypassing hasattr
         ex_tile, ey_tile = map_data.get_target_pos(stage_idx)
 
         ex_center: float = float(ex_tile) + 0.5

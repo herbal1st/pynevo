@@ -1,34 +1,31 @@
 """
-Compiles single-frame sensory observations, topological corridor flow, and proprioceptive state vectors.
+Pure first-person embodied perception compiler for foreign maze exploration.
+The agent perceives ONLY what a human in a foreign maze with eyes and a compass would:
+1. LiDAR / Vision rays: distance to walls across forward visual arc.
+2. Corridor Openings / Clearance: left, front, and right path openness (derived from vision).
+3. Proprioception: speed, health, collision tactile feedback, idle status, and angular velocity.
+4. Compass Orientation: magnetic heading sense (cos heading, sin heading).
+5. Visual Target Beacon: strictly LINE-OF-SIGHT ONLY within visual range; 0.0 when blocked by walls.
+Zero omniscience: no global coordinates, no frontier cheat vectors, and no through-wall radar.
 """
 
 import math
-from typing import Optional, Tuple
+from typing import Optional, Any
 import numpy as np
 from numpy.typing import NDArray
 
-from core.map_data import MapData
+from core.map_data import MapData, march_los_segment_jit
 from core.pathfinder import BFSPathfinder
 from entities.agent_profile_registry import ResolvedAgentProfile
 from perception.vision_arc import VisionArcSampler
-from perception.exit_compass import ExitCompass
-from perception.cardinal_compass import (
-    BinocularNorthCompass,
-    CardinalNeedleCompass
-)
-from perception.spatial.gps_sensor import TopologicalGPSSensor
 from utils.math_utils import calculate_angle_delta
 
 
 class SingleFrameFeatureCompiler:
-    """
-    Compiles sensory perception with active Topological Corridor Compass.
-    """
-
     def __init__(
         self,
         profile: Optional[ResolvedAgentProfile] = None,
-        gps_sensor: Optional[TopologicalGPSSensor] = None
+        gps_sensor: Optional[Any] = None
     ) -> None:
         self.profile: Optional[ResolvedAgentProfile] = profile
         if profile is not None:
@@ -40,24 +37,16 @@ class SingleFrameFeatureCompiler:
         else:
             self.sampler = VisionArcSampler()
 
-        self.exit_compass: ExitCompass = ExitCompass()
-        self.north_compass: BinocularNorthCompass = BinocularNorthCompass()
-        self.cardinal_compass: CardinalNeedleCompass = CardinalNeedleCompass()
-        self.gps_sensor: TopologicalGPSSensor = (
-            gps_sensor or TopologicalGPSSensor(profile)
-        )
-
         self.v_rays: int = self.sampler.num_rays
-        self.use_binocular: bool = (
-            profile.use_binocular_gps_compasses if profile is not None else True
-        )
-        self.gps_dim: int = 4 if self.use_binocular else 2
-        # Base channels: [v_rays] + [7 proprio (spd, hp, dmg-c, dmg-i, dmg-s, heal, ang_vel)] +
-        #                [2 corridor compass (path_l, path_r)] + [gps_dim] + [4 cardinal] + [4 north] + [4 exit]
-        self.total_dim: int = self.v_rays + 7 + 2 + self.gps_dim + 4 + 4 + 4
+        # 3 clearance + 7 proprioception + 2 compass + 3 visual exit
+        self.embodied_channels: int = 3 + 7 + 2 + 3
+        self.total_dim: int = self.v_rays + self.embodied_channels
         self.base_vector_buffer: NDArray[np.float32] = np.zeros(
             self.total_dim, dtype=np.float32
         )
+
+    def reset_candidate(self, cand_idx: int) -> None:
+        pass
 
     def compile_base_vector(
         self,
@@ -67,7 +56,7 @@ class SingleFrameFeatureCompiler:
         speed_ratio: float,
         health_ratio: float,
         map_data: MapData,
-        pathfinder: BFSPathfinder,
+        pathfinder: Optional[BFSPathfinder] = None,
         candidate_idx: int = 0,
         prev_x: Optional[float] = None,
         prev_y: Optional[float] = None,
@@ -77,114 +66,76 @@ class SingleFrameFeatureCompiler:
         is_healing: bool = False,
         rot_ratio: float = 0.0,
         stage_idx: int = 0,
-        angular_velocity: float = 0.0
+        angular_velocity: float = 0.0,
+        agent_state: Optional[Any] = None
     ) -> NDArray[np.float32]:
-        # 1. Vision Arc Rays
-        wall_channels: NDArray[np.float32] = self.sampler.sample_vision_channels(
+        buf = self.base_vector_buffer
+
+        # 1. LiDAR / Vision Arc: forward rangefinder depth to walls
+        wall_channels = self.sampler.sample_vision_channels(
             candidate_x, candidate_y, heading_rad, map_data
         )
-        self.base_vector_buffer[:self.v_rays] = wall_channels
+        buf[:self.v_rays] = wall_channels
 
-        # 2. Topological Corridor Compass (Calculates true corridor flow vector at agent tile)
-        tx = int(candidate_x)
-        ty = int(candidate_y)
-        d_center = pathfinder.get_step_distance(tx, ty, stage_idx=stage_idx)
+        # 2. Corridor Openings / Clearance (Left, Front, Right) derived directly from vision rays
+        third = max(1, self.v_rays // 3)
+        left_clearance = 1.0 - float(np.mean(wall_channels[:third]))
+        front_clearance = 1.0 - float(np.mean(wall_channels[third : 2 * third]))
+        right_clearance = 1.0 - float(np.mean(wall_channels[2 * third :]))
 
-        best_dx = 0.0
-        best_dy = 0.0
-        best_dist = d_center
-
-        # Check 4 cardinal neighbor tiles for distance drop
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            nx, ny = tx + dx, ty + dy
-            if map_data.is_walkable(nx, ny):
-                d_n = pathfinder.get_step_distance(nx, ny, stage_idx=stage_idx)
-                if d_n < best_dist:
-                    best_dist = d_n
-                    best_dx = float(dx)
-                    best_dy = float(dy)
-
-        if best_dx != 0.0 or best_dy != 0.0:
-            target_path_angle = math.atan2(best_dy, best_dx)
-            path_delta = calculate_angle_delta(heading_rad, target_path_angle)
-            # Project into stereo corridor channels (Path Left vs Path Right)
-            path_l = max(0.0, min(1.0, -path_delta / math.pi))
-            path_r = max(0.0, min(1.0, path_delta / math.pi))
-        else:
-            path_l = 0.0
-            path_r = 0.0
-
-        # 3. Compasses
-        act_exit = self.profile.activate_exit_compass if self.profile is not None else True
-        if act_exit:
-            exit_channels = self.exit_compass.compute_stereo_channels(
-                candidate_x, candidate_y, heading_rad, map_data, self.profile, stage_idx=stage_idx
-            )
-        else:
-            exit_channels = (0.0, 0.0, 0.0, 0.0)
-
-        act_gps = self.profile.activate_gps_compass if self.profile is not None else True
-        if act_gps:
-            gps_channels = self.gps_sensor.compute_gps_channels(
-                candidate_x, candidate_y, heading_rad, map_data, pathfinder,
-                candidate_idx, prev_x, prev_y, prev_heading, stage_idx=stage_idx
-            )
-        else:
-            gps_channels = (0.0, 0.0, 0.0, 0.0) if self.use_binocular else (0.0, 0.0)
-
-        act_north = self.profile.activate_north_compass if self.profile is not None else True
-        if act_north:
-            north_channels = self.north_compass.compute_stereo_channels(heading_rad, self.profile)
-        else:
-            north_channels = (0.0, 0.0, 0.0, 0.0)
-
-        act_cardinal = self.profile.activate_cardinal_compass if self.profile is not None else True
-        if act_cardinal:
-            c_n, c_e, c_s, c_w = self.cardinal_compass.compute_cardinal_channels(heading_rad, self.profile)
-        else:
-            c_n, c_e, c_s, c_w = 0.0, 0.0, 0.0, 0.0
-
-        # Proprioception
-        clamped_spd = 1.0 if speed_ratio > 1.0 else (0.0 if speed_ratio < 0.0 else float(speed_ratio))
-        clamped_hp = 1.0 if health_ratio > 1.0 else (0.0 if health_ratio < 0.0 else float(health_ratio))
-        val_dmg_c = 1.0 if is_collided else 0.0
-        val_dmg_i = 1.0 if is_idle else 0.0
-        val_dmg_s = 1.0 if rot_ratio > 1.0 else (0.0 if rot_ratio < 0.0 else float(rot_ratio))
-        val_heal = 1.0 if is_healing else 0.0
-        val_ang_vel = max(-1.0, min(1.0, float(angular_velocity)))
-
-        # Write directly into contiguous buffer
         idx = self.v_rays
-        self.base_vector_buffer[idx] = clamped_spd
-        self.base_vector_buffer[idx + 1] = clamped_hp
-        self.base_vector_buffer[idx + 2] = val_dmg_c
-        self.base_vector_buffer[idx + 3] = val_dmg_i
-        self.base_vector_buffer[idx + 4] = val_dmg_s
-        self.base_vector_buffer[idx + 5] = val_heal
-        self.base_vector_buffer[idx + 6] = val_ang_vel
-        self.base_vector_buffer[idx + 7] = path_l
-        self.base_vector_buffer[idx + 8] = path_r
-        idx += 9
+        buf[idx]     = np.float32(max(0.0, min(1.0, left_clearance)))
+        buf[idx + 1] = np.float32(max(0.0, min(1.0, front_clearance)))
+        buf[idx + 2] = np.float32(max(0.0, min(1.0, right_clearance)))
+        idx += 3
 
-        for g_val in gps_channels:
-            self.base_vector_buffer[idx] = g_val
-            idx += 1
+        # 3. Proprioception & Tactile Feedback (7 channels)
+        buf[idx]     = np.float32(max(0.0, min(1.0, speed_ratio)))
+        buf[idx + 1] = np.float32(max(0.0, min(1.0, health_ratio)))
+        buf[idx + 2] = np.float32(1.0 if is_collided else 0.0)
+        buf[idx + 3] = np.float32(1.0 if is_idle else 0.0)
+        buf[idx + 4] = np.float32(max(0.0, min(1.0, rot_ratio)))
+        buf[idx + 5] = np.float32(1.0 if is_healing else 0.0)
+        buf[idx + 6] = np.float32(max(-1.0, min(1.0, angular_velocity)))
+        idx += 7
 
-        self.base_vector_buffer[idx] = c_n
-        self.base_vector_buffer[idx + 1] = c_e
-        self.base_vector_buffer[idx + 2] = c_s
-        self.base_vector_buffer[idx + 3] = c_w
-        idx += 4
+        # 4. Vestibular Compass Sense (2 channels)
+        buf[idx]     = np.float32(math.cos(heading_rad))
+        buf[idx + 1] = np.float32(math.sin(heading_rad))
+        idx += 2
 
-        self.base_vector_buffer[idx] = north_channels[0]
-        self.base_vector_buffer[idx + 1] = north_channels[1]
-        self.base_vector_buffer[idx + 2] = north_channels[2]
-        self.base_vector_buffer[idx + 3] = north_channels[3]
-        idx += 4
+        # 5. Visual Target Beacon (STRICTLY Line-of-Sight ONLY within visual range, 3 channels)
+        # If the exit is hidden behind a wall, the human CANNOT see it (all channels remain 0.0)
+        target_pos = (
+            map_data.get_target_pos(stage_idx)
+            if hasattr(map_data, "get_target_pos")
+            else map_data.exit_pos
+        )
+        tx_c = float(target_pos[0]) + 0.5
+        ty_c = float(target_pos[1]) + 0.5
+        dx_t = tx_c - candidate_x
+        dy_t = ty_c - candidate_y
+        dist_t = math.sqrt(dx_t * dx_t + dy_t * dy_t)
+        max_vis = self.sampler.max_dist
 
-        self.base_vector_buffer[idx] = exit_channels[0]
-        self.base_vector_buffer[idx + 1] = exit_channels[1]
-        self.base_vector_buffer[idx + 2] = exit_channels[2]
-        self.base_vector_buffer[idx + 3] = exit_channels[3]
+        if dist_t <= max_vis:
+            has_los = march_los_segment_jit(
+                candidate_x, candidate_y, tx_c, ty_c,
+                map_data.grid_array, map_data.width, map_data.height, 0.2
+            )
+            if has_los:
+                target_ang = math.atan2(dy_t, dx_t)
+                t_delta = calculate_angle_delta(heading_rad, target_ang)
+                buf[idx]     = np.float32(1.0 - (dist_t / max_vis))
+                buf[idx + 1] = np.float32(math.cos(t_delta))
+                buf[idx + 2] = np.float32(math.sin(t_delta))
+            else:
+                buf[idx]     = np.float32(0.0)
+                buf[idx + 1] = np.float32(0.0)
+                buf[idx + 2] = np.float32(0.0)
+        else:
+            buf[idx]     = np.float32(0.0)
+            buf[idx + 1] = np.float32(0.0)
+            buf[idx + 2] = np.float32(0.0)
 
-        return self.base_vector_buffer
+        return buf
