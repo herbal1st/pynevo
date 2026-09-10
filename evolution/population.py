@@ -1,5 +1,6 @@
 """
 Genetic algorithm population manager with recombination crossover, elitism, and checkpointing.
+Zero-allocation double-buffering with multi-tier mutation niches to break out of maze plateaus.
 """
 
 from typing import List, Optional, Dict
@@ -35,8 +36,10 @@ class PopulationManager:
 
         if factory is not None:
             self.networks = [factory.create_network() for _ in range(pop_size)]
+            self._next_networks = [factory.create_network() for _ in range(pop_size)]
         else:
             self.networks = [NeuralNetwork() for _ in range(pop_size)]
+            self._next_networks = [NeuralNetwork() for _ in range(pop_size)]
 
     def seed_population_from_brain(
         self,
@@ -49,9 +52,18 @@ class PopulationManager:
             return
 
         self.networks[0].copy_weights_from(seed_network)
-        for idx in range(1, self.pop_size):
+        self.networks[1].copy_weights_from(seed_network)
+
+        pop_len = self.pop_size
+        for idx in range(2, pop_len):
             self.networks[idx].copy_weights_from(seed_network)
-            noise_scale = 0.015 if idx < self.pop_size // 2 else 0.040
+            if idx < pop_len // 3:
+                noise_scale = 0.020
+            elif idx < (2 * pop_len) // 3:
+                noise_scale = 0.050
+            else:
+                noise_scale = 0.100
+
             noise = np.random.normal(
                 0.0, noise_scale, size=self.networks[idx].param_buffer.shape
             ).astype(np.float32)
@@ -155,53 +167,48 @@ class PopulationManager:
         num_elites = max(2, int(self.pop_size * self.elitism_ratio))
         elite_indices = [idx for idx, _ in indexed[:num_elites]]
 
-        new_networks = []
-
         # 1. Exact Elites (zero mutation preservation)
-        for idx in elite_indices:
-            child = (
-                self.factory.create_network()
-                if self.factory is not None
-                else NeuralNetwork()
-            )
-            child.copy_weights_from(self.networks[idx])
-            new_networks.append(child)
+        for slot, idx in enumerate(elite_indices):
+            np.copyto(self._next_networks[slot].param_buffer, self.networks[idx].param_buffer)
 
-        # 2. Uniform Crossover & Adaptive Mutation
-        while len(new_networks) < self.pop_size:
-            p1 = TournamentSelection.select(self.networks, fitness_scores, k=4)
-            p2 = TournamentSelection.select(self.networks, fitness_scores, k=4)
+        # 2. Multi-tier mutation niches to continually test alternate corridor branches
+        pop_len = self.pop_size
+        scores_arr = np.asarray(fitness_scores, dtype=np.float64)
 
-            child = (
-                self.factory.create_network()
-                if self.factory is not None
-                else NeuralNetwork()
-            )
+        for slot in range(num_elites, pop_len):
+            target_buf = self._next_networks[slot].param_buffer
+
+            cand_a = np.random.choice(pop_len, 4, replace=False)
+            p1_idx = cand_a[np.argmax(scores_arr[cand_a])]
+            cand_b = np.random.choice(pop_len, 4, replace=False)
+            p2_idx = cand_b[np.argmax(scores_arr[cand_b])]
+
+            p1_buf = self.networks[p1_idx].param_buffer
+            p2_buf = self.networks[p2_idx].param_buffer
 
             if random.random() < 0.50:
-                mask = np.random.random(child.param_buffer.shape) < 0.5
-                np.copyto(
-                    child.param_buffer,
-                    np.where(mask, p1.param_buffer, p2.param_buffer)
-                )
+                mask = np.random.random(target_buf.shape) < 0.5
+                np.copyto(target_buf, np.where(mask, p1_buf, p2_buf))
             else:
-                child.copy_weights_from(p1)
+                np.copyto(target_buf, p1_buf)
 
-            slot = len(new_networks)
-            if slot < self.pop_size * 0.45:
+            # 4 distinct exploratory niches
+            if slot < pop_len * 0.40:
                 scale = 0.020
-                gene_rate = 0.08
-            elif slot < self.pop_size * 0.80:
-                scale = 0.045
+                gene_rate = 0.07
+            elif slot < pop_len * 0.70:
+                scale = 0.050
                 gene_rate = 0.15
-            else:
-                scale = 0.090
+            elif slot < pop_len * 0.90:
+                scale = 0.100
                 gene_rate = 0.25
+            else:
+                # Top 10% frontier scouts: high mutation to escape dead-end valleys
+                scale = 0.160
+                gene_rate = 0.40
 
-            mut_mask = np.random.random(child.param_buffer.shape) < gene_rate
-            noise = np.random.normal(0.0, scale, size=child.param_buffer.shape).astype(np.float32)
-            child.param_buffer += mut_mask * noise
+            mut_mask = np.random.random(target_buf.shape) < gene_rate
+            noise = np.random.normal(0.0, scale, size=target_buf.shape).astype(np.float32)
+            target_buf += mut_mask * noise
 
-            new_networks.append(child)
-
-        self.networks = new_networks
+        self.networks, self._next_networks = self._next_networks, self.networks

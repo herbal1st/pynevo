@@ -1,6 +1,7 @@
 """
 Continuous multi-objective fitness evaluation module rewarding genuine autonomous maze exploration.
-Fitness drives emergence of corridor navigation, corner turning, and exit seeking without oracles.
+Anti-deception SLAM design: rewards true topological territory visited (unique_visited) rather than
+misleading Euclidean straight-line distance, escaping local-optimum dead ends.
 """
 
 from typing import List
@@ -13,33 +14,42 @@ class FitnessEvaluator:
         state: AgentState,
         initial_bfs_dist: int = 0,
         max_steps: int = 1000,
-        stage_bonus: float = 2500.0,
+        stage_bonus: float = 5000.0,
         lost_hp_impact: float = 0.0
     ) -> float:
-        # 1. Unique territory explored (evaluated externally by simulation, NOT known by agent brain)
-        unique_visited = len(getattr(state, "visited_tiles", set()))
-        exploration_reward = float(unique_visited) * 45.0
+        # 1. Primary exploration driver: actual distinct corridor tiles reached
+        unique_visited = getattr(state, "unique_visited_count", len(getattr(state, "visited_tiles", set())))
+        exploration_reward = float(unique_visited) * 75.0
 
-        # 2. Smooth locomotion (rewarding forward corridor traversal)
+        # 2. Bounded dispersion from spawn (capped to avoid deceptive Euclidean dead-end traps)
+        max_disp = float(getattr(state, "max_disp", 0.0))
+        dispersion_reward = min(800.0, max_disp * 20.0)
+
+        # 3. Smooth forward corridor locomotion
         dist_traveled = float(getattr(state, "distance_traveled", 0.0))
-        locomotion_reward = min(250.0, dist_traveled * 3.5)
+        locomotion_reward = min(400.0, dist_traveled * 3.0)
 
-        # 3. Collision penalty (penalizing wall-ramming)
+        # 4. Collision penalty
         collisions = float(getattr(state, "collision_count", 0))
-        collision_penalty = collisions * 3.0
+        collision_penalty = collisions * 4.0
 
-        # 4. Exit / Target Discovery Bonus (massive reward scaled by speed of finding exit)
+        # 5. Survival reward
+        survival_reward = min(200.0, float(state.frames_survived) * 0.15) if state.is_alive else 0.0
+
+        # 6. Exit Discovery Bonus (massive reward triggering curriculum advancement)
         exit_bonus = 0.0
         if state.first_touch_step >= 0 or state.touched_exit:
             remaining = max(1, max_steps - (state.first_touch_step if state.first_touch_step >= 0 else max_steps // 2))
-            exit_bonus = 15000.0 + (float(remaining) * 25.0)
+            exit_bonus = 50000.0 + (float(remaining) * 30.0)
 
-        # 5. Stage Clear Bonus
+        # 7. Stage Clear Bonus
         clear_bonus = float(state.stages_cleared) * stage_bonus
 
         total_score = (
             exploration_reward +
+            dispersion_reward +
             locomotion_reward +
+            survival_reward +
             exit_bonus +
             clear_bonus +
             state.total_lifetime_progress -

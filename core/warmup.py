@@ -20,6 +20,7 @@ from perception.spatial.gps_sensor import (
     compute_stereo_gps_jit
 )
 from core.pathfinder import lookup_step_distance_jit, get_step_distance
+from evolution.fast_simulation import warmup_fast_simulation
 
 
 def warmup_jit() -> None:
@@ -68,3 +69,6 @@ def warmup_jit() -> None:
     )
     lookup_step_distance_jit(dummy_int32, 5, 5, 0, 10, 10, 2, 9999)
     get_step_distance(1.0, 1.0, 4.0, 5.0)
+
+    # 5. Fast population simulation kernel
+    warmup_fast_simulation()

@@ -16,11 +16,6 @@ from bridges.archive_bridge import ArchiveBridge
 
 
 class FrameRecorder:
-    """
-    Stores playback frame data using lightweight metadata and weight bundlers,
-    preventing massive temporary archive size warnings and OOM bloat.
-    """
-
     def __init__(
         self,
         cache_filename: str = ".runtime_cache.npz"
@@ -30,7 +25,8 @@ class FrameRecorder:
         self.gen_metadata: List[Dict[str, Any]] = []
         self.telemetry_bundler: Optional[TelemetryBundler] = None
         self.weight_bundler: Optional[WeightBundler] = None
-        self._max_ram_generations: int = 10
+        self.record_pop_size: int = 16
+        self._max_history: int = 100
 
     def allocate_session_buffers(
         self,
@@ -39,28 +35,15 @@ class FrameRecorder:
         num_generations: int,
         param_count: int
     ) -> None:
-        # Allocate minimal 1-step telemetry buffers (shape: 1 x pop_size x 8) to keep archives super tiny
-        self.telemetry_bundler = TelemetryBundler(1, pop_size)
+        self.record_pop_size = min(pop_size, 16)
+        self.telemetry_bundler = TelemetryBundler(1, self.record_pop_size)
         self.weight_bundler = WeightBundler(
-            num_generations, pop_size, param_count
+            min(num_generations, self._max_history), self.record_pop_size, param_count
         )
         self.gen_metadata.clear()
         self.generations_history.clear()
 
-    def record_step_data(
-        self,
-        step_idx: int,
-        cand_idx: int,
-        x: float,
-        y: float,
-        heading: float,
-        health: float,
-        dist: float,
-        hit_wall: bool,
-        is_alive: bool,
-        reached_exit: bool
-    ) -> None:
-        # Fully disabled during training to keep memory footprint close to zero and archives tiny
+    def record_step_data(self, *args, **kwargs) -> None:
         pass
 
     def finalize_generation(
@@ -72,19 +55,26 @@ class FrameRecorder:
         actual_steps: int,
         pop_networks: List[NeuralNetwork]
     ) -> None:
-        if (
-            self.telemetry_bundler is None or
-            self.weight_bundler is None
-        ):
+        if self.telemetry_bundler is None or self.weight_bundler is None:
             return
 
-        # Force clamp to 1 step in bundler to eliminate memory allocation
-        self.telemetry_bundler.finalize_generation(1)
-        self.weight_bundler.record_generation_weights(
-            gen_idx, pop_networks
-        )
+        rec_size = getattr(self, "record_pop_size", min(len(pop_networks), 16))
+        if norm_scores and len(norm_scores) == len(pop_networks):
+            ranked_indices = np.argsort(norm_scores)[::-1][:rec_size]
+            top_networks = [pop_networks[i] for i in ranked_indices]
+            top_raw_scores = [raw_scores[i] for i in ranked_indices]
+            top_norm_scores = [norm_scores[i] for i in ranked_indices]
+        else:
+            top_networks = pop_networks[:rec_size]
+            top_raw_scores = raw_scores[:rec_size]
+            top_norm_scores = norm_scores[:rec_size]
 
-        winner_idx: int = int(np.argmax(norm_scores)) if norm_scores else 0
+        self.telemetry_bundler.finalize_generation(1)
+
+        # Slot into rolling buffer
+        slot_idx = gen_idx % self.weight_bundler.num_generations
+        self.weight_bundler.record_generation_weights(slot_idx, top_networks)
+
         g_data: Dict[str, Any] = {
             "generation": gen_idx,
             "bitmask_chunks": map_data.bitmask_chunks,
@@ -93,24 +83,18 @@ class FrameRecorder:
             "target_sequence": list(map_data.target_sequence),
             "map_width": map_data.width,
             "map_height": map_data.height,
-            "raw_scores": raw_scores,
-            "normalized_scores": norm_scores,
-            "winner_index": winner_idx
+            "raw_scores": top_raw_scores,
+            "normalized_scores": top_norm_scores,
+            "winner_index": 0
         }
         self.gen_metadata.append(g_data)
+        if len(self.gen_metadata) > self._max_history:
+            self.gen_metadata.pop(0)
 
-        if len(self.gen_metadata) >= self._max_ram_generations:
-            self.save_temporary_disk_archive(append=True)
-
-        if self.weight_bundler and gen_idx < self.weight_bundler.num_generations - 1:
-            self.telemetry_bundler.allocate_generation_buffer()
+        # Zero disk I/O during training hot loop
 
     def save_temporary_disk_archive(self, append: bool = False) -> None:
-        if (
-            self.telemetry_bundler is None or
-            self.weight_bundler is None or
-            not self.gen_metadata
-        ):
+        if self.telemetry_bundler is None or self.weight_bundler is None or not self.gen_metadata:
             return
 
         ArchiveBridge.save_archive(
@@ -151,7 +135,5 @@ class FrameRecorder:
         ArchiveBridge.unlink_archive(self.cache_path)
 
     def get_generation_data(self, gen_idx: int) -> Dict[str, Any]:
-        safe_idx: int = max(
-            0, min(gen_idx, len(self.generations_history) - 1)
-        )
+        safe_idx = max(0, min(gen_idx, len(self.generations_history) - 1))
         return self.generations_history[safe_idx]
